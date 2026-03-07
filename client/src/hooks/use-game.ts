@@ -8,12 +8,17 @@ import { generateLevel } from "@shared/level-generator";
 export function useUserId() {
   const [userId, setUserId] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    let id = localStorage.getItem("one_line_user_id");
-    if (!id) {
-      id = uuidv4();
-      localStorage.setItem("one_line_user_id", id);
+    try {
+      let id = localStorage.getItem("one_line_user_id");
+      if (!id) {
+        id = uuidv4();
+        localStorage.setItem("one_line_user_id", id);
+      }
+      return id;
+    } catch (e) {
+      console.warn("localStorage is disabled or restricted, falling back to session ID");
+      return uuidv4();
     }
-    return id;
   });
 
   return userId;
@@ -22,9 +27,16 @@ export function useUserId() {
 // === LOCAL STORAGE HELPERS ===
 const STORAGE_KEY = "neon_path_progress";
 
+// In-memory fallback for progress if localStorage is blocked
+let fallbackProgress: Record<string, any> = {};
+
 function getLocalProgress(userId: string) {
-  const data = localStorage.getItem(`${STORAGE_KEY}_${userId}`);
-  return data ? JSON.parse(data) : { completed: [], hints: [] };
+  try {
+    const data = localStorage.getItem(`${STORAGE_KEY}_${userId}`);
+    return data ? JSON.parse(data) : { completed: [], hints: [] };
+  } catch (e) {
+    return fallbackProgress[userId] || { completed: [], hints: [] };
+  }
 }
 
 function saveLocalProgress(userId: string, levelId: number, completed: boolean, hintUsed: boolean) {
@@ -35,7 +47,11 @@ function saveLocalProgress(userId: string, levelId: number, completed: boolean, 
   if (hintUsed && !progress.hints.includes(levelId)) {
     progress.hints.push(levelId);
   }
-  localStorage.setItem(`${STORAGE_KEY}_${userId}`, JSON.stringify(progress));
+  try {
+    localStorage.setItem(`${STORAGE_KEY}_${userId}`, JSON.stringify(progress));
+  } catch (e) {
+    fallbackProgress[userId] = progress;
+  }
   return progress;
 }
 
