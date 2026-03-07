@@ -117,20 +117,6 @@ npm run build
 
 ##  Contact & Support
 
-<div align="center">
-
-**Created 2026 by © nRn World**
-
-📧 **Email**: [bynrnworld@gmail.com](mailto:bynrnworld@gmail.com)
-
-🌐 **Website**: [https://neon-path-puzzle.vercel.app](https://neon-path-puzzle.vercel.app)
-
-</div>
-
----
-
-<div align="center">
-
 👨‍💻 **Author**  
 Created 2026 by © nRn World
 
