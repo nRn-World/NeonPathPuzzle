@@ -1,5 +1,5 @@
 
-import { userProgress, type InsertProgressSchema } from "@shared/schema";
+import { userProgress } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 
@@ -14,9 +14,9 @@ export class DatabaseStorage implements IStorage {
       const progress = await db
         .select()
         .from(userProgress)
-        .where(and(eq(userProgress.userId, userId), eq(userProgress.completed, 1 as any)));
+        .where(and(eq(userProgress.userId, userId), eq(userProgress.completed, true)));
       
-      return progress.map(p => p.levelId);
+      return (progress as Array<{ levelId: number }>).map((p) => p.levelId);
     } catch (error) {
       console.error("Error getting user progress:", error);
       return [];
@@ -35,8 +35,8 @@ export class DatabaseStorage implements IStorage {
         await db
           .update(userProgress)
           .set({ 
-            completed: (completed || existing[0].completed) ? 1 : 0,
-            hintsUsed: (hintsUsed || existing[0].hintsUsed) ? 1 : 0,
+            completed: completed || Boolean(existing[0].completed),
+            hintsUsed: hintsUsed || Boolean(existing[0].hintsUsed),
             updatedAt: new Date() 
           })
           .where(eq(userProgress.id, existing[0].id));
@@ -44,10 +44,10 @@ export class DatabaseStorage implements IStorage {
         await db.insert(userProgress).values({
           userId,
           levelId,
-          completed: completed ? 1 : 0,
-          hintsUsed: hintsUsed ? 1 : 0,
+          completed,
+          hintsUsed,
           updatedAt: new Date()
-        } as any);
+        });
       }
     } catch (error) {
       console.error("Error updating user progress:", error);

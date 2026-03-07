@@ -20,7 +20,8 @@ export const useThemeStore = create<ThemeStore>()(
         const root = document.documentElement;
         
         Object.entries(theme.colors).forEach(([key, value]) => {
-          root.style.setProperty(`--theme-${key}`, value);
+          const cssValue = Array.isArray(value) ? value.join(",") : value;
+          root.style.setProperty(`--theme-${key}`, cssValue);
         });
         
         // Update CSS for neon effects
