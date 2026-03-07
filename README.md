@@ -2,7 +2,8 @@
 
 # 🎮 NEON PATH PUZZLE
 
-[![Vercel](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://neon-path-puzzle.vercel.app)
+[![GitHub Pages](https://img.shields.io/badge/Play-GitHub%20Pages-222222?style=for-the-badge&logo=github&logoColor=white)](https://robinayzit.github.io/NeonPathPuzzle/)
+[![Vercel](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://neon-path-puzzle-nrnworld.vercel.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -55,7 +56,8 @@
 
 ## 🚀 Live Demo
 
-### **[🎮 Play Now - https://neon-path-puzzle.vercel.app](https://neon-path-puzzle.vercel.app)**
+### **[🎮 Play on GitHub Pages - https://robinayzit.github.io/NeonPathPuzzle/](https://robinayzit.github.io/NeonPathPuzzle/)**
+### **[⚡ Mirror on Vercel - https://neon-path-puzzle-nrnworld.vercel.app](https://neon-path-puzzle-nrnworld.vercel.app)**
 
 ---
 
@@ -93,10 +95,10 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/RobinAyzit/Neon-Path-Puzzle.git
+git clone https://github.com/RobinAyzit/NeonPathPuzzle.git
 
 # Navigate to project directory
-cd Neon-Path-Puzzle
+cd NeonPathPuzzle
 
 # Install dependencies
 npm install
