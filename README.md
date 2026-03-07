@@ -131,8 +131,14 @@ npm run build
 
 <div align="center">
 
-### ⭐ Star this repository if you enjoy the game!
+👨‍💻 **Author**  
+Created 2026 by © nRn World
 
-**[🎮 Play Now](https://neon-path-puzzle.vercel.app)** | **[📄 License](LICENSE)** | **[🐛 Report Bug](../../issues)**
+📧 bynrnworld@gmail.com
 
-</div>
+🙏 **Support**  
+If you like this project, consider:
+
+⭐ Starring the project on GitHub  
+☕ Buying me a coffee  
+📢 Sharing with your friends
