@@ -204,18 +204,11 @@ export function GameCanvas({ level, onComplete, showHint, hintPath, onBacktrack,
 
   useEffect(() => {
     draw();
-    const animationId = requestAnimationFrame(() => {
-      draw();
-      // Let's rely on standard React updates for dragging, and maybe add a timer for idle pulse.
-    });
-
-    return () => cancelAnimationFrame(animationId);
-
-  }, [path, cellSize, level, showHint, hintPath, offset]);
+  }, [path, cellSize, level, showHint, hintPath, offset, draw]);
 
 
   // Game Logic
-  const getGridPos = (clientX: number, clientY: number) => {
+  const getGridPos = useCallback((clientX: number, clientY: number) => {
     if (!canvasRef.current || cellSize === 0) return null;
     const rect = canvasRef.current.getBoundingClientRect();
 
@@ -232,15 +225,15 @@ export function GameCanvas({ level, onComplete, showHint, hintPath, onBacktrack,
     }
 
     return { x: gridX, y: gridY };
-  };
+  }, [cellSize, level.gridSize]);
 
-  const isAdjacent = (p1: Point, p2: Point) => {
+  const isAdjacent = useCallback((p1: Point, p2: Point) => {
     const dx = Math.abs(p1.x - p2.x);
     const dy = Math.abs(p1.y - p2.y);
     return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-  };
+  }, []);
 
-  const handleInputStart = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleInputStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
@@ -257,9 +250,9 @@ export function GameCanvas({ level, onComplete, showHint, hintPath, onBacktrack,
       setPath([level.start]);
       setIsDragging(true);
     }
-  };
+  }, [path, level.start, getGridPos]);
 
-  const handleInputMove = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleInputMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
     e.preventDefault();
 
@@ -308,9 +301,9 @@ export function GameCanvas({ level, onComplete, showHint, hintPath, onBacktrack,
       playWinSound();
       onComplete();
     }
-  };
+  }, [isDragging, path, level.nodes, level.start, getGridPos, isAdjacent, onComplete]);
 
-  const handleInputEnd = () => {
+  const handleInputEnd = useCallback(() => {
     if (isDragging && path.length < level.nodes.length && path.length > 1) {
       // Player let go before finishing - lose a life
       playLoseLifeSound();
@@ -318,7 +311,7 @@ export function GameCanvas({ level, onComplete, showHint, hintPath, onBacktrack,
       setPath([level.start]);
     }
     setIsDragging(false);
-  };
+  }, [isDragging, path, level.nodes, level.start, onLoseLife]);
 
   return (
     <div

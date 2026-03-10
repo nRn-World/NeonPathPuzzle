@@ -65,6 +65,7 @@ export function useLevels(userId?: string) {
       if (!userId) return [];
       const progress = getLocalProgress(userId);
       const completedSet = new Set(progress.completed as number[]);
+      const hintsSet = new Set(progress.hints as number[]);
 
       const allFirstHundredCompleted = Array.from({ length: 100 }, (_, i) => i + 1)
         .every(id => completedSet.has(id));
@@ -72,6 +73,7 @@ export function useLevels(userId?: string) {
       const levels = [];
       for (let i = 1; i <= 200; i++) {
         const isCompleted = completedSet.has(i);
+        const hintsUsed = hintsSet.has(i);
         let isLocked = false;
         if (i <= 100) {
           isLocked = i > 1 && !completedSet.has(i - 1);
@@ -79,7 +81,7 @@ export function useLevels(userId?: string) {
           isLocked = !allFirstHundredCompleted || !completedSet.has(i - 1);
         }
 
-        levels.push({ id: i, isCompleted, isLocked });
+        levels.push({ id: i, isCompleted, isLocked, hintsUsed });
       }
       return levels;
     },

@@ -6,3 +6,28 @@ vite.config.ts.*
 *.tar.gz
 .vercel
 NeonPathPuzzle.zip
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+
+# Database
+dev.db
+*.db
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.suo
+
+# Keys
+*.pem
+*.key
+*.p12
+credentials.json

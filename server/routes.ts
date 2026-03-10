@@ -106,7 +106,8 @@ export async function registerRoutes(
       await storage.updateUserProgress(input.userId, input.levelId, input.completed, input.hintsUsed);
       res.json({ success: true });
     } catch (err) {
-      res.status(400).json({ success: false });
+      console.error("Error syncing progress:", err);
+      res.status(400).json({ success: false, message: "Invalid request data" });
     }
   });
 
