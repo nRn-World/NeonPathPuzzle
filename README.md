@@ -56,7 +56,7 @@
 
 ## 🚀 Live Demo
 
-### **[🎮 Play on GitHub Pages - https://robinayzit.github.io/NeonPathPuzzle/](https://robinayzit.github.io/NeonPathPuzzle/)**
+### **[🎮 Play on GitHub Pages - https://nrn-world.github.io/NeonPathPuzzle/](https://robinayzit.github.io/NeonPathPuzzle/)**
 ### **[⚡ Mirror on Vercel - https://neon-path-puzzle-nrnworld.vercel.app](https://neon-path-puzzle-nrnworld.vercel.app)**
 
 ---
