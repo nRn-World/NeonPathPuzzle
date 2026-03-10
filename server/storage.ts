@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   getUserProgress(userId: string): Promise<number[]>;
+  getHintsUsed(userId: string): Promise<Map<number, boolean>>;
   updateUserProgress(userId: string, levelId: number, completed: boolean, hintsUsed: boolean): Promise<void>;
 }
 
@@ -16,16 +17,35 @@ export class DatabaseStorage implements IStorage {
         .from(userProgress)
         .where(and(eq(userProgress.userId, userId), eq(userProgress.completed, true)));
       
-      return (progress as Array<{ levelId: number }>).map((p) => p.levelId);
+      return progress.map((p) => p.levelId);
     } catch (error) {
       console.error("Error getting user progress:", error);
       return [];
     }
   }
 
+  async getHintsUsed(userId: string): Promise<Map<number, boolean>> {
+    try {
+      const progress = await db
+        .select()
+        .from(userProgress)
+        .where(eq(userProgress.userId, userId));
+      
+      const hintsMap = new Map<number, boolean>();
+      for (const p of progress) {
+        if (p.hintsUsed) {
+          hintsMap.set(p.levelId, true);
+        }
+      }
+      return hintsMap;
+    } catch (error) {
+      console.error("Error getting hints used:", error);
+      return new Map();
+    }
+  }
+
   async updateUserProgress(userId: string, levelId: number, completed: boolean, hintsUsed: boolean): Promise<void> {
     try {
-      // Check if exists
       const existing = await db
         .select()
         .from(userProgress)

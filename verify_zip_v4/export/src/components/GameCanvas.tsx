@@ -169,37 +169,25 @@ export function GameCanvas({ level, onComplete, showHint, hintPath }: GameCanvas
       });
     }
 
-    // Request animation frame for the pulse effect
-    const animationId = requestAnimationFrame(() => {
-        // Force re-render for pulse animation
-        // We need a state or ref change to trigger re-render of component?
-        // Actually, just calling a dummy state update or using a ref to loop is better.
-        // For simplicity in React, we'll let it be static or use a simple timer.
-        // BUT, since we have the useEffect dependency array, this only runs on state change.
-        // Let's rely on standard React updates for dragging, and maybe add a timer for idle pulse.
-    });
-
-    return () => cancelAnimationFrame(animationId);
-
   }, [path, cellSize, level, showHint, hintPath, offset]);
 
 
   // Game Logic
-  const getGridPos = (clientX: number, clientY: number) => {
+  const getGridPos = useCallback((clientX: number, clientY: number) => {
     if (!canvasRef.current) return null;
     const rect = canvasRef.current.getBoundingClientRect();
     const x = Math.floor((clientX - rect.left) / (rect.width / level.gridSize));
     const y = Math.floor((clientY - rect.top) / (rect.height / level.gridSize));
     return { x, y };
-  };
+  }, [level.gridSize]);
 
-  const isAdjacent = (p1: Point, p2: Point) => {
+  const isAdjacent = useCallback((p1: Point, p2: Point) => {
     const dx = Math.abs(p1.x - p2.x);
     const dy = Math.abs(p1.y - p2.y);
     return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-  };
+  }, []);
 
-  const handleInputStart = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleInputStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault(); // Prevent scrolling
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
@@ -216,9 +204,9 @@ export function GameCanvas({ level, onComplete, showHint, hintPath }: GameCanvas
       setPath([level.start]);
       setIsDragging(true);
     }
-  };
+  }, [path, level.start, getGridPos]);
 
-  const handleInputMove = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleInputMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
     e.preventDefault();
 
@@ -263,11 +251,11 @@ export function GameCanvas({ level, onComplete, showHint, hintPath }: GameCanvas
       setIsDragging(false);
       onComplete();
     }
-  };
+  }, [isDragging, path, level.nodes, level.gridSize, getGridPos, isAdjacent, onComplete]);
 
-  const handleInputEnd = () => {
+  const handleInputEnd = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
   return (
     <div 

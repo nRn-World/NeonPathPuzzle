@@ -37,6 +37,8 @@ export default function Game() {
 
   const handleWin = () => {
     if (hasWon) return; // Prevent double trigger
+    if (!userId) return; // Wait for userId to be ready
+    
     setHasWon(true);
     
     // Celebration effect

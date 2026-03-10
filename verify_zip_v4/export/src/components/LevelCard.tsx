@@ -1,15 +1,16 @@
 import { Link } from "wouter";
-import { Lock, Check, Star } from "lucide-react";
+import { Lock, Check, Lightbulb } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface LevelCardProps {
   id: number;
   isLocked: boolean;
   isCompleted: boolean;
+  hintsUsed?: boolean;
   delay?: number;
 }
 
-export function LevelCard({ id, isLocked, isCompleted, delay = 0 }: LevelCardProps) {
+export function LevelCard({ id, isLocked, isCompleted, hintsUsed = false, delay = 0 }: LevelCardProps) {
   if (isLocked) {
     return (
       <div className="aspect-square rounded-xl bg-card/40 border border-white/5 flex items-center justify-center text-muted-foreground/30 shadow-inner">
@@ -41,6 +42,12 @@ export function LevelCard({ id, isLocked, isCompleted, delay = 0 }: LevelCardPro
         {isCompleted && (
           <div className="absolute top-2 right-2 text-primary">
             <Check className="w-4 h-4" />
+          </div>
+        )}
+
+        {hintsUsed && !isCompleted && (
+          <div className="absolute top-2 right-2 text-secondary/70">
+            <Lightbulb className="w-3 h-3" />
           </div>
         )}
         

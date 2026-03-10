@@ -12,6 +12,7 @@ export const api = {
           id: z.number(),
           isLocked: z.boolean(),
           isCompleted: z.boolean(),
+          hintsUsed: z.boolean(),
         })),
       },
     },

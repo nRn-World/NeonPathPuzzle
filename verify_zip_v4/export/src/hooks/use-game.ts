@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 // Helper to get or create a persistent User ID
 export function useUserId() {
-  const [userId, setUserId] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let id = localStorage.getItem("one_line_user_id");

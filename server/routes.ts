@@ -4,7 +4,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { generateLevel } from "@shared/level-generator";
-import { z } from "zod";
 
 function firstString(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
@@ -26,6 +25,7 @@ export async function registerRoutes(
     const userId = firstString(req.headers["x-user-id"]) ?? "guest";
     
     const progress = await storage.getUserProgress(userId);
+    const hintsUsedMap = await storage.getHintsUsed(userId);
     const completedSet = new Set(progress);
     
     // Check if all levels 1-100 are completed
@@ -42,7 +42,8 @@ export async function registerRoutes(
       levels.push({
         id: i,
         isCompleted,
-        isLocked
+        isLocked,
+        hintsUsed: hintsUsedMap.get(i) ?? false
       });
     }
     
@@ -55,7 +56,8 @@ export async function registerRoutes(
       levels.push({
         id: i,
         isCompleted,
-        isLocked
+        isLocked,
+        hintsUsed: hintsUsedMap.get(i) ?? false
       });
     }
     

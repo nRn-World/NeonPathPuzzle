@@ -44,6 +44,7 @@ export default function Home() {
               id={level.id}
               isLocked={level.isLocked}
               isCompleted={level.isCompleted}
+              hintsUsed={level.hintsUsed}
               delay={idx % 20} // Stagger animation for visible items
             />
           ))}
