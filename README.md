@@ -10,7 +10,7 @@
 
 **A cyber-logic puzzle game where you connect all nodes with a single continuous line.**
 
-🔥 **200 Unique Levels** | 🎨 **5 Neon Themes** | ⚡ **4 Power-ups** | 📱 **Mobile Ready**
+🔥 **200 Unique Levels** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **5 Neon Themes** | 📱 **Mobile Ready**
 
 </div>
 
@@ -45,11 +45,21 @@
 
 ## ✨ Features
 
-- 🎯 **200 Unique Levels** - Progressive difficulty from easy to extreme
-- 🎨 **5 Stunning Neon Themes** - Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset
+- 🎯 **200 Unique Levels** - Progressive difficulty across 8 chapters, with walls, one-way nodes, ordered color pairs, portals and boss levels
+- ⭐ **Stars, best times & best scores** - Chase three-star clears without losing lives
+- 👻 **Personal best ghost** - Race a faint trace of your fastest run
+- 🗓️ **Daily & weekly challenges** - One seeded puzzle per day plus a rotating weekly modifier and shareable cards
+- 🧘 **Zen practice** - Replay any unlocked level without a timer or records
+- 💡 **Hint tokens** - Spend a token instead of a star; earn more from challenges and achievements
+- 🎨 **5 Unlockable Neon Themes** - Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset
 - ⚡ **4 Strategic Power-ups** - Time Freeze, Path Reveal, Undo Shield, Score Boost
 - 🏆 **Achievement System** - Unlock 10+ achievements as you progress
-- 💾 **Level Code System** - Save your progress with unique 4-digit codes
+- 🛠️ **Level editor** - Draw your own circuits and share them as links
+- 💾 **Level Code System** - Jump to any level with permanent 4-digit codes
+- ☁️ **Save backup** - Export and restore progress, achievements, power-ups, tokens and themes as JSON
+- ⚙️ **Settings & Accessibility** - Sound, haptics, reduced motion, ghost toggle, keyboard shortcuts, auto-pause
+- 🌍 **Svenska / English** - UI chrome follows your browser language, switchable in Settings
+- 📲 **Installable & offline** - PWA manifest plus a service worker for offline play
 - 📱 **Fully Responsive** - Play on desktop, tablet, or mobile
 
 ---
@@ -64,8 +74,9 @@
 
 1. **🎯 Objective**: Connect all nodes with a single continuous line
 2. **📍 Rules**: Visit each node exactly once, path cannot cross itself
-3. **❤️ Lives**: 3 lives per level, each backtrack costs 1 life
-4. **🔓 Progression**: Complete levels sequentially or use codes to jump ahead
+3. **↩️ Undo**: Backtracks are free; they only cost a star, never a life
+4. **⭐ Stars**: Finish without hints, without backtracks, and under par time
+5. **🔓 Progression**: Complete levels sequentially or use codes to jump ahead
 
 ---
 
@@ -154,7 +165,7 @@ Created 2026 by © nRn World
 If you like this project, consider:
 
 * ⭐ Star the project on GitHub  
-* ☕ [Buy me a coffee](https://buymeacoffee.com/nrnworld)  
-* 📢 Share with your friends  
-* ☕ Buying me a coffee  
-* 📢 Sharing with your friends
+* ☕ **Support development**: [Buy me a coffee 💜](https://ko-fi.com/nrnworld)  
+* 📢 Share with your friends
+
+Created by ❤️ © nRn World

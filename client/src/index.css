@@ -105,6 +105,21 @@ h1, h2, h3, h4, h5, h6 {
   background-color: rgba(16, 22, 40, 0.7);
 }
 
+/* Motion preferences */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+
+:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.7);
+  outline-offset: 2px;
+}
+
 /* Prevent accidental mobile gestures */
 #root {
   width: 100%;

@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { generateLevel, type GeneratedLevel } from "./level-generator";
+import {
+  countBranchingEdges,
+  generateLevel,
+  getLevelDifficulty,
+  isValidSolutionPath,
+  type GeneratedLevel,
+} from "./level-generator";
 import { type Point } from "./schema";
 
 const levels = Array.from({ length: 200 }, (_, index) => generateLevel(index + 1));
@@ -31,19 +37,6 @@ function canonicalLayout(level: GeneratedLevel) {
       .sort((a, b) => (a.y - b.y) || (a.x - b.x));
     return `${level.gridSize}|${nodes.map(pointKey).join(";")}`;
   }).sort()[0];
-}
-
-function complexity(level: GeneratedLevel) {
-  const nodes = new Set(level.nodes.map(pointKey));
-  let graphEdges = 0;
-
-  for (const point of level.nodes) {
-    if (nodes.has(`${point.x + 1},${point.y}`)) graphEdges++;
-    if (nodes.has(`${point.x},${point.y + 1}`)) graphEdges++;
-  }
-
-  const extraChoices = graphEdges - (level.nodes.length - 1);
-  return level.nodes.length + extraChoices;
 }
 
 test("all 200 levels are valid and solvable", () => {
@@ -109,7 +102,7 @@ test("difficulty grows through the requested level bands", () => {
       grids,
       `Levels ${from}-${to} use an unexpected grid size`,
     );
-    return bandLevels.reduce((sum, level) => sum + complexity(level), 0) / bandLevels.length;
+    return bandLevels.reduce((sum, level) => sum + getLevelDifficulty(level), 0) / bandLevels.length;
   });
 
   for (let index = 1; index < averages.length; index++) {
@@ -117,6 +110,36 @@ test("difficulty grows through the requested level bands", () => {
       averages[index] > averages[index - 1],
       `Difficulty band ${index + 1} must be harder than band ${index}`,
     );
+  }
+});
+
+test("difficulty never drops from one level to the next", () => {
+  let previous = 0;
+  for (const level of levels) {
+    const difficulty = getLevelDifficulty(level);
+    assert.ok(
+      difficulty >= previous,
+      `Level ${level.id} (difficulty ${difficulty}) is easier than the previous level (${previous})`,
+    );
+    previous = difficulty;
+  }
+});
+
+test("campaign levels stop being single-corridor layouts after the tutorial", () => {
+  for (const level of levels) {
+    if (level.id < 4) continue;
+    assert.ok(
+      countBranchingEdges(level.solution) >= 3,
+      `Level ${level.id} is too close to a forced corridor`,
+    );
+  }
+});
+
+test("ghost paths must still match the current level layout", () => {
+  for (const level of levels) {
+    assert.equal(isValidSolutionPath(level.solution, level), true, `Level ${level.id} rejects its own solution`);
+    assert.equal(isValidSolutionPath(level.solution.slice(0, -1), level), false);
+    assert.equal(isValidSolutionPath([...level.solution].reverse(), level), false);
   }
 });
 

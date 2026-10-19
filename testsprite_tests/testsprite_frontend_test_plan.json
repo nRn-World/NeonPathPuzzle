@@ -1,0 +1,590 @@
+[
+  {
+    "id": "TC001",
+    "title": "Open landing page and view level grid with indicators",
+    "description": "Verifies the home page loads and shows the level grid with lock/completion indicators.",
+    "category": "Level Selection & Progress",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Neon Path Puzzle\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"theme selector\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"level grid\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"a level card\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"lock indicator on at least one level card\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Start an unlocked level from the grid",
+    "description": "Verifies clicking an unlocked level card opens the gameplay screen for that level.",
+    "category": "Level Selection & Progress",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"an unlocked level card\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"an unlocked level card\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/play/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"level header\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"game canvas\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Return to home from gameplay screen",
+    "description": "Verifies the user can return to the landing page from a level and see the level grid again.",
+    "category": "Level Selection & Progress",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"an unlocked level card\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/play/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Home\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"level grid\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Locked level cannot be opened",
+    "description": "Verifies clicking a locked level card shows a locked message/tooltip and does not navigate to gameplay.",
+    "category": "Level Selection & Progress",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"a locked level card\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"a locked level card\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"locked indicator\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Locked\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Completion indicator appears after completing a level",
+    "description": "Verifies that completing a level updates the corresponding level card completion status on the home screen.",
+    "category": "Level Selection & Progress",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"an unlocked level card\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"game canvas\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Complete\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Level Complete\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Home\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"completed indicator on the just-played level card\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Progress persists after reload (local save)",
+    "description": "Verifies that a completed level remains marked completed after reloading the home page in the same browser.",
+    "category": "Level Selection & Progress",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"an unlocked level card\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Complete\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Level Complete\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Home\""
+      },
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"completed indicator on the just-played level card\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Theme selector does not block level selection",
+    "description": "Verifies that changing theme on the landing page still allows starting a level successfully.",
+    "category": "Level Selection & Progress",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"theme selector\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Select \"a different theme option\" from dropdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Theme\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"an unlocked level card\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/play/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"game canvas\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Start a level from the home level grid and load the gameplay UI",
+    "description": "Verifies a player can start a level from the landing page and see the gameplay canvas and lives header.",
+    "category": "Core Puzzle Gameplay",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Achievements\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible level card in the level grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/play/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"game canvas\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Lives\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Attempt to use Hint when it is unavailable and verify no hint appears",
+    "description": "Verifies the UI prevents hint usage when hints are unavailable and no suggested segment is shown.",
+    "category": "Core Puzzle Gameplay",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible level card in the level grid"
+      },
+      {
+        "type": "action",
+        "description": "Use Hint repeatedly until the Hint control becomes disabled or indicates no hints remain"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Hint (disabled)\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Hint\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"suggested path segment\" is not visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"No hints\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "View achievements list with progress indicators",
+    "description": "Verifies the Achievements panel opens and shows unlocked/upcoming achievements with visible progress indicators.",
+    "category": "Achievements & Themes",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify page title contains \"Neon\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Achievements\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Achievements\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Unlocked\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Upcoming\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Achievement progress\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Open an achievement to view details",
+    "description": "Verifies clicking an achievement in the list opens a details view for that achievement.",
+    "category": "Achievements & Themes",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Achievements\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Achievement list\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible achievement in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Achievement details\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Progress\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Back\" control in the achievement details view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Achievement list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Change theme from theme selector and see immediate update on Home",
+    "description": "Verifies selecting a different neon theme updates the Home screen visuals immediately.",
+    "category": "Achievements & Themes",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Theme\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the theme selector"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Theme options\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on a theme option that is not currently selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Particle effects\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Glow effects\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Theme is applied when starting a level from Home",
+    "description": "Verifies the selected theme carries over from Home into the gameplay view.",
+    "category": "Achievements & Themes",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the theme selector"
+      },
+      {
+        "type": "action",
+        "description": "Click on a theme option that is not currently selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible level tile in the level grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/play/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Game board\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Game theme visuals\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Theme selection persists after page refresh (normal case)",
+    "description": "Verifies a chosen theme remains selected after refreshing the page during a normal session.",
+    "category": "Achievements & Themes",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the theme selector"
+      },
+      {
+        "type": "action",
+        "description": "Click on a theme option that is not currently selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press \"Enter\" on the selected theme option to confirm selection"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Achievements panel remains usable after changing theme",
+    "description": "Verifies switching themes does not break the Achievements UI and the list/details still open correctly.",
+    "category": "Achievements & Themes",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click on the theme selector"
+      },
+      {
+        "type": "action",
+        "description": "Click on a theme option that is not currently selected"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"Achievements\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Achievement list\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible achievement in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Achievement details\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Theme selector can be closed without changing theme",
+    "description": "Verifies the theme selector can be opened and dismissed and the current theme remains unchanged.",
+    "category": "Achievements & Themes",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the theme selector"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Theme options\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press \"Escape\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Theme options\" is not visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an element \"Selected theme\" is visible"
+      }
+    ]
+  }
+]

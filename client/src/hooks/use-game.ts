@@ -4,6 +4,16 @@ import { v4 as uuidv4 } from "uuid";
 import { useState } from "react";
 import { generateLevel } from "@shared/level-generator";
 import { getCodeUnlockedThrough } from "@/lib/sessionLevelUnlock";
+import { getActiveStreak } from "@/lib/daily";
+import {
+  getContinueLevel,
+  getLevelRecord,
+  getProgress,
+  getTotalStars,
+  saveLevelResult,
+  type LevelRecord,
+  type ProgressData,
+} from "@/lib/progress";
 
 export function useUserId() {
   const [userId] = useState<string>(() => {
@@ -23,45 +33,18 @@ export function useUserId() {
   return userId;
 }
 
-const STORAGE_KEY = "neon_path_progress";
-type LocalProgress = { completed: number[]; hints: number[] };
-const fallbackProgress: Record<string, LocalProgress> = {};
-
-function normalizeProgress(value: unknown): LocalProgress {
-  if (!value || typeof value !== "object") return { completed: [], hints: [] };
-  const candidate = value as Partial<LocalProgress>;
-  return {
-    completed: Array.isArray(candidate.completed)
-      ? candidate.completed.filter(id => Number.isInteger(id) && id >= 1 && id <= 200)
-      : [],
-    hints: Array.isArray(candidate.hints)
-      ? candidate.hints.filter(id => Number.isInteger(id) && id >= 1 && id <= 200)
-      : [],
-  };
-}
-
-function getLocalProgress(userId: string): LocalProgress {
-  try {
-    const data = localStorage.getItem(`${STORAGE_KEY}_${userId}`);
-    return data ? normalizeProgress(JSON.parse(data)) : { completed: [], hints: [] };
-  } catch {
-    return fallbackProgress[userId] || { completed: [], hints: [] };
-  }
-}
-
-function saveLocalProgress(userId: string, levelId: number, completed: boolean, hintUsed: boolean) {
-  const progress = getLocalProgress(userId);
-  if (completed && !progress.completed.includes(levelId)) progress.completed.push(levelId);
-  if (hintUsed && !progress.hints.includes(levelId)) progress.hints.push(levelId);
-  try {
-    localStorage.setItem(`${STORAGE_KEY}_${userId}`, JSON.stringify(progress));
-  } catch {
-    fallbackProgress[userId] = progress;
-  }
-  return progress;
+export interface LevelSummary {
+  id: number;
+  isCompleted: boolean;
+  isLocked: boolean;
+  hintsUsed: boolean;
+  stars: number;
+  bestTimeMs: number | null;
+  bestScore: number | null;
 }
 
 function isLevelLocked(levelId: number, completed: Set<number>, codeUnlockedThrough: number) {
+  if (completed.has(levelId)) return false;
   if (levelId <= codeUnlockedThrough) return false;
   if (levelId === 1) return false;
   if (levelId <= 100) return !completed.has(levelId - 1);
@@ -74,18 +57,22 @@ export function useLevels(userId?: string) {
   const codeUnlockedThrough = getCodeUnlockedThrough();
   return useQuery({
     queryKey: [api.levels.list.path, userId, codeUnlockedThrough],
-    queryFn: async () => {
+    queryFn: async (): Promise<LevelSummary[]> => {
       if (!userId) return [];
-      const progress = getLocalProgress(userId);
+      const progress = getProgress(userId);
       const completed = new Set(progress.completed);
       const hints = new Set(progress.hints);
       return Array.from({ length: 200 }, (_, index) => {
         const id = index + 1;
+        const record = getLevelRecord(progress, id);
         return {
           id,
           isCompleted: completed.has(id),
           isLocked: isLevelLocked(id, completed, codeUnlockedThrough),
           hintsUsed: hints.has(id),
+          stars: record?.stars ?? 0,
+          bestTimeMs: record?.bestTimeMs ?? null,
+          bestScore: record?.bestScore ?? null,
         };
       });
     },
@@ -93,17 +80,20 @@ export function useLevels(userId?: string) {
   });
 }
 
-export function useLevel(id: number, userId?: string) {
+export function useLevel(id: number, userId?: string, allowLocked = false) {
   const codeUnlockedThrough = getCodeUnlockedThrough();
   return useQuery({
-    queryKey: [api.levels.get.path, id, userId, codeUnlockedThrough],
+    queryKey: [api.levels.get.path, id, userId, codeUnlockedThrough, allowLocked],
     queryFn: async () => {
       if (!Number.isInteger(id) || id < 1 || id > 200) throw new Error("Invalid level");
       if (!userId) throw new Error("Missing player id");
-      const progress = getLocalProgress(userId);
+      const progress = getProgress(userId);
       const completed = new Set(progress.completed);
-      if (isLevelLocked(id, completed, codeUnlockedThrough)) throw new Error("Level is locked");
+      if (!allowLocked && isLevelLocked(id, completed, codeUnlockedThrough)) {
+        throw new Error("Level is locked");
+      }
       const level = generateLevel(id);
+      const record = getLevelRecord(progress, id);
       return {
         id: level.id,
         gridSize: level.gridSize,
@@ -111,6 +101,11 @@ export function useLevel(id: number, userId?: string) {
         nodes: level.nodes,
         isLocked: false,
         isCompleted: completed.has(id),
+        stars: record?.stars ?? 0,
+        bestTimeMs: record?.bestTimeMs ?? null,
+        bestMoves: record?.bestMoves ?? null,
+        bestScore: record?.bestScore ?? null,
+        bestPath: record?.bestPath ?? null,
       };
     },
     enabled: !!userId && Number.isInteger(id) && id >= 1 && id <= 200,
@@ -125,26 +120,75 @@ export function useSolution(id: number) {
   });
 }
 
+export interface SaveLevelInput {
+  userId: string;
+  levelId: number;
+  completed: boolean;
+  hintsUsed: boolean;
+  stars: number;
+  timeMs: number;
+  moves: number;
+  mistakes: number;
+  score?: number;
+  path?: { x: number; y: number }[];
+}
+
 export function useUpdateProgress() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { userId: string; levelId: number; completed: boolean; hintsUsed: boolean }) => {
-      saveLocalProgress(data.userId, data.levelId, data.completed, data.hintsUsed);
-      return { success: true };
+    mutationFn: async (data: SaveLevelInput) => {
+      const applied = saveLevelResult(data.userId, data);
+      return {
+        success: true,
+        record: applied.record,
+        isNewBest: applied.isNewBest,
+      };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.levels.list.path] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries();
+    },
   });
+}
+
+export interface ProgressSummary {
+  currentLevel: number;
+  continueLevel: number;
+  unlockedLevels: number[];
+  completedLevels: number[];
+  completedCount: number;
+  totalStars: number;
+  dailyStreak: number;
+  bestStreak: number;
+  records: Record<string, LevelRecord>;
+  tutorialSeen: boolean;
 }
 
 export function useUserProgress(userId: string) {
   return useQuery({
     queryKey: [api.progress.get.path, userId],
-    queryFn: async () => {
-      const progress = getLocalProgress(userId);
+    queryFn: async (): Promise<ProgressSummary> => {
+      const progress: ProgressData = getProgress(userId);
+      const completed = new Set(progress.completed);
+      let continueLevel = getContinueLevel(progress);
+      if (isLevelLocked(continueLevel, completed, getCodeUnlockedThrough())) {
+        for (let levelId = 1; levelId <= 200; levelId++) {
+          if (!completed.has(levelId)) {
+            continueLevel = levelId;
+            break;
+          }
+        }
+      }
       return {
-        currentLevel: Math.min(200, Math.max(1, progress.completed.length + 1)),
+        currentLevel: continueLevel,
+        continueLevel,
         unlockedLevels: progress.completed,
         completedLevels: progress.completed,
+        completedCount: progress.completed.length,
+        totalStars: getTotalStars(progress),
+        dailyStreak: getActiveStreak(progress.daily),
+        bestStreak: progress.daily.bestStreak,
+        records: progress.records,
+        tutorialSeen: progress.tutorialSeen,
       };
     },
     enabled: !!userId,

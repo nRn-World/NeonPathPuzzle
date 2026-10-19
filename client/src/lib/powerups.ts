@@ -18,7 +18,7 @@ export const powerUps: PowerUp[] = [
   {
     id: 'time_freeze',
     name: 'Time Freeze',
-    description: 'Stop the timer for 30 seconds',
+    description: 'Pause the level timer for 30 seconds',
     icon: '⏰',
     duration: 30000,
     effect: {
@@ -30,7 +30,7 @@ export const powerUps: PowerUp[] = [
   {
     id: 'path_hint',
     name: 'Path Reveal',
-    description: 'Shows the correct path for 5 seconds',
+    description: 'Reveal the full path for 5 seconds',
     icon: '💡',
     duration: 5000,
     effect: {
@@ -42,7 +42,7 @@ export const powerUps: PowerUp[] = [
   {
     id: 'undo_protection',
     name: 'Undo Shield',
-    description: 'Next backtrack doesn\'t cost a life',
+    description: 'Your next backtrack won\'t cost a star, but still uses one of the three backtracks',
     icon: '🛡️',
     effect: {
       type: 'undo_protection',
