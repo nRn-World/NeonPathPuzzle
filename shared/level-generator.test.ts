@@ -83,6 +83,37 @@ test("no two levels match after rotation or reflection", () => {
   );
 });
 
+/** Cells that differ between two node sets, using the closest symmetry. */
+function layoutDistance(a: GeneratedLevel, b: GeneratedLevel) {
+  let smallest = Infinity;
+  for (let variant = 0; variant < 8; variant++) {
+    const other = new Set(
+      b.nodes.map(node => {
+        const point = transform(node, b.gridSize, variant);
+        return pointKey(point);
+      }),
+    );
+    let shared = 0;
+    for (const node of a.nodes) if (other.has(pointKey(node))) shared++;
+    smallest = Math.min(smallest, a.nodes.length + b.nodes.length - 2 * shared);
+  }
+  return smallest;
+}
+
+test("no two levels look like the same puzzle", () => {
+  for (let index = 0; index < levels.length; index++) {
+    for (let other = index + 1; other < levels.length; other++) {
+      const a = levels[index];
+      const b = levels[other];
+      if (a.gridSize !== b.gridSize) continue;
+      assert.ok(
+        layoutDistance(a, b) >= 2,
+        `Levels ${a.id} and ${b.id} are the same picture with a node swapped`,
+      );
+    }
+  }
+});
+
 test("difficulty grows through the requested level bands", () => {
   const bands = [
     { from: 1, to: 9, grids: [3, 4] },
@@ -122,6 +153,34 @@ test("difficulty never drops from one level to the next", () => {
       `Level ${level.id} (difficulty ${difficulty}) is easier than the previous level (${previous})`,
     );
     previous = difficulty;
+  }
+});
+
+test("level 1 is the easiest and level 200 the hardest", () => {
+  const difficulties = levels.map(getLevelDifficulty);
+  const first = difficulties[0];
+  const last = difficulties[difficulties.length - 1];
+
+  assert.ok(
+    difficulties.slice(1).every(value => value > first),
+    `Level 1 must be the only level at difficulty ${first}`,
+  );
+  assert.ok(
+    difficulties.slice(0, -1).every(value => value < last),
+    `Level 200 must be the only level at difficulty ${last}`,
+  );
+  assert.equal(Math.min(...difficulties), first);
+  assert.equal(Math.max(...difficulties), last);
+});
+
+test("the closing levels climb one step each", () => {
+  for (let id = 192; id <= 200; id++) {
+    const previous = getLevelDifficulty(levels[id - 2]);
+    const current = getLevelDifficulty(levels[id - 1]);
+    assert.ok(
+      current > previous,
+      `Level ${id} (difficulty ${current}) must be harder than level ${id - 1} (${previous})`,
+    );
   }
 });
 

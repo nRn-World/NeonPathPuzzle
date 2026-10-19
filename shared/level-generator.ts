@@ -21,30 +21,55 @@ interface DifficultyTier {
   from: number;
   to: number;
   gridSize: number;
-  startCoverage: number;
-  endCoverage: number;
+  /** Node count at the start and end of the tier; the ramp is linear. */
+  startNodes: number;
+  endNodes: number;
 }
 
 /**
- * The visual component scales with gridSize, so difficulty can increase
- * without changing the canvas, controls, or screen layout.
+ * Difficulty is driven by how many nodes a level has, not by how full the
+ * board is. Near-full boards all look the same and leave no room for the
+ * layouts to differ, so the last tier stops well short of coverage 1.
+ * Grid sizes grow so the board keeps filling the same visual area.
  */
 const DIFFICULTY_TIERS: DifficultyTier[] = [
-  { from: 1, to: 3, gridSize: 3, startCoverage: 0.55, endCoverage: 0.78 },
-  { from: 4, to: 9, gridSize: 4, startCoverage: 0.50, endCoverage: 0.68 },
-  { from: 10, to: 12, gridSize: 4, startCoverage: 0.70, endCoverage: 0.82 },
-  { from: 13, to: 20, gridSize: 5, startCoverage: 0.58, endCoverage: 0.76 },
-  { from: 21, to: 23, gridSize: 5, startCoverage: 0.76, endCoverage: 0.82 },
-  { from: 24, to: 29, gridSize: 6, startCoverage: 0.62, endCoverage: 0.78 },
-  { from: 30, to: 39, gridSize: 6, startCoverage: 0.80, endCoverage: 0.88 },
-  { from: 40, to: 50, gridSize: 7, startCoverage: 0.78, endCoverage: 0.88 },
-  { from: 51, to: 75, gridSize: 8, startCoverage: 0.78, endCoverage: 0.88 },
-  { from: 76, to: 100, gridSize: 8, startCoverage: 0.89, endCoverage: 0.95 },
-  { from: 101, to: 125, gridSize: 9, startCoverage: 0.86, endCoverage: 0.93 },
-  { from: 126, to: 150, gridSize: 9, startCoverage: 0.93, endCoverage: 0.97 },
-  { from: 151, to: 175, gridSize: 10, startCoverage: 0.92, endCoverage: 0.97 },
-  { from: 176, to: 200, gridSize: 10, startCoverage: 0.97, endCoverage: 0.99 },
+  { from: 1, to: 3, gridSize: 3, startNodes: 5, endNodes: 7 },
+  { from: 4, to: 9, gridSize: 4, startNodes: 8, endNodes: 11 },
+  { from: 10, to: 12, gridSize: 4, startNodes: 12, endNodes: 13 },
+  { from: 13, to: 20, gridSize: 5, startNodes: 14, endNodes: 19 },
+  { from: 21, to: 23, gridSize: 5, startNodes: 20, endNodes: 21 },
+  { from: 24, to: 29, gridSize: 6, startNodes: 21, endNodes: 25 },
+  { from: 30, to: 39, gridSize: 6, startNodes: 26, endNodes: 31 },
+  { from: 40, to: 50, gridSize: 7, startNodes: 32, endNodes: 40 },
+  { from: 51, to: 75, gridSize: 8, startNodes: 41, endNodes: 48 },
+  { from: 76, to: 100, gridSize: 8, startNodes: 49, endNodes: 53 },
+  { from: 101, to: 125, gridSize: 9, startNodes: 54, endNodes: 62 },
+  { from: 126, to: 150, gridSize: 9, startNodes: 63, endNodes: 68 },
+  { from: 151, to: 190, gridSize: 10, startNodes: 69, endNodes: 79 },
+  // The closing ten levels add one node each, so the final climb is real.
+  { from: 191, to: 200, gridSize: 10, startNodes: 80, endNodes: 89 },
 ];
+
+const MAX_LEVEL_ID = 200;
+
+/** The final levels must be strictly harder than each other, so the last one is the hardest. */
+const STRICT_TAIL_FROM = 191;
+/** The first levels must be strictly harder than each other, so level 1 is the easiest. */
+const STRICT_OPENING_THROUGH = 3;
+/** From this level on a layout must branch instead of being a forced corridor. */
+const NON_CORRIDOR_FROM = 3;
+const MIN_BRANCHING_EDGES = 3;
+
+/** Upper bound on the variants searched for a single level. */
+const VARIANT_LIMIT = 96;
+
+const MASK_WORDS = 4;
+
+type Mask = number[];
+
+function key(point: Point) {
+  return `${point.x},${point.y}`;
+}
 
 function getLevelShape(levelId: number) {
   const tier = DIFFICULTY_TIERS.find(({ from, to }) => levelId >= from && levelId <= to);
@@ -53,20 +78,15 @@ function getLevelShape(levelId: number) {
   const progress = tier.to === tier.from
     ? 1
     : (levelId - tier.from) / (tier.to - tier.from);
-  const coverage = tier.startCoverage
-    + (tier.endCoverage - tier.startCoverage) * progress;
+  // Never fill a board: a nearly full grid has almost no free cells left for two
+  // levels to look different, and long paths get much harder to find.
+  const capacity = Math.floor(tier.gridSize * tier.gridSize * 0.9);
+  const targetLength = Math.min(
+    capacity,
+    Math.max(3, Math.round(tier.startNodes + (tier.endNodes - tier.startNodes) * progress)),
+  );
 
-  return {
-    gridSize: tier.gridSize,
-    targetLength: Math.max(
-      3,
-      Math.round(tier.gridSize * tier.gridSize * coverage),
-    ),
-  };
-}
-
-function key(point: Point) {
-  return `${point.x},${point.y}`;
+  return { gridSize: tier.gridSize, targetLength };
 }
 
 function neighbors(point: Point, size: number) {
@@ -78,16 +98,25 @@ function neighbors(point: Point, size: number) {
   ].filter(({ x, y }) => x >= 0 && x < size && y >= 0 && y < size);
 }
 
-/** Bounded, deterministic search for a long self-avoiding path. */
+/**
+ * Bounded, deterministic search for a long self-avoiding path.
+ *
+ * Two orderings are used because they produce very different shapes: the
+ * Warnsdorff order hugs the edges and fills compactly, while the shuffled order
+ * wanders. Mixing them keeps small boards from collapsing into a handful of
+ * repeating layouts.
+ */
 function findPath(
   size: number,
   targetLength: number,
   start: Point,
   random: () => number,
+  wander: boolean,
+  budget = 20_000,
 ): Point[] | null {
   const path: Point[] = [start];
   const visited = new Set([key(start)]);
-  let remainingWork = 20_000;
+  let remainingWork = budget;
 
   const extend = (current: Point): boolean => {
     if (path.length === targetLength) return true;
@@ -99,8 +128,13 @@ function findPath(
         point,
         onward: neighbors(point, size).filter(next => !visited.has(key(next))).length,
         tieBreaker: random(),
-      }))
-      .sort((a, b) => a.onward - b.onward || a.tieBreaker - b.tieBreaker);
+      }));
+
+    if (wander) {
+      candidates.sort((a, b) => a.tieBreaker - b.tieBreaker);
+    } else {
+      candidates.sort((a, b) => a.onward - b.onward || a.tieBreaker - b.tieBreaker);
+    }
 
     for (const { point } of candidates) {
       path.push(point);
@@ -130,68 +164,117 @@ function transform(point: Point, size: number, variant: number): Point {
   }
 }
 
-function makeSnake(size: number): Point[] {
+/** A guaranteed fallback: serpentine rows in a shuffled order, cut to length. */
+function makeConstructivePath(size: number, length: number, random: () => number): Point[] {
+  const rows = Array.from({ length: size }, (_, index) => index);
+  for (let index = rows.length - 1; index > 0; index--) {
+    const swap = Math.floor(random() * (index + 1));
+    [rows[index], rows[swap]] = [rows[swap], rows[index]];
+  }
+
   const path: Point[] = [];
-  for (let y = 0; y < size; y++) {
-    if (y % 2 === 0) {
-      for (let x = 0; x < size; x++) path.push({ x, y });
-    } else {
-      for (let x = size - 1; x >= 0; x--) path.push({ x, y });
+  rows.forEach((row, position) => {
+    const leftToRight = position % 2 === 0;
+    for (let step = 0; step < size; step++) {
+      path.push({ x: leftToRight ? step : size - 1 - step, y: row });
     }
-  }
-  return path;
+  });
+
+  const offset = Math.floor(random() * Math.max(1, path.length - length + 1));
+  return path.slice(offset, offset + length);
 }
 
-function makeEvenGridCycle(size: number): Point[] {
-  const cycle: Point[] = [{ x: 0, y: 0 }];
-  for (let x = 1; x < size; x++) cycle.push({ x, y: 0 });
-  for (let x = size - 1; x >= 1; x--) {
-    if ((size - 1 - x) % 2 === 0) {
-      for (let y = 1; y < size; y++) cycle.push({ x, y });
-    } else {
-      for (let y = size - 1; y >= 1; y--) cycle.push({ x, y });
-    }
+const levelCache = new Map<number, GeneratedLevel>();
+/** Node sets already used, grouped by grid size, as bitmasks. */
+const usedMasks = new Map<number, Mask[]>();
+let lastDifficulty = 0;
+let lastNodes = 0;
+
+/** Deterministic candidate used by the variant table below and by its tooling. */
+export function createCandidate(levelId: number, variant: number, extraNodes = 0): GeneratedLevel {
+  const shape = getLevelShape(levelId);
+  const gridSize = shape.gridSize;
+  const capacity = Math.floor(gridSize * gridSize * 0.9);
+  const targetLength = Math.min(capacity, shape.targetLength + extraNodes);
+  const random = mulberry32(levelId * 9973 + 12345 + variant * 0x9E3779B9);
+  let solution: Point[] | null = null;
+
+  // A couple of different starts and both orderings, because one unlucky start
+  // can exhaust the budget on a long path even when the grid has plenty of room.
+  for (let attempt = 0; attempt < 4 && !solution; attempt++) {
+    const start = {
+      x: Math.floor(random() * gridSize),
+      y: Math.floor(random() * gridSize),
+    };
+    // Half of the variants wander instead of hugging edges, so shapes vary.
+    solution = findPath(gridSize, targetLength, start, random, (variant + attempt) % 2 === 1);
   }
-  for (let y = size - 1; y >= 1; y--) cycle.push({ x: 0, y });
-  return cycle;
+
+  solution ??= makeConstructivePath(gridSize, targetLength, random);
+
+  return {
+    id: levelId,
+    gridSize,
+    start: solution[0],
+    nodes: [...solution].sort((a, b) => (a.y - b.y) || (a.x - b.x)),
+    solution,
+  };
 }
 
-/** Always returns an adjacent, non-repeating path in bounded time. */
-function makeConstructivePath(size: number, length: number, levelId: number): Point[] {
-  if (size % 2 === 0) {
-    let cycle = makeEvenGridCycle(size);
-    cycle = cycle.map(point => transform(point, size, Math.floor(levelId / size) % 8));
-    if (levelId % 2 === 0) cycle.reverse();
-    const offset = (levelId * 17 + Math.floor(levelId / 8) * 11) % cycle.length;
-    return Array.from({ length }, (_, index) => cycle[(offset + index) % cycle.length]);
+function toMask(level: GeneratedLevel, variant: number): Mask {
+  const mask = new Array<number>(MASK_WORDS).fill(0);
+  for (const node of level.nodes) {
+    const point = transform(node, level.gridSize, variant);
+    const index = point.y * level.gridSize + point.x;
+    mask[index >>> 5] |= 1 << (index & 31);
   }
+  return mask;
+}
 
-  let snake = makeSnake(size).map(point => transform(point, size, levelId % 8));
-  if (levelId % 2 === 0) snake.reverse();
-  const maxOffset = snake.length - length;
-  const offset = maxOffset > 0 ? (levelId * 7) % (maxOffset + 1) : 0;
-  return snake.slice(offset, offset + length);
+function popcount(value: number) {
+  let bits = value - ((value >>> 1) & 0x55555555);
+  bits = (bits & 0x33333333) + ((bits >>> 2) & 0x33333333);
+  bits = (bits + (bits >>> 4)) & 0x0f0f0f0f;
+  return (bits * 0x01010101) >>> 24;
+}
+
+function maskDistance(a: Mask, b: Mask) {
+  let distance = 0;
+  for (let word = 0; word < MASK_WORDS; word++) {
+    distance += popcount((a[word] ^ b[word]) >>> 0);
+  }
+  return distance;
 }
 
 /**
- * Precomputed candidate variant for every level. The variants were selected
- * offline so that structured difficulty (node count + extra branches between
- * non-consecutive path cells) never decreases from one level to the next.
- * Without this, a random candidate could be a wide-open corridor and feel much
- * easier than an earlier, smaller level. See getLevelDifficulty().
+ * Smallest number of cells that differ between this layout and any level
+ * already used on the same grid, measured over rotations and mirror images.
+ * Two boards that differ by only a cell or two look like the same puzzle.
  */
-const SELECTED_VARIANTS = [
-  0, 0, 1, 0, 1, 0, 2, 4, 1, 2, 0, 0, 1, 0, 102, 29, 44, 13, 27, 0,
-  34, 0, 0, 3, 5, 11, 6, 40, 69, 5, 9, 2, 1, 9, 59, 9, 8, 0, 0, 30,
-  1, 26, 42, 15, 9, 11, 2, 5, 0, 8, 31, 14, 0, 5, 1, 9, 3, 7, 7, 1,
-  16, 13, 22, 7, 12, 22, 3, 16, 2, 2, 4, 0, 208, 67, 4, 9, 9, 0, 2, 0,
-  4, 9, 3, 14, 9, 1, 0, 17, 10, 77, 34, 0, 0, 4, 90, 13, 156, 129, 230, 0,
-  13, 105, 103, 8, 18, 8, 19, 0, 96, 18, 18, 1, 4, 44, 9, 3, 3, 39, 15, 0,
-  0, 18, 1, 3, 3, 48, 103, 0, 0, 2, 0, 2, 1, 73, 0, 0, 5, 0, 4, 0,
-  15, 1, 7, 0, 0, 0, 1, 0, 0, 0, 9, 1, 0, 16, 42, 7, 23, 15, 13, 43,
-  26, 15, 11, 15, 8, 18, 6, 110, 15, 55, 5, 73, 1, 0, 0, 0, 0, 0, 1, 1,
-  1, 121, 121, 6, 92, 32, 59, 142, 56, 197, 1, 0, 0, 2, 1, 0, 2, 2, 3, 6,
-];
+function minLayoutDistance(level: GeneratedLevel, stored: Mask[] | undefined): number {
+  if (!stored || stored.length === 0) return Infinity;
+
+  let smallest = Infinity;
+  for (let variant = 0; variant < 8; variant++) {
+    const mask = toMask(level, variant);
+    for (const other of stored) {
+      const distance = maskDistance(mask, other);
+      if (distance < smallest) {
+        smallest = distance;
+        if (smallest === 0) return 0;
+      }
+    }
+  }
+  return smallest;
+}
+
+/**
+ * Visual separation that grows with the board. The floor of three cells keeps
+ * even the tutorial boards from looking like a one-node edit of each other.
+ */
+function requiredDistance(nodeCount: number): number {
+  return Math.min(10, Math.max(3, Math.round(nodeCount * 0.18)));
+}
 
 /**
  * Edges between adjacent nodes that are not consecutive steps of the solution.
@@ -245,83 +328,201 @@ export function isValidSolutionPath(path: Point[], level: GeneratedLevel): boole
   return true;
 }
 
-const levelCache = new Map<number, GeneratedLevel>();
-const usedLayouts = new Set<string>();
-let lastDifficulty = 0;
+interface Candidate {
+  level: GeneratedLevel;
+  difficulty: number;
+  distance: number;
+  variant: number;
+  extraNodes: number;
+}
 
-function createCandidate(levelId: number, variant: number): GeneratedLevel {
-  const { gridSize, targetLength } = getLevelShape(levelId);
-  const random = mulberry32(levelId * 9973 + 12345 + variant * 0x9E3779B9);
-  let solution: Point[] | null = null;
+/** Difficulty the next level has to reach; the opening and closing stay strict. */
+function difficultyFloor(levelId: number): number {
+  if (levelId === 1) return 0;
+  const strict = levelId <= STRICT_OPENING_THROUGH || levelId >= STRICT_TAIL_FROM;
+  return lastDifficulty + (strict ? 1 : 0);
+}
 
-  for (let attempt = 0; attempt < 4 && !solution; attempt++) {
-    const start = {
-      x: Math.floor(random() * gridSize),
-      y: Math.floor(random() * gridSize),
-    };
-    solution = findPath(gridSize, targetLength, start, random);
+/**
+ * Every hard rule a finished layout has to satisfy, checked in one place so the
+ * search, the baked table and the repair tooling can never disagree.
+ */
+function meetsRules(levelId: number, level: GeneratedLevel): boolean {
+  if (level.nodes.length < lastNodes) return false;
+  if (getLevelDifficulty(level) < difficultyFloor(levelId)) return false;
+  if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) return false;
+
+  const distance = minLayoutDistance(level, usedMasks.get(level.gridSize));
+  return distance > 0 && distance >= requiredDistance(level.nodes.length);
+}
+
+/**
+ * Picks the layout for one level.
+ *
+ * Hard rules: never easier than the previous level, strictly harder at the very
+ * start and in the closing stretch, and visually distinct from every level
+ * already used on the same grid. Within those rules the smallest step that
+ * still fits the tier is preferred, so the curve climbs gradually instead of
+ * burning its headroom early.
+ */
+function collectOptions(
+  levelId: number,
+  extraNodes: number,
+  floor: number,
+  stored: Mask[],
+  furthest: { current: Candidate | null },
+): Candidate[] {
+  const options: Candidate[] = [];
+
+  for (let variant = 0; variant < VARIANT_LIMIT; variant++) {
+    const level = createCandidate(levelId, variant, extraNodes);
+    if (level.nodes.length < lastNodes) continue;
+    const difficulty = getLevelDifficulty(level);
+    const distance = minLayoutDistance(level, stored);
+    if (distance === 0) continue;
+
+    // After the hand-held opening a level must offer real choices, otherwise it
+    // is just a corridor with nodes laid along it.
+    if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) continue;
+
+    const candidate: Candidate = { level, difficulty, distance, variant, extraNodes };
+    if (!furthest.current || distance > furthest.current.distance) {
+      furthest.current = candidate;
+    }
+    if (difficulty < floor) continue;
+    if (distance < requiredDistance(level.nodes.length)) continue;
+
+    options.push(candidate);
+    if (options.length >= 4) break;
   }
 
-  solution ??= makeConstructivePath(gridSize, targetLength, levelId + variant * 211);
+  return options;
+}
 
+/**
+ * Full search for a level: tries the tier's variants, escalating by one node
+ * when the layout cannot climb above the previous level.
+ *
+ * This is the slow path. It is used to build VARIANT_TABLE offline and as a
+ * runtime fallback if the table ever falls out of sync with the tiers.
+ */
+function searchLevel(levelId: number): Candidate {
+  const { gridSize } = getLevelShape(levelId);
+  const stored = usedMasks.get(gridSize) ?? [];
+  const floor = difficultyFloor(levelId);
+  const furthest: { current: Candidate | null } = { current: null };
+
+  // A level that cannot climb above the previous one takes an extra node: more
+  // nodes is what actually makes it harder, and the tiers keep enough headroom
+  // for that to stay below a nearly full board.
+  for (let extraNodes = 0; extraNodes <= 3; extraNodes++) {
+    const options = collectOptions(levelId, extraNodes, floor, stored, furthest);
+    if (options.length === 0) continue;
+    options.sort((a, b) => a.difficulty - b.difficulty || b.distance - a.distance);
+    return options[0];
+  }
+
+  if (!furthest.current) throw new Error(`Could not create a layout for level ${levelId}`);
+  return furthest.current;
+}
+
+/**
+ * One packed entry per level: `variant * 4 + extraNodes`.
+ *
+ * The variants were chosen offline so that every layout stays visually
+ * distinct, difficulty never drops, and the first and last levels sit at the
+ * ends of the curve. Picking them at runtime would cost seconds on a phone, so
+ * they are baked in and verified by the generator tests instead.
+ */
+const VARIANT_TABLE: number[] = [
+  0, 12, 68, 0, 20, 108, 228, 28, 16, 4, 36, 4, 24, 0, 28, 4, 12, 4, 16, 4,
+  8, 36, 4, 16, 20, 8, 12, 8, 32, 16, 4, 36, 4, 104, 36, 56, 20, 68, 124, 4,
+  0, 12, 0, 4, 20, 20, 12, 12, 4, 12, 20, 8, 8, 48, 88, 88, 52, 56, 12, 16,
+  96, 200, 60, 244, 168, 24, 68, 52, 132, 16, 32, 12, 264, 164, 28, 4, 28, 4, 0, 60,
+  56, 52, 4, 44, 120, 48, 20, 100, 68, 12, 280, 116, 144, 188, 84, 236, 116, 4, 212, 88,
+  4, 24, 80, 92, 64, 120, 160, 84, 172, 16, 204, 44, 108, 112, 100, 32, 52, 24, 4, 16,
+  12, 0, 52, 4, 16, 28, 28, 4, 52, 8, 12, 36, 20, 32, 8, 12, 40, 12, 56, 8,
+  116, 104, 44, 56, 300, 136, 276, 364, 260, 276, 8, 64, 188, 40, 0, 64, 16, 184, 184, 216,
+  76, 72, 76, 208, 80, 64, 92, 12, 40, 64, 56, 104, 84, 80, 0, 280, 348, 128, 344, 52,
+  80, 348, 47, 115, 82, 62, 30, 94, 145, 57, 4, 104, 72, 332, 176, 12, 96, 68, 76, 36,
+];
+
+/**
+ * Recomputes the packed table from scratch, searching every level. Used by
+ * script/level-table.ts; the sequential order matters, so it cannot be parallel.
+ */
+export function buildVariantTable(): number[] {
+  return repairVariantTable([]);
+}
+
+function selectLevel(levelId: number): Candidate {
+  const packed = VARIANT_TABLE[levelId - 1];
+  if (packed === undefined) return searchLevel(levelId);
+
+  const variant = packed >> 2;
+  const extraNodes = packed & 3;
   return {
-    id: levelId,
-    gridSize,
-    start: solution[0],
-    nodes: [...solution].sort((a, b) => (a.y - b.y) || (a.x - b.x)),
-    solution,
+    level: createCandidate(levelId, variant, extraNodes),
+    difficulty: 0,
+    distance: 0,
+    variant,
+    extraNodes,
   };
 }
 
-/** Treat rotations and mirror images as the same visual layout. */
-function layoutSignature(level: GeneratedLevel) {
-  const signatures = Array.from({ length: 8 }, (_, variant) => {
-    const transformed = level.nodes
-      .map(node => transform(node, level.gridSize, variant))
-      .sort((a, b) => (a.y - b.y) || (a.x - b.x));
-    return `${level.gridSize}|${transformed.map(node => `${node.x},${node.y}`).join(";")}`;
-  });
+function resetGenerator() {
+  levelCache.clear();
+  usedMasks.clear();
+  lastDifficulty = 0;
+  lastNodes = 0;
+}
 
-  return signatures.sort()[0];
+function commitLevel(id: number, candidate: Candidate) {
+  const level = candidate.level;
+  usedMasks.set(level.gridSize, [...(usedMasks.get(level.gridSize) ?? []), toMask(level, 0)]);
+  levelCache.set(id, level);
+  lastDifficulty = Math.max(lastDifficulty, getLevelDifficulty(level));
+  lastNodes = Math.max(lastNodes, level.nodes.length);
 }
 
 function generateThrough(targetLevelId: number) {
   for (let id = levelCache.size + 1; id <= targetLevelId; id++) {
-    let uniqueLevel = createCandidate(id, SELECTED_VARIANTS[id - 1] ?? 0);
-
-    // The selected variant is unique by construction, but keep a deterministic
-    // fallback so a future tier edit cannot break generation.
-    if (usedLayouts.has(layoutSignature(uniqueLevel))) {
-      let fallback: GeneratedLevel | undefined;
-      let fallbackDifficulty = -1;
-      let fallbackAboveLast: GeneratedLevel | undefined;
-
-      for (let variant = 0; variant < 256; variant++) {
-        const candidate = createCandidate(id, variant);
-        if (usedLayouts.has(layoutSignature(candidate))) continue;
-        const difficulty = getLevelDifficulty(candidate);
-        if (difficulty > fallbackDifficulty) {
-          fallback = candidate;
-          fallbackDifficulty = difficulty;
-        }
-        if (difficulty >= lastDifficulty && !fallbackAboveLast) {
-          fallbackAboveLast = candidate;
-        }
-      }
-
-      if (!fallback) throw new Error(`Could not create a unique layout for level ${id}`);
-      uniqueLevel = fallbackAboveLast ?? fallback;
-    }
-
-    usedLayouts.add(layoutSignature(uniqueLevel));
-    levelCache.set(id, uniqueLevel);
-    lastDifficulty = Math.max(lastDifficulty, getLevelDifficulty(uniqueLevel));
+    commitLevel(id, selectLevel(id));
   }
 }
 
+/**
+ * Re-checks a baked table against the current rules and re-searches only the
+ * levels that no longer satisfy them, so a rule change can patch the table
+ * instead of paying for a full offline rebuild.
+ */
+export function repairVariantTable(table: number[], through = MAX_LEVEL_ID): number[] {
+  const repaired = [...table];
+  resetGenerator();
+
+  for (let id = 1; id <= through; id++) {
+    const packed = repaired[id - 1];
+    let stored: Candidate | null = null;
+
+    if (packed !== undefined) {
+      const variant = packed >> 2;
+      const extraNodes = packed & 3;
+      const level = createCandidate(id, variant, extraNodes);
+      if (meetsRules(id, level)) stored = { level, difficulty: 0, distance: 0, variant, extraNodes };
+    }
+
+    const candidate = stored ?? searchLevel(id);
+    repaired[id - 1] = candidate.variant * 4 + candidate.extraNodes;
+    commitLevel(id, candidate);
+  }
+
+  resetGenerator();
+  return repaired;
+}
+
 export function generateLevel(levelId: number): GeneratedLevel {
-  if (!Number.isInteger(levelId) || levelId < 1 || levelId > 200) {
-    throw new RangeError(`Level id must be an integer from 1 to 200. Received: ${levelId}`);
+  if (!Number.isInteger(levelId) || levelId < 1 || levelId > MAX_LEVEL_ID) {
+    throw new RangeError(`Level id must be an integer from 1 to ${MAX_LEVEL_ID}. Received: ${levelId}`);
   }
   generateThrough(levelId);
   return levelCache.get(levelId)!;
