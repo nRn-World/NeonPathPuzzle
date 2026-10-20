@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 import { type LevelResponse, type Point } from "@shared/schema";
-import { EMPTY_MECHANICS, type LevelMechanics } from "@shared/mechanics";
+import { createMoveRules, EMPTY_MECHANICS, type LevelMechanics } from "@shared/mechanics";
 import { motion } from "framer-motion";
 import { playMoveSound, playBacktrackSound, playWinSound } from "@/lib/sounds";
 import { useTheme } from "@/hooks/use-theme";
@@ -36,6 +36,8 @@ export interface GameCanvasProps {
   disableUndo?: boolean;
   gridLabel?: string;
   statusText?: string;
+  /** Fires with true when the line has no legal forward move left. */
+  onStuckChange?: (stuck: boolean) => void;
 }
 
 interface Particle {
@@ -57,6 +59,10 @@ interface Metrics {
 
 const pointKey = (point: Point) => `${point.x},${point.y}`;
 
+const SYNC_COLOR = "#00e5a0";
+/** Cells around the head that stay lit on blackout boards. */
+const BLACKOUT_RADIUS = 2.6;
+
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
     level,
@@ -73,6 +79,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     disableUndo = false,
     gridLabel,
     statusText,
+    onStuckChange,
   },
   ref,
 ) {
@@ -93,18 +100,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const previousPathLengthRef = useRef(1);
   const celebrateAtRef = useRef<number | null>(null);
 
-  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange });
-  callbacksRef.current = { onComplete, onBacktrack, onPathChange };
+  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange });
+  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange };
 
   const nodeKeys = useMemo(() => new Set(level.nodes.map(pointKey)), [level.nodes]);
-  const wallKeys = useMemo(() => new Set(mechanics.walls.map(pointKey)), [mechanics.walls]);
-  const portalMap = useMemo(
-    () => new Map(mechanics.portals.flatMap(pair => [
-      [pointKey(pair.a), pair.b] as const,
-      [pointKey(pair.b), pair.a] as const,
-    ])),
-    [mechanics.portals],
-  );
   const oneWayMap = useMemo(
     () => new Map(mechanics.oneWays.map(rule => [pointKey(rule.point), rule])),
     [mechanics.oneWays],
@@ -117,6 +116,12 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     });
     return map;
   }, [mechanics.pairs]);
+
+  const rules = useMemo(() => createMoveRules(level, mechanics), [level, mechanics]);
+  const syncMap = useMemo(
+    () => new Map(mechanics.syncNodes.map(node => [pointKey(node.point), node.step])),
+    [mechanics.syncNodes],
+  );
 
   const countVisitedNodes = useCallback(
     (points: Point[]) => points.filter(point => nodeKeys.has(pointKey(point))).length,
@@ -139,6 +144,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     previousPathLengthRef.current = 1;
     celebrateAtRef.current = null;
     callbacksRef.current.onPathChange?.(1, 1);
+    callbacksRef.current.onStuckChange?.(false);
   }, [startX, startY]);
 
   useEffect(() => {
@@ -242,6 +248,24 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     context.lineWidth = 1.5;
     context.stroke();
 
+    // Blackout: the board is dark except for a pool of light around the head.
+    const lightX = (head?.x ?? 0) * cell + cell / 2;
+    const lightY = (head?.y ?? 0) * cell + cell / 2;
+    const lightRadius = cell * BLACKOUT_RADIUS;
+    if (mechanics.blackout) {
+      const shade = context.createRadialGradient(lightX, lightY, lightRadius * 0.6, lightX, lightY, lightRadius * 1.6);
+      shade.addColorStop(0, "rgba(0,0,0,0)");
+      shade.addColorStop(1, "rgba(0,0,8,0.55)");
+      context.fillStyle = shade;
+      context.fillRect(0, 0, boardSize, boardSize);
+    }
+    /** How visible an unvisited cell is under blackout (1 = fully lit). */
+    const visibility = (point: Point) => {
+      if (!mechanics.blackout || visited.has(pointKey(point))) return 1;
+      const distance = Math.hypot(point.x * cell + cell / 2 - lightX, point.y * cell + cell / 2 - lightY);
+      return Math.max(0.07, Math.min(1, 1 - (distance - lightRadius) / (cell * 1.4)));
+    };
+
     // Grid: faint lines, brighter crosses at the intersections.
     context.strokeStyle = "rgba(255,255,255,0.04)";
     context.lineWidth = 1;
@@ -265,6 +289,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     // Walls: decorative blocked cells inside the bounding grid.
     mechanics.walls.forEach(wall => {
+      context.globalAlpha = visibility(wall);
       const x = wall.x * cell + cell * 0.12;
       const y = wall.y * cell + cell * 0.12;
       const size = cell * 0.76;
@@ -279,6 +304,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.moveTo(x + size * 0.2, y + size * 0.8);
       context.lineTo(x + size * 0.8, y + size * 0.2);
       context.stroke();
+      context.globalAlpha = 1;
     });
 
     // Portal pads: stepping on one teleports the line to its twin.
@@ -288,7 +314,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         const centerY = pad.y * cell + cell / 2;
         const used = visited.has(pointKey(pad));
         context.save();
-        context.globalAlpha = used ? 0.35 : 0.9;
+        context.globalAlpha = (used ? 0.35 : 0.9) * visibility(pad);
         context.strokeStyle = colors.secondary;
         context.lineWidth = Math.max(1.5, cell * 0.04);
         context.setLineDash([cell * 0.09, cell * 0.07]);
@@ -310,10 +336,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     });
 
     // Nodes
+    const visitedNodes = currentPath.filter(point => nodeKeys.has(pointKey(point))).length;
     level.nodes.forEach(node => {
       const isVisited = visited.has(pointKey(node));
       const centerX = node.x * cell + cell / 2;
       const centerY = node.y * cell + cell / 2;
+      context.save();
+      context.globalAlpha = visibility(node);
 
       // Unvisited nodes breathe out of phase; visited ones light up solid.
       const breathe = reducedMotion ? 0.5 : (Math.sin(time / 520 + node.x * 0.9 + node.y * 1.3) + 1) / 2;
@@ -383,6 +412,49 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.lineTo(tipX - oneWay.dx * cell * 0.08 - perpX * cell * 0.06, tipY - oneWay.dy * cell * 0.08 - perpY * cell * 0.06);
         context.stroke();
       }
+
+      // Sync node: a hexagon that must be reached as the Nth node of the line.
+      const syncStep = syncMap.get(pointKey(node));
+      if (syncStep !== undefined) {
+        const isNext = !isVisited && visitedNodes === syncStep;
+        const missed = !isVisited && visitedNodes > syncStep;
+        const color = missed ? "#ff4d6d" : SYNC_COLOR;
+        const radius = cell * (0.3 + (isNext && !reducedMotion ? Math.sin(time / 160) * 0.025 : 0));
+        context.beginPath();
+        for (let corner = 0; corner < 6; corner++) {
+          const angle = Math.PI / 6 + corner * Math.PI / 3;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          if (corner === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        }
+        context.closePath();
+        context.strokeStyle = color;
+        context.lineWidth = Math.max(1.5, cell * (isNext ? 0.05 : 0.035));
+        if (isNext || isVisited) {
+          context.shadowColor = color;
+          context.shadowBlur = 12;
+        }
+        context.stroke();
+        context.shadowBlur = 0;
+        const badgeX = centerX + cell * 0.27;
+        const badgeY = centerY - cell * 0.27;
+        const label = String(syncStep + 1);
+        const badgeRadius = Math.max(6, cell * (label.length > 2 ? 0.15 : 0.13));
+        context.beginPath();
+        context.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+        context.fillStyle = isVisited ? color : "#05110d";
+        context.fill();
+        context.strokeStyle = color;
+        context.lineWidth = 1.2;
+        context.stroke();
+        context.fillStyle = isVisited ? "#05110d" : color;
+        context.font = `bold ${Math.max(7, badgeRadius * (label.length > 2 ? 0.95 : 1.15))}px 'Exo 2', Arial, sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(label, badgeX, badgeY + 0.5);
+      }
+      context.restore();
     });
 
     // Personal-best ghost, kept faint so the live line stays dominant.
@@ -590,6 +662,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     showGhost,
     oneWayMap,
     pairMap,
+    syncMap,
+    nodeKeys,
+    mechanics.blackout,
   ]);
 
   useEffect(() => {
@@ -630,6 +705,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
   const notifyPathChange = (nextPath: Point[]) => {
     callbacksRef.current.onPathChange?.(countVisitedNodes(nextPath), nextPath.length);
+    callbacksRef.current.onStuckChange?.(rules.isStuck(nextPath));
   };
 
   const undoPath = useCallback((): boolean => {
@@ -645,7 +721,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     notifyPathChange(next);
     playBacktrackSound();
     return true;
-  }, [countVisitedNodes, disableUndo, mechanics.portals]);
+  }, [countVisitedNodes, disableUndo, mechanics.portals, rules]);
 
   useImperativeHandle(ref, () => ({
     undo: () => {
@@ -662,12 +738,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const head = current[current.length - 1];
     if (!head || (target.x === head.x && target.y === head.y)) return false;
 
-    const targetKey = pointKey(target);
-    const portalDestination = portalMap.get(targetKey);
-    const isNode = nodeKeys.has(targetKey);
-    if (!isNode && !portalDestination) return false;
-    if (!isAdjacent(head, target)) return false;
-
     if (current.length > 1) {
       const previous = current[current.length - 2];
       if (previous.x === target.x && previous.y === target.y) {
@@ -676,23 +746,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
-    const oneWay = oneWayMap.get(pointKey(head));
-    if (oneWay && (target.x - head.x !== oneWay.dx || target.y - head.y !== oneWay.dy)) {
-      return false;
-    }
-
-    const pairRule = pairMap.get(targetKey);
-    if (pairRule?.order === 2
-      && !current.some(point => pointKey(point) === pairRule.partner)) {
-      return false;
-    }
-
-    if (current.some(point => point.x === target.x && point.y === target.y)) return false;
-
-    const next = [...current, target];
-    if (portalDestination && !next.some(point => pointKey(point) === pointKey(portalDestination))) {
-      next.push({ ...portalDestination });
-    }
+    const next = rules.step(current, target);
+    if (!next) return false;
 
     pathRef.current = next;
     setPath(next);
@@ -731,7 +786,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     }
 
     return true;
-  }, [disableUndo, getThemeColors, level.nodes, nodeKeys, oneWayMap, pairMap, paused, portalMap, reducedMotion, undoPath]);
+  }, [disableUndo, getThemeColors, level.nodes, paused, reducedMotion, rules, undoPath]);
 
   const handleInputStart = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     if (paused) return;

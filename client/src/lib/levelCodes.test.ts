@@ -9,18 +9,19 @@ import {
   MIN_CODED_LEVEL,
 } from "./levelCodes";
 
-test("levels 10-200 have unique permanent four-digit codes", () => {
+test("levels 10-300 have unique permanent four-digit codes", () => {
   const codes = Array.from(
     { length: MAX_CODED_LEVEL - MIN_CODED_LEVEL + 1 },
     (_, index) => generateLevelCode(index + MIN_CODED_LEVEL),
   );
 
-  assert.equal(codes.length, 191);
-  assert.equal(new Set(codes).size, 191);
+  assert.equal(codes.length, 291);
+  assert.equal(new Set(codes).size, 291);
   codes.forEach((code) => assert.match(code, /^\d{4}$/));
 
+  // The hash covers the codes released before the expansion (levels 10-200).
   const contractHash = createHash("sha256")
-    .update(codes.join(","))
+    .update(codes.slice(0, 191).join(","))
     .digest("hex");
   assert.equal(
     contractHash,
@@ -54,7 +55,7 @@ test("levels 1-9 have no code and Level 10 is the first coded level", () => {
 
 test("invalid levels and malformed codes are rejected", () => {
   assert.equal(generateLevelCode(0), "");
-  assert.equal(generateLevelCode(201), "");
+  assert.equal(generateLevelCode(301), "");
   assert.equal(generateLevelCode(1.5), "");
   assert.equal(getLevelFromCode("123"), null);
   assert.equal(getLevelFromCode("abcd"), null);

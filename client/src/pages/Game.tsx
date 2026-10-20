@@ -27,11 +27,18 @@ import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKe
 import { useI18n } from "@/lib/i18n";
 import { customLevelToResponse, decodeCustomLevel } from "@/lib/customLevels";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
+import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
 import {
+  crashRun,
+  getAttemptsUsed,
   getLevelRecord,
   getProgress,
+  isFrontierLevel,
   markLevelPlayed,
+  MAX_ATTEMPTS,
+  startAttempt,
   recordDailyResult,
+  TOTAL_LEVELS,
 } from "@/lib/progress";
 
 export type GameMode = "level" | "daily" | "weekly" | "zen" | "custom";
@@ -97,7 +104,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const noUndo = weeklyModifier === "no-undo";
 
   const generated = useMemo(
-    () => (!isCustom && Number.isInteger(levelId) && levelId >= 1 && levelId <= 200
+    () => (!isCustom && Number.isInteger(levelId) && levelId >= 1 && levelId <= TOTAL_LEVELS
       ? generateLevel(levelId)
       : null),
     [isCustom, levelId],
@@ -156,6 +163,19 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [dailyStreak, setDailyStreak] = useState(0);
 
+  // Attempt limit: frontier campaign levels allow three tries (two restarts);
+  // failing the third crashes the run back to level 1.
+  const [frontier, setFrontier] = useState(false);
+  const frontierRef = useRef(false);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  const attemptStartedRef = useRef(false);
+  const [attemptStarted, setAttemptStarted] = useState(false);
+  const [stuck, setStuck] = useState(false);
+  const [confirmCrash, setConfirmCrash] = useState(false);
+  const [crash, setCrash] = useState<{ levelId: number; lost: number } | null>(null);
+  const limited = mode === "level" && frontier;
+  const attemptNumber = attemptStarted ? attemptsUsed : Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
+
   const parTimeMs = level
     ? Math.round(
       getParTimeMs(level.nodes.length)
@@ -213,13 +233,33 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     setCanUndo(false);
     setTimerRunning(false);
     setDailyStreak(0);
+    attemptStartedRef.current = false;
+    setAttemptStarted(false);
+    setStuck(false);
+    setConfirmCrash(false);
     setCanvasKey(previous => previous + 1);
     usePowerUpsStore.getState().removeEffect("path_hint");
     usePowerUpsStore.getState().removeEffect("time_freeze");
   }, []);
 
+  const crashNow = useCallback(() => {
+    if (!userId) return;
+    const lost = getProgress(userId).runCompleted.length;
+    crashRun(userId);
+    frontierRef.current = true;
+    setFrontier(true);
+    setAttemptsUsed(0);
+    setConfirmCrash(false);
+    setStuck(false);
+    setCrash({ levelId, lost });
+    // Not the level query: it would lock this board under the crash screen.
+    void queryClient.invalidateQueries({ queryKey: [api.progress.get.path] });
+    void queryClient.invalidateQueries({ queryKey: [api.levels.list.path] });
+  }, [levelId, queryClient, userId]);
+
   useEffect(() => {
     resetTransientState();
+    setCrash(null);
     if (!userId) return;
 
     if (isCustom) {
@@ -239,11 +279,23 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     );
     setBestScore(isDaily || isWeekly ? null : record?.bestScore ?? null);
 
+    const isFrontier = mode === "level" && isFrontierLevel(progress, levelId);
+    const used = isFrontier ? getAttemptsUsed(progress, levelId) : 0;
+    frontierRef.current = isFrontier;
+    setFrontier(isFrontier);
+    setAttemptsUsed(used);
+    // Leaving mid-attempt does not refund it: an abandoned third try is a crash.
+    if (isFrontier && used >= MAX_ATTEMPTS) {
+      crashNow();
+      return;
+    }
+
     if (mode === "level") {
       markLevelPlayed(userId, levelId);
       void queryClient.invalidateQueries({ queryKey: [api.progress.get.path, userId] });
     }
   }, [
+    crashNow,
     dailyKey,
     isCustom,
     isDaily,
@@ -347,7 +399,14 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       clockRef.current = startRun(clockRef.current, Date.now(), isTimeFrozen());
       setTimerRunning(true);
     }
-  }, [isTimeFrozen]);
+    // The first move of an attempt is what spends it, so opening a level and
+    // looking at it is free.
+    if (pathLength > 1 && frontierRef.current && !attemptStartedRef.current && userId) {
+      attemptStartedRef.current = true;
+      setAttemptStarted(true);
+      setAttemptsUsed(startAttempt(userId, levelId));
+    }
+  }, [isTimeFrozen, levelId, userId]);
 
   const handleBacktrack = useCallback((): boolean => {
     if (hasWon || backtracksRef.current >= MAX_BACKTRACKS) return false;
@@ -398,6 +457,9 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     wonRef.current = true;
     setHasWon(true);
     setShowHint(false);
+    setStuck(false);
+    frontierRef.current = false;
+    setFrontier(false);
 
     const colors = getThemeColors();
     const runTime = isScored ? getElapsed() : 0;
@@ -569,15 +631,25 @@ export default function Game({ mode = "level", customCode }: GameProps) {
 
   const handleNext = () => {
     if (mode === "level") {
-      setLocation(levelId < 200 ? `/play/${levelId + 1}` : "/");
+      setLocation(levelId < TOTAL_LEVELS ? `/play/${levelId + 1}` : "/");
     } else {
       setLocation("/");
     }
   };
 
   const handleRestart = useCallback(() => {
+    if (frontierRef.current && attemptStartedRef.current && attemptsUsed >= MAX_ATTEMPTS) {
+      setConfirmCrash(true);
+      return;
+    }
     resetTransientState();
-  }, [resetTransientState]);
+  }, [attemptsUsed, resetTransientState]);
+
+  const handleCrashRestart = () => {
+    setCrash(null);
+    if (levelId === 1) resetTransientState();
+    else setLocation("/play/1");
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -586,6 +658,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       if (target && (target.isContentEditable
         || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      if (crash || confirmCrash) return;
 
       if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         if (!isScored) return;
@@ -612,7 +685,27 @@ export default function Game({ mode = "level", customCode }: GameProps) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
+  }, [confirmCrash, crash, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
+
+  const crashModal = (
+    <CrashModal
+      open={crash !== null}
+      levelId={crash?.levelId ?? levelId}
+      lostLevels={crash?.lost ?? 0}
+      reducedMotion={reducedMotion}
+      onRestartRun={handleCrashRestart}
+      onMenu={() => {
+        setCrash(null);
+        setLocation("/");
+      }}
+    />
+  );
+
+  // A crash on entry (an abandoned last attempt) can lock this level before it
+  // ever renders, so the crash screen must not depend on the board.
+  if (crash && !level) {
+    return <div className="h-screen w-screen bg-background">{crashModal}</div>;
+  }
 
   if (levelQuery.isLoading && !isCustom) {
     return (
@@ -676,7 +769,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         levelId={levelId}
         isDaily={isDaily}
         title={modeTitle}
-        subtitle={modeSubtitle}
+        subtitle={limited ? t("attemptOf", { n: attemptNumber, max: MAX_ATTEMPTS }).toUpperCase() : modeSubtitle}
         timeMs={elapsedMs}
         stars={hasWon ? stars : potentialStars}
         isFrozen={isFrozen}
@@ -693,6 +786,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         canUndo={canUndo && !hasWon && !noUndo && backtracks < MAX_BACKTRACKS}
         undoDisabled={noUndo}
         undoRemaining={Math.max(0, MAX_BACKTRACKS - backtracks)}
+        restartsLeft={limited ? MAX_ATTEMPTS - attemptNumber : undefined}
         onRestart={handleRestart}
       />
 
@@ -709,11 +803,14 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         />
       </div>
 
-      {(mechanics.oneWays.length > 0 || mechanics.pairs.length > 0 || mechanics.portals.length > 0) && (
+      {(mechanics.oneWays.length > 0 || mechanics.pairs.length > 0 || mechanics.portals.length > 0
+        || mechanics.syncNodes.length > 0 || mechanics.blackout) && (
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 border-b border-white/5 bg-background/40 px-2 py-1 font-exo text-[10px] text-muted-foreground">
           {mechanics.oneWays.length > 0 && <span>{t("symbolOneWay")}</span>}
           {mechanics.pairs.length > 0 && <span>{t("symbolPairs")}</span>}
           {mechanics.portals.length > 0 && <span>{t("symbolPortals")}</span>}
+          {mechanics.syncNodes.length > 0 && <span className="text-emerald-300/90">{t("symbolSync")}</span>}
+          {mechanics.blackout && <span className="text-indigo-300/90">{t("symbolBlackout")}</span>}
         </div>
       )}
 
@@ -736,8 +833,9 @@ export default function Game({ mode = "level", customCode }: GameProps) {
               hintPath={hintPath}
               onBacktrack={handleBacktrack}
               onPathChange={handlePathChange}
+              onStuckChange={setStuck}
               reducedMotion={reducedMotion}
-              paused={hasWon || pauseReason !== null}
+              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null}
             />
           </div>
         </div>
@@ -770,7 +868,21 @@ export default function Game({ mode = "level", customCode }: GameProps) {
             </p>
           </div>
         )}
+        <DeadEndOverlay
+          open={stuck && !hasWon && pauseReason === null && crash === null}
+          undoLeft={noUndo ? 0 : Math.max(0, MAX_BACKTRACKS - backtracks)}
+          attemptsLeft={limited ? MAX_ATTEMPTS - attemptNumber : null}
+          onUndo={() => canvasRef.current?.undo()}
+          onRestart={() => (limited && attemptNumber >= MAX_ATTEMPTS ? crashNow() : resetTransientState())}
+        />
+        <LastAttemptConfirm
+          open={confirmCrash && crash === null}
+          onCancel={() => setConfirmCrash(false)}
+          onConfirm={crashNow}
+        />
       </main>
+
+      {crashModal}
 
       <WinModal
         isOpen={hasWon}

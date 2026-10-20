@@ -22,8 +22,17 @@ export interface PortalPair {
   b: Point;
 }
 
+/** A node that must be the `step`-th node of the line (0 = start). */
+export interface SyncNode {
+  point: Point;
+  step: number;
+}
+
 export interface LevelMechanics {
   isBoss: boolean;
+  syncNodes: SyncNode[];
+  /** Unvisited nodes far from the line's head are dimmed. */
+  blackout: boolean;
   walls: Point[];
   oneWays: OneWayNode[];
   pairs: ColorPair[];
@@ -33,6 +42,8 @@ export interface LevelMechanics {
 
 export const EMPTY_MECHANICS: LevelMechanics = {
   isBoss: false,
+  syncNodes: [],
+  blackout: false,
   walls: [],
   oneWays: [],
   pairs: [],
@@ -136,8 +147,28 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
     }
   }
 
+  // Sync nodes sit on solution steps no other rule has claimed, so every badge
+  // is readable and the canonical solution satisfies all of them at once.
+  const syncNodes: SyncNode[] = [];
+  if (levelId >= 201 && solution.length > 12) {
+    const claimed = new Set([
+      ...oneWays.map(rule => key(rule.point)),
+      ...pairs.flatMap(pair => [key(pair.first), key(pair.second)]),
+    ]);
+    const count = levelId >= 276 ? 4 : levelId >= 226 ? 3 : 2;
+    for (let index = 0; index < count; index++) {
+      let step = Math.floor(solution.length * (index + 1) / (count + 1));
+      while (step < solution.length - 1 && claimed.has(key(solution[step]))) step++;
+      if (step < 1 || claimed.has(key(solution[step]))) continue;
+      claimed.add(key(solution[step]));
+      syncNodes.push({ point: solution[step], step });
+    }
+  }
+
   return {
     isBoss,
+    syncNodes,
+    blackout: levelId >= 251,
     walls,
     oneWays,
     pairs,
@@ -216,4 +247,61 @@ export function mirrorLevel<T extends LevelData>(level: T, solution: Point[]): {
     },
     solution: solution.map(flip),
   };
+}
+
+/**
+ * The move rules of the game, shared by the canvas and the solvability tests so
+ * the two can never disagree. `step` returns the extended path, or null when
+ * the move is illegal. Stepping back onto the previous point (undo) is the
+ * caller's business and is reported as illegal here.
+ */
+export function createMoveRules(level: LevelData, mechanics: LevelMechanics) {
+  const nodeKeys = new Set(level.nodes.map(key));
+  const portals = new Map<string, Point>();
+  mechanics.portals.forEach(pair => {
+    portals.set(key(pair.a), pair.b);
+    portals.set(key(pair.b), pair.a);
+  });
+  const oneWays = new Map(mechanics.oneWays.map(rule => [key(rule.point), rule]));
+  const secondOfPair = new Map(mechanics.pairs.map(pair => [key(pair.second), key(pair.first)]));
+  const syncSteps = new Map(mechanics.syncNodes.map(node => [key(node.point), node.step]));
+
+  const visitedNodeCount = (path: Point[]) => path.filter(point => nodeKeys.has(key(point))).length;
+
+  const step = (path: Point[], target: Point): Point[] | null => {
+    const head = path[path.length - 1];
+    if (!head) return null;
+    if (Math.abs(target.x - head.x) + Math.abs(target.y - head.y) !== 1) return null;
+
+    const targetKey = key(target);
+    const twin = portals.get(targetKey);
+    if (!nodeKeys.has(targetKey) && !twin) return null;
+    if (path.some(point => key(point) === targetKey)) return null;
+
+    const oneWay = oneWays.get(key(head));
+    if (oneWay && (target.x - head.x !== oneWay.dx || target.y - head.y !== oneWay.dy)) return null;
+
+    const partner = secondOfPair.get(targetKey);
+    if (partner && !path.some(point => key(point) === partner)) return null;
+
+    const sync = syncSteps.get(targetKey);
+    if (sync !== undefined && visitedNodeCount(path) !== sync) return null;
+
+    const next = [...path, target];
+    if (twin && !next.some(point => key(point) === key(twin))) next.push({ ...twin });
+    return next;
+  };
+
+  const isComplete = (path: Point[]) => visitedNodeCount(path) === nodeKeys.size;
+
+  /** True when the head has no legal forward move and the board is unfinished. */
+  const isStuck = (path: Point[]) => {
+    if (isComplete(path)) return false;
+    const head = path[path.length - 1];
+    if (!head) return false;
+    return [[0, -1], [0, 1], [-1, 0], [1, 0]]
+      .every(([dx, dy]) => step(path, { x: head.x + dx, y: head.y + dy }) === null);
+  };
+
+  return { step, isComplete, isStuck, visitedNodeCount };
 }

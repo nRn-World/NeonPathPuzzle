@@ -48,6 +48,8 @@ interface HeaderProps {
   canUndo: boolean;
   undoDisabled?: boolean;
   undoRemaining?: number;
+  /** Restarts left on this level; undefined means restarts are free. */
+  restartsLeft?: number;
   onRestart: () => void;
 }
 
@@ -74,6 +76,7 @@ export function Header({
   canUndo,
   undoDisabled = false,
   undoRemaining = 3,
+  restartsLeft,
   onRestart,
 }: HeaderProps) {
   const [showPowerUps, setShowPowerUps] = useState(false);
@@ -187,16 +190,33 @@ export function Header({
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRestart}
-          aria-label={t("restartLevel")}
-          title={t("restartLevel")}
-          className={`${iconButton} border-white/10 text-muted-foreground hover:border-white/30 hover:bg-white/5 hover:text-foreground`}
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-        </Button>
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRestart}
+            aria-label={restartsLeft === undefined
+              ? t("restartLevel")
+              : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
+            title={restartsLeft === undefined
+              ? t("restartLevel")
+              : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
+            className={`${iconButton} ${restartsLeft === 0
+              ? "border-red-500/40 text-red-300 hover:bg-red-500/10"
+              : "border-white/10 text-muted-foreground hover:border-white/30 hover:bg-white/5 hover:text-foreground"}`}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+          {restartsLeft !== undefined && (
+            <span
+              className={`pointer-events-none absolute -right-1 -top-1 min-w-3.5 rounded-full border bg-background px-0.5 text-center font-mono text-[9px] leading-3 ${
+                restartsLeft > 0 ? "border-white/30 text-foreground" : "border-red-500/60 text-red-300"
+              }`}
+            >
+              {restartsLeft}
+            </span>
+          )}
+        </div>
 
         <div className="relative">
           <Button

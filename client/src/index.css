@@ -144,3 +144,56 @@ canvas {
   image-rendering: pixelated;
   touch-action: none;
 }
+
+/* System crash: chromatic glitch on the title and drifting scanlines. */
+.glitch-text {
+  position: relative;
+  animation: glitch-shake 2.4s infinite steps(1);
+}
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.glitch-text::before {
+  color: #00f3ff;
+  transform: translate(-2px, 0);
+  clip-path: inset(10% 0 55% 0);
+  opacity: 0.7;
+  animation: glitch-slice 1.7s infinite steps(2);
+}
+.glitch-text::after {
+  color: #ff2bd6;
+  transform: translate(2px, 0);
+  clip-path: inset(60% 0 8% 0);
+  opacity: 0.7;
+  animation: glitch-slice 1.3s infinite steps(2) reverse;
+}
+@keyframes glitch-slice {
+  0% { clip-path: inset(10% 0 55% 0); }
+  25% { clip-path: inset(40% 0 30% 0); }
+  50% { clip-path: inset(70% 0 5% 0); }
+  75% { clip-path: inset(0 0 80% 0); }
+  100% { clip-path: inset(25% 0 50% 0); }
+}
+@keyframes glitch-shake {
+  0%, 92%, 100% { transform: none; }
+  94% { transform: translate(2px, -1px) skewX(-6deg); }
+  97% { transform: translate(-2px, 1px) skewX(4deg); }
+}
+.crash-scanlines {
+  background: repeating-linear-gradient(0deg, rgba(255, 60, 60, 0.07) 0 2px, transparent 2px 5px);
+  animation: crash-scan 6s linear infinite;
+}
+@keyframes crash-scan {
+  from { background-position: 0 0; }
+  to { background-position: 0 200px; }
+}
+.reduce-motion .glitch-text,
+.reduce-motion .glitch-text::before,
+.reduce-motion .glitch-text::after,
+.reduce-motion .crash-scanlines {
+  animation: none;
+}

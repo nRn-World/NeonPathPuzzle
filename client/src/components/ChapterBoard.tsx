@@ -1,3 +1,4 @@
+import { TOTAL_LEVELS } from "@/lib/progress";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { ChevronRight, CornerDownLeft, Star } from "lucide-react";
@@ -54,7 +55,7 @@ export function ChapterBoard({
   const handleJump = (event: FormEvent) => {
     event.preventDefault();
     const levelId = Number(jumpValue);
-    if (!Number.isInteger(levelId) || levelId < 1 || levelId > 200) {
+    if (!Number.isInteger(levelId) || levelId < 1 || levelId > TOTAL_LEVELS) {
       setJumpError(t("jumpRange"));
       return;
     }
@@ -163,7 +164,7 @@ export function ChapterBoard({
               type="number"
               inputMode="numeric"
               min={1}
-              max={200}
+              max={TOTAL_LEVELS}
               value={jumpValue}
               onChange={event => {
                 setJumpValue(event.target.value);

@@ -2,8 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  applyCrash,
   applyLevelResult,
   createEmptyProgress,
+  crashRun,
+  getAttemptsUsed,
+  getProgress,
+  importProgress,
+  isFrontierLevel,
+  MAX_ATTEMPTS,
+  startAttempt,
   getContinueLevel,
   getLevelRecord,
   getTotalScore,
@@ -248,15 +256,17 @@ test("total score sums the best score of every level", () => {
 test("continue resumes an uncompleted level before advancing", () => {
   const progress = createEmptyProgress();
   progress.completed = [1, 2, 3];
+  progress.runCompleted = [1, 2, 3];
   progress.lastLevelId = 3;
   assert.equal(getContinueLevel(progress), 4);
 
   progress.lastLevelId = 7;
   assert.equal(getContinueLevel(progress), 7);
 
-  progress.completed = Array.from({ length: 200 }, (_, index) => index + 1);
-  progress.lastLevelId = 200;
-  assert.equal(getContinueLevel(progress), 200);
+  progress.completed = Array.from({ length: 300 }, (_, index) => index + 1);
+  progress.runCompleted = progress.completed;
+  progress.lastLevelId = 300;
+  assert.equal(getContinueLevel(progress), 300);
 });
 
 test("total stars sum every record", () => {
@@ -273,4 +283,56 @@ test("total stars sum every record", () => {
     }).progress;
   }
   assert.equal(getTotalStars(progress), 8);
+});
+
+function win(progress: ReturnType<typeof createEmptyProgress>, levelId: number) {
+  return applyLevelResult(progress, {
+    levelId, completed: true, hintsUsed: false, stars: 3, timeMs: 10_000, moves: 5, mistakes: 0,
+  }).progress;
+}
+
+test("old saves keep everything they unlocked when the run is introduced", () => {
+  const legacy = { ...createEmptyProgress(), completed: [1, 2, 3] } as Record<string, unknown>;
+  delete legacy.runCompleted;
+  delete legacy.attempts;
+  const migrated = importProgress("migrate-user", legacy);
+  assert.deepEqual(migrated.runCompleted, [1, 2, 3]);
+  assert.equal(getContinueLevel(migrated), 4);
+});
+
+test("a crash restarts the run at level 1 but keeps stars, records and completions", () => {
+  let progress = win(win(win(createEmptyProgress(), 1), 2), 3);
+  progress = { ...progress, attempts: { "4": 3 } };
+  const crashed = applyCrash(progress);
+  assert.deepEqual(crashed.runCompleted, []);
+  assert.deepEqual(crashed.attempts, {});
+  assert.deepEqual(crashed.completed, [1, 2, 3]);
+  assert.equal(getTotalStars(crashed), 9);
+  assert.equal(crashed.crashes, 1);
+  assert.equal(getContinueLevel(crashed), 1);
+  assert.equal(isFrontierLevel(crashed, 2), true);
+});
+
+test("attempts count up to the limit, only on frontier levels, and clear on a win", () => {
+  const user = "attempt-user";
+  importProgress(user, win(createEmptyProgress(), 1));
+  assert.equal(startAttempt(user, 1), 0, "a cleared level is free practice");
+  assert.equal(startAttempt(user, 2), 1);
+  assert.equal(startAttempt(user, 2), 2);
+  assert.equal(startAttempt(user, 2), 3);
+  assert.equal(startAttempt(user, 2), MAX_ATTEMPTS, "never counts past the limit");
+  importProgress(user, win(getProgress(user), 2));
+  assert.equal(getAttemptsUsed(getProgress(user), 2), 0);
+  assert.equal(crashRun(user).runCompleted.length, 0);
+});
+
+test("imported attempts are clamped and dropped for cleared levels", () => {
+  const imported = importProgress("import-attempts", {
+    ...createEmptyProgress(),
+    completed: [1],
+    runCompleted: [1, 7],
+    attempts: { "1": 2, "2": 99, "3": -4, "abc": 1 },
+  });
+  assert.deepEqual(imported.runCompleted, [1], "a run cannot contain levels never completed");
+  assert.deepEqual(imported.attempts, { "2": MAX_ATTEMPTS });
 });

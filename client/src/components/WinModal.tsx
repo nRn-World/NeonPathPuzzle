@@ -1,3 +1,4 @@
+import { TOTAL_LEVELS } from "@/lib/progress";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -266,7 +267,7 @@ export function WinModal({
                   <Play className="mr-2 h-5 w-5" />
                   {isZen || isCustom || isDaily || isWeekly
                     ? t("backToMenu")
-                    : levelId < 200 ? t("nextLevel") : t("finish")}
+                    : levelId < TOTAL_LEVELS ? t("nextLevel") : t("finish")}
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2">

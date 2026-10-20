@@ -1,5 +1,7 @@
+import { TOTAL_LEVELS } from "./progress";
+
 const MIN_LEVEL = 1;
-const MAX_LEVEL = 200;
+const MAX_LEVEL = TOTAL_LEVELS;
 
 let codeUnlockedThrough = MIN_LEVEL;
 
