@@ -101,6 +101,13 @@ function sanitizePath(value: unknown): Point[] | null {
   return points;
 }
 
+/** Imported stats must never turn into a negative "best" that can't be beaten. */
+function nonNegativeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : null;
+}
+
 function normalizeRecord(levelId: number, value: unknown): LevelRecord | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Partial<LevelRecord>;
@@ -112,13 +119,13 @@ function normalizeRecord(levelId: number, value: unknown): LevelRecord | null {
     levelId,
     completed: Boolean(record.completed),
     stars,
-    bestTimeMs: Number.isFinite(record.bestTimeMs) ? Number(record.bestTimeMs) : null,
-    bestMoves: Number.isFinite(record.bestMoves) ? Number(record.bestMoves) : null,
-    bestMistakes: Number.isFinite(record.bestMistakes) ? Number(record.bestMistakes) : null,
-    bestScore: Number.isFinite(record.bestScore) ? Number(record.bestScore) : null,
+    bestTimeMs: nonNegativeInteger(record.bestTimeMs),
+    bestMoves: nonNegativeInteger(record.bestMoves),
+    bestMistakes: nonNegativeInteger(record.bestMistakes),
+    bestScore: nonNegativeInteger(record.bestScore),
     bestPath: sanitizePath(record.bestPath),
     hintsUsed: Boolean(record.hintsUsed),
-    updatedAt: Number.isFinite(record.updatedAt) ? Number(record.updatedAt) : 0,
+    updatedAt: Number.isFinite(record.updatedAt) ? Math.max(0, Number(record.updatedAt)) : 0,
   };
 }
 
@@ -334,40 +341,47 @@ export function applyLevelResult(
   input: LevelResultInput,
 ): AppliedLevelResult {
   const levelId = clampLevel(input.levelId);
+  const timeMs = Number.isFinite(input.timeMs) ? Math.max(0, input.timeMs) : 0;
+  const moves = Number.isFinite(input.moves) ? Math.max(0, Math.trunc(input.moves)) : 0;
+  const mistakes = Number.isFinite(input.mistakes) ? Math.max(0, Math.trunc(input.mistakes)) : 0;
+  const stars = Math.max(1, Math.min(3, Math.trunc(Number(input.stars) || 1)));
   const existing = progress.records[String(levelId)];
   // 0 ms is a real time: only a missing value counts as "no best yet".
   const isNewBest = input.completed && (
     existing?.bestTimeMs === null
     || existing?.bestTimeMs === undefined
-    || input.timeMs < existing.bestTimeMs
+    || timeMs < existing.bestTimeMs
   );
+
+  const submittedPath = input.completed ? sanitizePath(input.path) : null;
 
   const record: LevelRecord = {
     levelId,
     completed: input.completed || Boolean(existing?.completed),
-    stars: input.completed ? Math.max(existing?.stars ?? 0, input.stars) : existing?.stars ?? 0,
+    stars: input.completed ? Math.max(existing?.stars ?? 0, stars) : existing?.stars ?? 0,
     bestTimeMs: input.completed
       ? (existing?.bestTimeMs === null || existing?.bestTimeMs === undefined
-        ? input.timeMs
-        : Math.min(existing.bestTimeMs, input.timeMs))
+        ? timeMs
+        : Math.min(existing.bestTimeMs, timeMs))
       : existing?.bestTimeMs ?? null,
     bestMoves: input.completed
       ? (existing?.bestMoves === null || existing?.bestMoves === undefined
-        ? input.moves
-        : Math.min(existing.bestMoves, input.moves))
+        ? moves
+        : Math.min(existing.bestMoves, moves))
       : existing?.bestMoves ?? null,
     bestMistakes: input.completed
       ? (existing?.bestMistakes === null || existing?.bestMistakes === undefined
-        ? input.mistakes
-        : Math.min(existing.bestMistakes, input.mistakes))
+        ? mistakes
+        : Math.min(existing.bestMistakes, mistakes))
       : existing?.bestMistakes ?? null,
-    bestScore: input.completed && input.score !== undefined
-      ? Math.max(existing?.bestScore ?? 0, input.score)
+    bestScore: input.completed && input.score !== undefined && Number.isFinite(input.score)
+      ? Math.max(existing?.bestScore ?? 0, Math.max(0, Math.trunc(input.score)))
       : existing?.bestScore ?? null,
-    bestPath: input.completed && input.path?.length
-      ? (existing?.bestPath && existing.bestTimeMs !== null && existing.bestTimeMs < input.timeMs
+    // A malformed new recording must not erase a usable older ghost.
+    bestPath: input.completed
+      ? (existing?.bestPath && existing.bestTimeMs !== null && existing.bestTimeMs < timeMs
         ? existing.bestPath
-        : sanitizePath(input.path))
+        : submittedPath ?? existing?.bestPath ?? null)
       : existing?.bestPath ?? null,
     hintsUsed: Boolean(existing?.hintsUsed) || input.hintsUsed,
     updatedAt: now(),

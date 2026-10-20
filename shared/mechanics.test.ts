@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { generateLevel } from "./level-generator";
-import { getLevelMechanics, mirrorLevel } from "./mechanics";
+import {
+  EMPTY_MECHANICS,
+  getLevelMechanics,
+  isValidPlayerPath,
+  mirrorLevel,
+} from "./mechanics";
 
 const key = (point: { x: number; y: number }) => `${point.x},${point.y}`;
 
@@ -27,12 +32,21 @@ test("all 200 levels keep their canonical solution valid with mechanics", () => 
       assert.equal(Math.sign(next.y - oneWay.point.y), oneWay.dy);
     }
 
+    const pairEndpoints = new Set<string>();
     for (const pair of mechanics.pairs) {
       const first = solutionOrder.get(key(pair.first));
       const second = solutionOrder.get(key(pair.second));
       assert.notEqual(first, undefined, `level ${levelId}: pair start is not on the solution`);
       assert.notEqual(second, undefined, `level ${levelId}: pair end is not on the solution`);
       assert.ok((first ?? 0) < (second ?? 0), `level ${levelId}: pair order contradicts the solution`);
+      for (const endpoint of [pair.first, pair.second]) {
+        assert.equal(
+          pairEndpoints.has(key(endpoint)),
+          false,
+          `level ${levelId}: one node carries two pair rings`,
+        );
+        pairEndpoints.add(key(endpoint));
+      }
     }
 
     for (const portal of mechanics.portals) {
@@ -44,8 +58,61 @@ test("all 200 levels keep their canonical solution valid with mechanics", () => 
     }
 
     assert.equal(mechanics.isBoss, levelId % 25 === 0);
+    assert.equal(
+      isValidPlayerPath(level.solution, level, mechanics),
+      true,
+      `level ${levelId}: the canonical solution must validate as a played path`,
+    );
     assert.deepEqual(getLevelMechanics(level, level.solution), mechanics, "mechanics must be deterministic");
   }
+});
+
+test("a played path may use a portal, but only with its twin", () => {
+  const level = {
+    id: 1,
+    gridSize: 5,
+    start: { x: 0, y: 0 },
+    nodes: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 4, y: 0 }],
+  };
+  const mechanics = {
+    ...EMPTY_MECHANICS,
+    portals: [{ a: { x: 1, y: 1 }, b: { x: 4, y: 1 } }],
+  };
+
+  assert.equal(
+    isValidPlayerPath(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 4, y: 1 }, { x: 4, y: 0 }],
+      level,
+      mechanics,
+    ),
+    true,
+  );
+
+  assert.equal(
+    isValidPlayerPath(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 4, y: 0 }],
+      level,
+      mechanics,
+    ),
+    false,
+    "stepping onto a pad without its twin is not a valid recording",
+  );
+
+  assert.equal(
+    isValidPlayerPath(
+      [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 4, y: 1 }, { x: 4, y: 0 }, { x: 4, y: 1 }],
+      level,
+      mechanics,
+    ),
+    false,
+    "a path may not visit a cell twice",
+  );
+
+  assert.equal(
+    isValidPlayerPath([{ x: 0, y: 0 }, { x: 1, y: 0 }], level, mechanics),
+    false,
+    "a path that misses a node is not a finished run",
+  );
 });
 
 test("mechanics only appear in the intended difficulty bands", () => {

@@ -39,7 +39,8 @@ export default function Editor() {
     [gridSize, name, path],
   );
   const pathKeys = new Map(path.map((point, index) => [`${point.x},${point.y}`, index]));
-  const error = encoded.ok ? null : encoded.error;
+  // Don't scold an empty board before the player has drawn anything.
+  const error = !encoded.ok && path.length > 0 ? encoded.error : null;
 
   const handleCell = (point: Point) => {
     const existingIndex = pathKeys.get(`${point.x},${point.y}`);

@@ -209,7 +209,9 @@ export function Header({
               ? "Hints are disabled in this mode"
               : usesTokens && hintTokens <= 0
                 ? t("hintTokenEmpty")
-                : `${t("hintReveal")} (1 token)`}
+                : usesTokens
+                  ? `${t("hintReveal")} (1 token)`
+                  : t("hintReveal")}
             className={`${iconButton} border-white/10 transition-all duration-300 ${
               hintLocked
                 ? "cursor-not-allowed text-muted-foreground opacity-50"

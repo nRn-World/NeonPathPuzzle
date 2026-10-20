@@ -179,6 +179,53 @@ test("malformed ghost paths are ignored", () => {
   assert.equal(getLevelRecord(applied.progress, 7)?.bestPath, null);
 });
 
+test("a malformed faster run does not erase the previous ghost", () => {
+  const validPath = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }];
+  const first = applyLevelResult(createEmptyProgress(), {
+    levelId: 7,
+    completed: true,
+    hintsUsed: false,
+    stars: 2,
+    timeMs: 20_000,
+    moves: 2,
+    mistakes: 0,
+    path: validPath,
+  });
+
+  const fasterButBroken = applyLevelResult(first.progress, {
+    levelId: 7,
+    completed: true,
+    hintsUsed: false,
+    stars: 3,
+    timeMs: 10_000,
+    moves: 2,
+    mistakes: 0,
+    path: [{ x: 0, y: 0 }, { x: Number.NaN, y: 1 }],
+  });
+
+  assert.equal(fasterButBroken.record.bestTimeMs, 10_000);
+  assert.deepEqual(fasterButBroken.record.bestPath, validPath);
+});
+
+test("a negative or oversized result is clamped before it is stored", () => {
+  const applied = applyLevelResult(createEmptyProgress(), {
+    levelId: 2,
+    completed: true,
+    hintsUsed: false,
+    stars: 9,
+    timeMs: -50,
+    moves: -2,
+    mistakes: -1,
+    score: -100,
+  });
+
+  assert.equal(applied.record.stars, 3);
+  assert.equal(applied.record.bestTimeMs, 0);
+  assert.equal(applied.record.bestMoves, 0);
+  assert.equal(applied.record.bestMistakes, 0);
+  assert.equal(applied.record.bestScore, 0);
+});
+
 test("total score sums the best score of every level", () => {
   let progress = createEmptyProgress();
   for (const [levelId, score] of [[1, 1_500], [2, 2_100]] as const) {

@@ -15,6 +15,11 @@ import {
   type ProgressData,
 } from "@/lib/progress";
 
+// Storage can be blocked entirely (private modes, embedded webviews). Every
+// component calls useUserId, so the fallback has to be one shared id per page
+// session instead of a fresh uuid for each hook instance.
+let fallbackUserId: string | null = null;
+
 export function useUserId() {
   const [userId] = useState<string>(() => {
     if (typeof window === "undefined") return "";
@@ -27,7 +32,8 @@ export function useUserId() {
       return id;
     } catch {
       console.warn("localStorage is disabled or restricted, falling back to session ID");
-      return uuidv4();
+      if (!fallbackUserId) fallbackUserId = uuidv4();
+      return fallbackUserId;
     }
   });
   return userId;

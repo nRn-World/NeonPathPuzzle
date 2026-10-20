@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { applyBackup, BACKUP_APP, backupToJson, parseBackup, type BackupFile } from "./backup";
+import { getProgress } from "./progress";
 
 function useMemoryStorage(): Map<string, string> {
   const entries = new Map<string, string>();
@@ -58,13 +59,13 @@ test("restoring a backup replaces stores the file does not contain", () => {
     version: 1,
     exportedAt: "2026-10-19T12:00:00.000Z",
     progress: { completed: [1, 2], records: {} },
-    stores: { "neon-path-theme": "restored-theme" },
+    stores: { "neon-path-theme": "{\"state\":{\"currentTheme\":\"retro\"}}" },
   };
 
   const stats = applyBackup("player-1", backup);
 
   assert.equal(stats.completedLevels, 2);
-  assert.equal(storage.get("neon-path-theme"), "restored-theme");
+  assert.equal(storage.get("neon-path-theme"), "{\"state\":{\"currentTheme\":\"retro\"}}");
   assert.equal(storage.has("neon-path-settings"), false);
   assert.equal(storage.has("neon-path-achievements"), false);
 });
@@ -81,6 +82,59 @@ test("restoring a backup without stores clears the device stores", () => {
   });
 
   assert.equal(storage.has("neon-path-powerups"), false);
+});
+
+test("restoring a backup drops store values that are not valid JSON", () => {
+  const storage = useMemoryStorage();
+  storage.set("neon-path-settings", "older-settings");
+
+  applyBackup("player-3", {
+    app: BACKUP_APP,
+    version: 1,
+    exportedAt: "2026-10-19T12:00:00.000Z",
+    progress: { completed: [] },
+    stores: {
+      "neon-path-settings": "not json",
+      "neon-path-theme": "{\"state\":{\"currentTheme\":\"retro\"}}",
+    },
+  });
+
+  assert.equal(storage.has("neon-path-settings"), false, "broken JSON would brick the store on reload");
+  assert.equal(storage.get("neon-path-theme"), "{\"state\":{\"currentTheme\":\"retro\"}}");
+});
+
+test("restoring clamps negative stats from a hand-edited save", () => {
+  useMemoryStorage();
+
+  applyBackup("player-4", {
+    app: BACKUP_APP,
+    version: 1,
+    exportedAt: "2026-10-19T12:00:00.000Z",
+    progress: {
+      completed: [1],
+      records: {
+        "1": {
+          levelId: 1,
+          completed: true,
+          stars: 3,
+          bestTimeMs: -500,
+          bestMoves: -2,
+          bestMistakes: -1,
+          bestScore: -100,
+          bestPath: null,
+          hintsUsed: false,
+          updatedAt: -5,
+        },
+      },
+    },
+  });
+
+  const record = getProgress("player-4").records["1"];
+  assert.equal(record.bestTimeMs, 0);
+  assert.equal(record.bestMoves, 0);
+  assert.equal(record.bestMistakes, 0);
+  assert.equal(record.bestScore, 0);
+  assert.equal(record.updatedAt, 0);
 });
 
 test("malformed or foreign files are rejected with a readable error", () => {

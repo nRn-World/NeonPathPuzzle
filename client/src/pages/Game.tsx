@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { generateLevel, isValidSolutionPath } from "@shared/level-generator";
-import { EMPTY_MECHANICS, getLevelMechanics, mirrorLevel } from "@shared/mechanics";
+import { generateLevel } from "@shared/level-generator";
+import { EMPTY_MECHANICS, getLevelMechanics, isValidPlayerPath, mirrorLevel } from "@shared/mechanics";
 import type { Point } from "@shared/schema";
 import confetti from "canvas-confetti";
 import { Loader2, Pause, Play } from "lucide-react";
@@ -238,12 +238,6 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       isDaily ? dailyRecord?.timeMs ?? null : isWeekly ? weeklyRecord?.timeMs ?? null : record?.bestTimeMs ?? null,
     );
     setBestScore(isDaily || isWeekly ? null : record?.bestScore ?? null);
-    const savedGhost = record?.bestPath ?? null;
-    setGhostPath(
-      !isDaily && !isWeekly && savedGhost && generated && isValidSolutionPath(savedGhost, generated)
-        ? savedGhost
-        : null,
-    );
 
     if (mode === "level") {
       markLevelPlayed(userId, levelId);
@@ -255,13 +249,26 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     isDaily,
     isWeekly,
     levelId,
-    generated,
     mode,
     queryClient,
     resetTransientState,
     userId,
     weeklyChallenge.weekKey,
   ]);
+
+  // Kept apart from the reset effect: a background refetch of the level must not
+  // wipe the line, but the saved ghost still needs to follow the current record.
+  useEffect(() => {
+    if (isCustom || isDaily || isWeekly || !level || !generated || !userId) {
+      setGhostPath(null);
+      return;
+    }
+    const savedGhost = getLevelRecord(getProgress(userId), levelId)?.bestPath ?? null;
+    const ghostMechanics = getLevelMechanics(level, generated.solution);
+    setGhostPath(
+      savedGhost && isValidPlayerPath(savedGhost, level, ghostMechanics) ? savedGhost : null,
+    );
+  }, [generated, isCustom, isDaily, isWeekly, level, levelId, userId]);
 
   useEffect(() => {
     if (!timerRunning || hasWon || !isScored) return;
@@ -512,7 +519,11 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       }
     }
 
-    if (hasActiveEffect("score_multiplier")) consumeEffectUse("score_multiplier");
+    // Score Boost only covers campaign levels; practice, custom, daily and weekly
+    // runs never store a score, so consuming a charge there would waste it.
+    if (mode === "level" && hasActiveEffect("score_multiplier")) {
+      consumeEffectUse("score_multiplier");
+    }
     usePowerUpsStore.getState().removeEffect("time_freeze");
     usePowerUpsStore.getState().removeEffect("path_hint");
 
@@ -672,7 +683,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         parTimeMs={parTimeMs}
         isBoss={mechanics.isBoss}
         hideTimer={isZen}
-        hideStars={isZen}
+        hideStars={isZen || isCustom}
         hintTokens={isZen ? -1 : hintTokens}
         hintDisabled={!canOfferHint}
         onHint={handleHint}

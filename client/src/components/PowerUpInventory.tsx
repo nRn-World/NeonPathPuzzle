@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { usePowerUps } from '@/hooks/use-powerups';
 import { powerUps, getRarityColor } from '@/lib/powerups';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,22 @@ import { Badge } from '@/components/ui/badge';
 import { Zap, Package } from 'lucide-react';
 
 export function PowerUpInventory() {
-  const { inventory, activeEffects, usePowerUp, hasActiveEffect } = usePowerUps();
+  const { inventory, activeEffects, usePowerUp, removeEffect } = usePowerUps();
 
-  if (inventory.length === 0 && activeEffects.length === 0) {
+  // Expired effects are pruned after render; checking them during render used
+  // to mutate the store from inside the component and could warn in React.
+  useEffect(() => {
+    const now = Date.now();
+    activeEffects.forEach(effect => {
+      if (effect.endTime && effect.endTime <= now) removeEffect(effect.type);
+    });
+  }, [activeEffects, removeEffect]);
+
+  const now = Date.now();
+  const visibleEffects = activeEffects.filter(effect => !effect.endTime || effect.endTime > now);
+  const activeTypes = new Set(visibleEffects.map(effect => effect.type));
+
+  if (inventory.length === 0 && visibleEffects.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -21,11 +35,11 @@ export function PowerUpInventory() {
   return (
     <div className="space-y-4">
       {/* Active Effects */}
-      {activeEffects.length > 0 && (
+      {visibleEffects.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-green-400 mb-2">Active Effects</h3>
           <div className="grid grid-cols-2 gap-2">
-            {activeEffects.map((effect, idx) => {
+            {visibleEffects.map((effect, idx) => {
               const powerUp = powerUps.find(pu => pu.effect.type === effect.type);
               if (!powerUp) return null;
               
@@ -51,7 +65,7 @@ export function PowerUpInventory() {
           <h3 className="text-sm font-semibold mb-2">Available Power-ups</h3>
           <div className="grid grid-cols-2 gap-2">
             {inventory.map((powerUp, idx) => {
-              const isActive = hasActiveEffect(powerUp.effect.type);
+              const isActive = activeTypes.has(powerUp.effect.type);
               
               return (
                 <Card key={idx} className="bg-background/50 border-border">
