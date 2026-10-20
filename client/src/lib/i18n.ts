@@ -171,6 +171,7 @@ const en = {
   saveExported: "Save exported",
   saveExportedDesc: "Keep the file somewhere safe.",
   couldNotRestore: "Could not restore save",
+  couldNotReadSave: "The file could not be read.",
   saveRestored: "Save restored",
   reloading: "{levels} levels and {stars} stars loaded. Reloading…",
 
@@ -364,6 +365,7 @@ const sv: Record<TranslationKey, string> = {
   saveExported: "Sparfil exporterad",
   saveExportedDesc: "Förvara filen på ett säkert ställe.",
   couldNotRestore: "Kunde inte återställa",
+  couldNotReadSave: "Filen kunde inte läsas.",
   saveRestored: "Sparfil återställd",
   reloading: "{levels} nivåer och {stars} stjärnor inlästa. Laddar om…",
 

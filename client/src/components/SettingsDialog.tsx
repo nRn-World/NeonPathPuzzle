@@ -56,7 +56,19 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
     event.target.value = "";
     if (!file) return;
 
-    const parsed = parseBackup(await file.text());
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      toast({
+        title: t("couldNotRestore"),
+        description: t("couldNotReadSave"),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parsed = parseBackup(text);
     if (!parsed.ok) {
       toast({
         title: t("couldNotRestore"),

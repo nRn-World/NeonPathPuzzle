@@ -123,8 +123,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     [nodeKeys],
   );
 
+  // Depend on the coordinates rather than the object: a background refetch
+  // returns a new level object with the same board, and that must not wipe the
+  // player's line mid-run.
+  const startX = level.start.x;
+  const startY = level.start.y;
   const resetPath = useCallback(() => {
-    const initial = [level.start];
+    const initial = [{ x: startX, y: startY }];
     pathRef.current = initial;
     setPath(initial);
     setIsDragging(false);
@@ -134,7 +139,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     previousPathLengthRef.current = 1;
     celebrateAtRef.current = null;
     callbacksRef.current.onPathChange?.(1, 1);
-  }, [level.start]);
+  }, [startX, startY]);
 
   useEffect(() => {
     resetPath();
@@ -681,7 +686,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
 
       if (tryMove({ x: cursor.x, y: cursor.y })) {
-        lastReached = { ...cursor };
+        // A portal hop moves the head to the twin pad, not to the cell under the
+        // pointer. Continue the drag from the real head or the swipe stalls.
+        lastReached = pathRef.current[pathRef.current.length - 1] ?? { ...cursor };
       } else {
         lastReached = pathRef.current[pathRef.current.length - 1] ?? lastReached;
         break;

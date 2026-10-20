@@ -6,6 +6,7 @@ import {
   generateLevel,
   getLevelDifficulty,
   isValidSolutionPath,
+  LAYOUT_FAMILIES,
   type GeneratedLevel,
 } from "./level-generator";
 import { type Point } from "./schema";
@@ -106,24 +107,47 @@ test("no two levels look like the same puzzle", () => {
       const a = levels[index];
       const b = levels[other];
       if (a.gridSize !== b.gridSize) continue;
+      const required = Math.max(3, Math.round(a.nodes.length * 0.12));
       assert.ok(
-        layoutDistance(a, b) >= 2,
-        `Levels ${a.id} and ${b.id} are the same picture with a node swapped`,
+        layoutDistance(a, b) >= required,
+        `Levels ${a.id} and ${b.id} are nearly the same picture (${layoutDistance(a, b)} cells differ, ${required} required)`,
       );
     }
   }
 });
 
-test("difficulty grows through the requested level bands", () => {
+test("neighbouring levels always change silhouette", () => {
+  for (let index = 1; index < levels.length; index++) {
+    assert.notEqual(
+      levels[index].family,
+      levels[index - 1].family,
+      `Levels ${levels[index - 1].id} and ${levels[index].id} reuse the ${levels[index].family} family`,
+    );
+  }
+});
+
+test("the campaign uses every layout family and keeps the mix balanced", () => {
+  const counts = new Map<string, number>();
+  for (const level of levels) counts.set(level.family, (counts.get(level.family) ?? 0) + 1);
+
+  for (const family of LAYOUT_FAMILIES) {
+    assert.ok((counts.get(family) ?? 0) > 0, `The ${family} family never appears`);
+    assert.ok((counts.get(family) ?? 0) <= 35, `The ${family} family repeats too often`);
+  }
+});
+
+test("difficulty follows the designed grid bands", () => {
   const bands = [
-    { from: 1, to: 9, grids: [3, 4] },
-    { from: 10, to: 20, grids: [4, 5] },
-    { from: 21, to: 29, grids: [5, 6] },
-    { from: 30, to: 39, grids: [6] },
-    { from: 40, to: 50, grids: [7] },
-    { from: 51, to: 100, grids: [8] },
-    { from: 101, to: 150, grids: [9] },
-    { from: 151, to: 200, grids: [10] },
+    { from: 1, to: 3, grids: [3] },
+    { from: 4, to: 12, grids: [4] },
+    { from: 13, to: 24, grids: [5] },
+    { from: 25, to: 40, grids: [6] },
+    { from: 41, to: 60, grids: [7] },
+    { from: 61, to: 85, grids: [8] },
+    { from: 86, to: 115, grids: [9] },
+    { from: 116, to: 150, grids: [10] },
+    { from: 151, to: 175, grids: [11] },
+    { from: 176, to: 200, grids: [12] },
   ];
 
   const averages = bands.map(({ from, to, grids }) => {
@@ -144,15 +168,34 @@ test("difficulty grows through the requested level bands", () => {
   }
 });
 
-test("difficulty never drops from one level to the next", () => {
+test("every twenty-level block is harder than the previous block", () => {
+  const averages: number[] = [];
+  for (let from = 1; from <= 200; from += 20) {
+    const block = levels.filter(level => level.id >= from && level.id < from + 20);
+    averages.push(block.reduce((sum, level) => sum + getLevelDifficulty(level), 0) / block.length);
+  }
+
+  for (let index = 1; index < averages.length; index++) {
+    assert.ok(
+      averages[index] > averages[index - 1],
+      `Block ${index + 1} (${averages[index].toFixed(1)}) must be harder than block ${index} (${averages[index - 1].toFixed(1)})`,
+    );
+  }
+});
+
+test("node counts never shrink and boards keep room for distinct shapes", () => {
   let previous = 0;
   for (const level of levels) {
-    const difficulty = getLevelDifficulty(level);
     assert.ok(
-      difficulty >= previous,
-      `Level ${level.id} (difficulty ${difficulty}) is easier than the previous level (${previous})`,
+      level.nodes.length >= previous,
+      `Level ${level.id} has fewer nodes (${level.nodes.length}) than the previous level (${previous})`,
     );
-    previous = difficulty;
+    const coverageLimit = level.gridSize <= 5 ? 0.8 : 0.7;
+    assert.ok(
+      level.nodes.length <= level.gridSize * level.gridSize * coverageLimit,
+      `Level ${level.id} fills ${level.nodes.length} of ${level.gridSize * level.gridSize} cells`,
+    );
+    previous = level.nodes.length;
   }
 });
 
@@ -174,7 +217,7 @@ test("level 1 is the easiest and level 200 the hardest", () => {
 });
 
 test("the closing levels climb one step each", () => {
-  for (let id = 192; id <= 200; id++) {
+  for (let id = 191; id <= 200; id++) {
     const previous = getLevelDifficulty(levels[id - 2]);
     const current = getLevelDifficulty(levels[id - 1]);
     assert.ok(

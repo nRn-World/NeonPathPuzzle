@@ -18,6 +18,9 @@ NeonPathPuzzle.zip
 dev.db
 *.db
 
+# Local tooling (ffmpeg download used for video renders)
+.tools/
+
 # Logs
 *.log
 

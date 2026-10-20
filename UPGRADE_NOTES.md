@@ -140,6 +140,19 @@ Random candidate selection could occasionally produce a wide-open corridor, so a
 
 Verified: TypeScript clean, **44 tests passing**, production build successful; levels 24 (22 nodes) and 100 (61 nodes, boss + mechanics) solved in the browser with no console errors. The three-backtrack cap was exercised live: after three undos the header showed **0**, the fourth was ignored, and Restart restored the count to **3**.
 
+## Level design rebuild — distinct silhouettes, measured difficulty
+
+The campaign no longer grows by making the same board denser. Every level now has a designed silhouette, and the curve is driven by structure plus a solver check:
+
+- **Twelve layout families** — serpentine, column serpentine, reverse serpentine, inward spiral, outward spiral, wander, hug, drift, turn, border, corner and weave. A deterministic family schedule rotates them, and neighbouring levels may never reuse one.
+- **Boards stop around 65% coverage.** The old 10×10 endgame filled almost every cell, which forced the last fifty levels to be near-identical blobs. The campaign now grows from 3×3 to 12×12 while keeping large empty regions, so each board has its own readable shape.
+- **Genuine difficulty score.** `getLevelDifficulty` now combines node count, real junctions, and trap pressure measured by running a deterministic greedy solver against the layout. Trap pressure fades in after the tutorial so a single unlucky greedy walk cannot make level 6 harder than level 60.
+- **Steady progression.** Node count never shrinks; every 20-level block is harder than the previous one; the opening three levels and the last ten climb strictly, ending on a designed staircase with level 200 as the hardest board.
+- **Uniqueness by construction.** Layouts are compared as bitmasks over all eight rotations and reflections, and must differ by a growing margin (12% of node count, capped at 12 cells). No two levels on the same grid are near-edits of each other.
+- **Offline bake.** The variant table is still precomputed (`npx tsx script/level-table.ts --rebuild`) so a phone never pays for the search; the generator tests verify the baked result.
+
+Verified in this pass: TypeScript clean, all tests green, production build successful, levels 1, 120, 199 and 200 rendered in the production build with no console errors; level 1 solved end-to-end with the canonical keyboard path.
+
 ## Intentionally not shipped
 
 These need dedicated design/backend work and were left out rather than half-implemented:

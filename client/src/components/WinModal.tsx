@@ -60,7 +60,7 @@ export function WinModal({
   const [shareState, setShareState] = useState<ShareOutcome | null>(null);
   const { t } = useI18n();
   const levelCode = generateLevelCode(levelId);
-  const showStars = !isZen;
+  const showStars = !isZen && !isCustom;
   const isFlawless = flawless;
   const lostStars = flawless ? [] : starReasons;
   const canShare = !isZen;

@@ -117,6 +117,17 @@ export function parseBackup(text: string): ParseBackupResult {
   };
 }
 
+/** Zustand would crash on boot if a hand-edited backup restored invalid JSON. */
+function isRestorableStoreValue(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Boolean(parsed) && typeof parsed === "object";
+  } catch {
+    return false;
+  }
+}
+
 export function applyBackup(userId: string, backup: BackupFile): BackupStats {
   const progress = importProgress(userId, backup.progress);
   const storage = getStorage();
@@ -126,8 +137,9 @@ export function applyBackup(userId: string, backup: BackupFile): BackupStats {
       const value = backup.stores?.[key];
       try {
         // A restore must leave the device exactly as the file was: stores the
-        // backup does not contain are cleared instead of keeping newer data.
-        if (typeof value === "string") storage.setItem(key, value);
+        // backup does not contain (or that are unreadable) are cleared instead
+        // of keeping newer data or bricking a store with broken JSON.
+        if (isRestorableStoreValue(value)) storage.setItem(key, value);
         else storage.removeItem(key);
       } catch {
         // A full or blocked storage should not abort the progress import.

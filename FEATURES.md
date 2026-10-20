@@ -63,9 +63,12 @@ Each level awards 1–3 stars:
 7. **Black Ice** (151–175)
 8. **Singularity** (176–200)
 
-- All 200 layouts are checked by `npm run test:levels`: no board repeats another one, not even after rotation or mirroring, and any two levels on the same grid differ by at least three cells
-- Difficulty never drops: every level has at least as many nodes and junctions as the one before it, so level 1 is the easiest board in the game and level 200 the hardest
-- The first three levels and the last ten climb strictly, so the campaign starts gently and ends on a real peak
+- Twelve layout families rotate through the campaign — serpentine, spiral, outward spiral, wander, hug, drift, turn, border, corner, weave and more — and neighbouring levels never share one
+- All 200 layouts are checked by `npm run test:levels`: no board repeats another one, not even after rotation or mirroring, and any two levels on the same grid differ by a growing margin (at least 12% of their nodes, capped at 12 cells)
+- Boards run from 3×3 tutorials to 12×12 finales and stop around 65% coverage, which leaves room for large, readable holes instead of a wall of circles
+- Node count climbs at every level, and every 20-level block is harder than the one before it, so level 1 is the easiest board in the game and level 200 the hardest
+- Difficulty combines junctions with a measured trap score: a greedy solver is run against each layout, and boards that punish greedy play score higher
+- The first three levels and the last ten climb strictly, so the campaign starts gently and ends on a designed ten-level staircase
 - From level 4 on, a layout must have at least three junctions, which stops the campaign from turning into forced corridors
 - Chapter board shows solved levels, stars, and progress
 - Filters for **Unsolved** and **Needs 3★** make cleanup runs fast
