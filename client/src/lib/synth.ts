@@ -123,3 +123,71 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
     },
   };
 }
+
+export interface MusicEngine {
+  start: () => void;
+  stop: () => void;
+}
+
+/** Ambient bed: a slow detuned drone plus a sparse pentatonic melody, all procedural. */
+export function createMusic(ctx: AudioContext, volume = 0.5): MusicEngine {
+  const bus = ctx.createGain();
+  bus.gain.setValueAtTime(MIN_GAIN, ctx.currentTime);
+  bus.connect(ctx.destination);
+
+  let drone: OscillatorNode[] = [];
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let beat = 0;
+  // Am pentatonic over a 4-chord root cycle (A, F, C, G), in Hz.
+  const roots = [110, 87.31, 130.81, 98];
+
+  const note = () => {
+    const root = roots[Math.floor(beat / 8) % roots.length];
+    if (beat % 8 === 0) drone.forEach(o => o.frequency.setTargetAtTime(root, ctx.currentTime, 1.2));
+    if (Math.random() < 0.6) {
+      const semis = STEP_SCALE[Math.floor(Math.random() * 6)] + 12;
+      playVoice(ctx, bus, {
+        frequency: root * Math.pow(2, semis / 12),
+        type: "sine",
+        duration: 1.8,
+        peak: 0.05,
+        attack: 0.05,
+      });
+    }
+    beat++;
+  };
+
+  return {
+    start: () => {
+      if (timer) return;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 420;
+      filter.connect(bus);
+      drone = [-6, 6].map(detune => {
+        const o = ctx.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.value = roots[0];
+        o.detune.value = detune;
+        const g = ctx.createGain();
+        g.gain.value = 0.35;
+        o.connect(g);
+        g.connect(filter);
+        o.start();
+        return o;
+      });
+      bus.gain.cancelScheduledValues(ctx.currentTime);
+      bus.gain.setTargetAtTime(Math.max(MIN_GAIN, volume * 0.25), ctx.currentTime, 1.5);
+      timer = setInterval(note, 900);
+    },
+    stop: () => {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+      bus.gain.setTargetAtTime(MIN_GAIN, ctx.currentTime, 0.4);
+      const old = drone;
+      drone = [];
+      setTimeout(() => old.forEach(o => { try { o.stop(); o.disconnect(); } catch { /* already stopped */ } }), 2000);
+    },
+  };
+}

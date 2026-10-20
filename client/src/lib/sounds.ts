@@ -1,10 +1,11 @@
 import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { useSettingsStore } from "./settings";
-import { createSynth, type SynthEngine } from "./synth";
+import { createMusic, createSynth, type MusicEngine, type SynthEngine } from "./synth";
 
 let audioCtx: AudioContext | null = null;
 let engine: SynthEngine | null = null;
+let music: MusicEngine | null = null;
 let audioInitialized = false;
 let lastMoveSoundAt = 0;
 let lastBacktrackSoundAt = 0;
@@ -42,10 +43,22 @@ function resumeIfSuspended(ctx: AudioContext) {
   if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
 }
 
+/** Starts or stops the ambient bed to match the settings; safe to call repeatedly. */
+export function syncMusic() {
+  const { soundEnabled, musicEnabled } = useSettingsStore.getState();
+  if (!audioInitialized) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  music ??= createMusic(ctx);
+  if (soundEnabled && musicEnabled) music.start();
+  else music.stop();
+}
+
 export function initAudio() {
   audioInitialized = true;
   const ctx = getAudioContext();
   if (ctx) resumeIfSuspended(ctx);
+  syncMusic();
 }
 
 export function suspendAudio() {

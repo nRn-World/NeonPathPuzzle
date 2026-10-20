@@ -228,19 +228,39 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.clearRect(0, 0, size, size);
 
-    // Grid
-    context.strokeStyle = "rgba(255,255,255,0.045)";
+    // Board plate: a glassy panel so the grid reads as a device, not a void.
+    const boardSize = level.gridSize * cell;
+    const plate = context.createLinearGradient(0, 0, boardSize, boardSize);
+    plate.addColorStop(0, `${colors.primary}12`);
+    plate.addColorStop(0.5, "rgba(255,255,255,0.025)");
+    plate.addColorStop(1, `${colors.secondary}16`);
+    context.beginPath();
+    context.roundRect(1, 1, boardSize - 2, boardSize - 2, cell * 0.18);
+    context.fillStyle = plate;
+    context.fill();
+    context.strokeStyle = `${colors.primary}33`;
+    context.lineWidth = 1.5;
+    context.stroke();
+
+    // Grid: faint lines, brighter crosses at the intersections.
+    context.strokeStyle = "rgba(255,255,255,0.04)";
     context.lineWidth = 1;
-    for (let index = 0; index <= level.gridSize; index++) {
+    for (let index = 1; index < level.gridSize; index++) {
       const position = index * cell;
       context.beginPath();
-      context.moveTo(position, 0);
-      context.lineTo(position, level.gridSize * cell);
+      context.moveTo(position, cell * 0.1);
+      context.lineTo(position, boardSize - cell * 0.1);
       context.stroke();
       context.beginPath();
-      context.moveTo(0, position);
-      context.lineTo(level.gridSize * cell, position);
+      context.moveTo(cell * 0.1, position);
+      context.lineTo(boardSize - cell * 0.1, position);
       context.stroke();
+    }
+    context.fillStyle = "rgba(255,255,255,0.14)";
+    for (let gx = 1; gx < level.gridSize; gx++) {
+      for (let gy = 1; gy < level.gridSize; gy++) {
+        context.fillRect(gx * cell - 1, gy * cell - 1, 2, 2);
+      }
     }
 
     // Walls: decorative blocked cells inside the bounding grid.
@@ -295,16 +315,37 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       const centerX = node.x * cell + cell / 2;
       const centerY = node.y * cell + cell / 2;
 
-      context.beginPath();
-      context.arc(centerX, centerY, cell * 0.15, 0, Math.PI * 2);
-      context.fillStyle = isVisited ? `${colors.primary}33` : "rgba(255,255,255,0.07)";
-      context.fill();
-
-      context.beginPath();
-      context.arc(centerX, centerY, cell * 0.18, 0, Math.PI * 2);
-      context.strokeStyle = isVisited ? colors.primary : "rgba(255,255,255,0.16)";
-      context.lineWidth = isVisited ? 2 : 1.5;
-      context.stroke();
+      // Unvisited nodes breathe out of phase; visited ones light up solid.
+      const breathe = reducedMotion ? 0.5 : (Math.sin(time / 520 + node.x * 0.9 + node.y * 1.3) + 1) / 2;
+      context.save();
+      if (isVisited) {
+        context.shadowColor = colors.primary;
+        context.shadowBlur = 14;
+        context.beginPath();
+        context.arc(centerX, centerY, cell * 0.12, 0, Math.PI * 2);
+        context.fillStyle = colors.primary;
+        context.fill();
+        context.shadowBlur = 0;
+        context.beginPath();
+        context.arc(centerX, centerY, cell * 0.19, 0, Math.PI * 2);
+        context.strokeStyle = `${colors.primary}cc`;
+        context.lineWidth = 2;
+        context.stroke();
+      } else {
+        context.shadowColor = colors.primary;
+        context.shadowBlur = 6 + breathe * 10;
+        context.beginPath();
+        context.arc(centerX, centerY, cell * 0.17, 0, Math.PI * 2);
+        context.strokeStyle = `${colors.primary}${Math.round(70 + breathe * 100).toString(16).padStart(2, "0")}`;
+        context.lineWidth = 2;
+        context.stroke();
+        context.shadowBlur = 0;
+        context.beginPath();
+        context.arc(centerX, centerY, cell * (0.055 + breathe * 0.02), 0, Math.PI * 2);
+        context.fillStyle = `${colors.primary}aa`;
+        context.fill();
+      }
+      context.restore();
 
       const pair = pairMap.get(pointKey(node));
       if (pair) {
@@ -390,9 +431,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.save();
       context.lineCap = "round";
       context.lineJoin = "round";
+      context.strokeStyle = `${colors.primary}40`;
+      context.lineWidth = cell * 0.34;
+      trace();
+      context.stroke();
       context.strokeStyle = colors.primary;
       context.shadowColor = colors.primary;
-      context.shadowBlur = 22;
+      context.shadowBlur = 26;
       context.lineWidth = cell * 0.17;
       trace();
       context.stroke();
@@ -430,6 +475,17 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.arc(headX, headY, cell * 0.3 + pulse, 0, Math.PI * 2);
       context.fillStyle = gradient;
       context.fill();
+      if (!reducedMotion && !wonRef.current) {
+        context.save();
+        context.strokeStyle = `${colors.accent}aa`;
+        context.lineWidth = 1.5;
+        context.setLineDash([cell * 0.1, cell * 0.14]);
+        context.lineDashOffset = time / 40;
+        context.beginPath();
+        context.arc(headX, headY, cell * 0.4, 0, Math.PI * 2);
+        context.stroke();
+        context.restore();
+      }
     }
 
     // Hint
@@ -462,6 +518,18 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Win celebration rings
     if (celebrateAtRef.current !== null) {
       const elapsed = time - celebrateAtRef.current;
+      // A white pulse runs down the finished line from start to end.
+      if (!reducedMotion && elapsed < 1400) {
+        const wave = (elapsed / 700) * currentPath.length;
+        currentPath.forEach((point, index) => {
+          const distance = Math.abs(index - wave);
+          if (distance > 3) return;
+          context.beginPath();
+          context.arc(point.x * cell + cell / 2, point.y * cell + cell / 2, cell * (0.12 + (1 - distance / 3) * 0.14), 0, Math.PI * 2);
+          context.fillStyle = `rgba(255,255,255,${(1 - distance / 3) * 0.85})`;
+          context.fill();
+        });
+      }
       if (elapsed < 1500) {
         const last = currentPath[currentPath.length - 1];
         if (last) {
@@ -486,6 +554,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     // Particles
     if (!reducedMotion && particlesRef.current.length > 0) {
+      context.globalCompositeOperation = "lighter";
       const delta = lastFrameRef.current ? Math.min(50, time - lastFrameRef.current) : 16;
       lastFrameRef.current = time;
       particlesRef.current = particlesRef.current.filter(particle => {
@@ -503,6 +572,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.globalAlpha = 1;
         return true;
       });
+      context.globalCompositeOperation = "source-over";
     }
   }, [
     level.gridSize,
@@ -637,12 +707,31 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       wonRef.current = true;
       setIsDragging(false);
       celebrateAtRef.current = performance.now();
+      if (!reducedMotion) {
+        const colors = getThemeColors();
+        const cell = metricsRef.current.cellSize;
+        const end = next[next.length - 1];
+        for (let index = 0; index < 70; index++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1 + Math.random() * 4;
+          particlesRef.current.push({
+            x: end.x * cell + cell / 2,
+            y: end.y * cell + cell / 2,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 700 + Math.random() * 600,
+            maxLife: 1300,
+            size: 1.5 + Math.random() * 3,
+            color: [colors.primary, colors.secondary, colors.accent][index % 3],
+          });
+        }
+      }
       playWinSound();
       callbacksRef.current.onComplete(next.length - 1, next);
     }
 
     return true;
-  }, [disableUndo, level.nodes, nodeKeys, oneWayMap, pairMap, paused, portalMap, undoPath]);
+  }, [disableUndo, getThemeColors, level.nodes, nodeKeys, oneWayMap, pairMap, paused, portalMap, reducedMotion, undoPath]);
 
   const handleInputStart = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     if (paused) return;

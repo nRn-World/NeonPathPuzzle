@@ -15,7 +15,7 @@ import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
 import Editor from "@/pages/Editor";
 import Privacy from "@/pages/Privacy";
-import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
+import { initAudio, resumeAudio, suspendAudio, syncMusic } from "@/lib/sounds";
 import { applyMotionPreference, useSettingsStore } from "@/lib/settings";
 import { useEffect } from "react";
 
@@ -55,6 +55,8 @@ function App() {
   useEffect(() => {
     applyMotionPreference(reducedMotion);
   }, [reducedMotion]);
+
+  useEffect(() => useSettingsStore.subscribe(syncMusic), []);
 
   useEffect(() => {
     const handleInteraction = () => {
