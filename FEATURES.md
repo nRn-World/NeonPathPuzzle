@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Neon Path Puzzle** is a cyber-logic puzzle game where players connect every node with a single continuous line. It combines neon aesthetics, short satisfying runs, and a long 200-level campaign.
+**Neon Path Puzzle** is a cyber-logic puzzle game where players connect every node with a single continuous line. It combines neon aesthetics, short satisfying runs, and a long 300-level campaign.
 
 ---
 
@@ -13,7 +13,10 @@
   - Visit every node exactly once
   - Move only up, down, left, or right
   - The path may not cross or repeat itself
-- **Three backtracks per level**: Drag backwards, press Backspace / Ctrl+Z, or use the undo button — up to three times per level. Backtracks cost a star, never a life. Restarts are always free.
+- **Three backtracks per level**: Drag backwards, press Backspace / Ctrl+Z, or use the undo button — up to three times per level. Backtracks cost a star.
+- **Three attempts per new level**: The first try plus two restarts. An attempt starts with the first move, so opening and studying a board is free. Leaving mid-attempt does not refund it.
+- **System crash**: Fail the third attempt and the run crashes back to level 1. Stars, best times, records, themes and achievements are kept; only the run's unlocks reset. Restarting on the last attempt asks for confirmation first. Cleared levels can be replayed freely.
+- **Dead-end detection**: When the line has no legal move left, a banner offers an undo; with no undos left the attempt ends with a short circuit.
 - **Timer**: Starts on the first move. Time Freeze pauses it, and the clock stops automatically when the tab or app goes to the background.
 - **Par time**: The header shows the live time against par, so the three-star window is always visible.
 - **Progress bar**: A thin bar under the header tracks how many nodes are connected.
@@ -28,6 +31,10 @@ Mechanics are derived from each level's canonical solution, so every level stays
 - **One-way nodes** — a white arrow forces the next step (from level 51)
 - **Ordered color pairs** — visit ring 1 before ring 2 (from level 76)
 - **Portals** — optional A/B pads that teleport the line (from level 101)
+- **Sync nodes** — green numbered hexagons that must be the Nth node of the line; the one due next pulses, a missed one turns red (from level 201)
+- **Blackout** — only a pool of light around the line's head is lit; the rest of the board fades to near-black (from level 251)
+- **First-encounter intros** — each new mechanic is introduced with a card the first time it appears
+- All move rules live in one shared function (`createMoveRules`), and a test plays every level's canonical solution through it, so all 300 levels are proven solvable
 - **Boss levels** — every 25th level gets a crown, a 15% longer par and a denser layout
 - **Fast swipes**: Pointer samples are interpolated, so fast mobile drags do not skip nodes.
 
@@ -52,7 +59,7 @@ Each level awards 1–3 stars:
 
 ## Campaign & Progression
 
-### 200 Levels in 8 Chapters
+### 300 Levels in 12 Chapters
 
 1. **Boot Sequence** (1–25)
 2. **Neon District** (26–50)
@@ -62,20 +69,25 @@ Each level awards 1–3 stars:
 6. **Deep Net** (126–150)
 7. **Black Ice** (151–175)
 8. **Singularity** (176–200)
+9. **Quantum Core** (201–225) — sync nodes arrive
+10. **Event Horizon** (226–250) — three sync nodes per board
+11. **Blackout** (251–275) — 13×13 boards in the dark
+12. **Omega** (276–300) — four sync nodes, blackout, the final staircase
 
 - Twelve layout families rotate through the campaign — serpentine, spiral, outward spiral, wander, hug, drift, turn, border, corner, weave and more — and neighbouring levels never share one
-- All 200 layouts are checked by `npm run test:levels`: no board repeats another one, not even after rotation or mirroring, and any two levels on the same grid differ by a growing margin (at least 12% of their nodes, capped at 12 cells)
-- Boards run from 3×3 tutorials to 12×12 finales and stop around 65% coverage, which leaves room for large, readable holes instead of a wall of circles
-- Node count climbs at every level, and every 20-level block is harder than the one before it, so level 1 is the easiest board in the game and level 200 the hardest
+- All 300 layouts are checked by `npm run test:levels`: no board repeats another one, not even after rotation or mirroring, and any two levels on the same grid differ by a growing margin (at least 12% of their nodes)
+- Boards run from 3×3 tutorials to 13×13 finales and stop around 65% coverage, which leaves room for large, readable holes instead of a wall of circles
+- Node count climbs at every level, and every 20-level block is harder than the one before it, so level 1 is the easiest board in the game and level 300 the hardest (levels 1–200 kept their exact layouts when the expansion was added)
 - Difficulty combines junctions with a measured trap score: a greedy solver is run against each layout, and boards that punish greedy play score higher
-- The first three levels and the last ten climb strictly, so the campaign starts gently and ends on a designed ten-level staircase
+- The first three levels, levels 191–200 and levels 291–300 climb strictly, so the campaign starts gently and ends on a ten-level staircase
 - From level 4 on, a layout must have at least three junctions, which stops the campaign from turning into forced corridors
 - Chapter board shows solved levels, stars, and progress
 - Filters for **Unsolved** and **Needs 3★** make cleanup runs fast
 - Jump directly to any unlocked level from the chapter board
 - **Practice toggle** opens any unlocked level in zen mode
 - Continue button resumes the next unsolved circuit
-- Levels 101–200 unlock after all 100 main levels
+- Levels 101–300 unlock after all 100 main levels
+- The Stats tab shows the current run and the number of system crashes
 - Progress v2 migrates existing local saves automatically
 
 ### Daily Challenge
@@ -142,9 +154,9 @@ Each level awards 1–3 stars:
 
 ## Themes & Settings
 
-- 5 neon themes: Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset
-- Themes unlock at 10 / 50 / 100 / 200 completed levels
-- Settings: sound effects, haptics, reduced motion, ghost overlay, language
+- 6 neon themes: Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset, Aurora
+- Themes unlock at 10 / 50 / 100 / 200 / 250 completed levels (ever completed, so a crash never re-locks a theme)
+- Settings: sound effects, ambient music, haptics, reduced motion, ghost overlay, language
 - Reduced motion disables particles, pulses, animated trails, and confetti
 - Export and restore a save file (progress, achievements, power-ups, hint tokens, theme, weekly results, custom levels) from Settings
 - Restores are validated before anything is overwritten
@@ -170,7 +182,7 @@ Each level awards 1–3 stars:
 - Zustand stores for power-ups, achievements, themes, and settings
 - React Query for level data
 - Local-first progress with versioned migration
-- Additive mechanics generator with 200-level solvability tests
+- Additive mechanics generator with 300-level solvability tests
 - Procedural Web Audio sound layer: each connected node plays the next note of a pentatonic scale, so the melody tracks progress
 - PWA manifest and service worker for installable, offline play (hashed assets cache-first, shell stale-while-revalidate, registered in production builds only)
 - Lightweight i18n store with Swedish and English dictionaries

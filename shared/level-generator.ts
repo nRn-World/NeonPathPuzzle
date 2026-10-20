@@ -839,9 +839,23 @@ export function repairVariantTable(table: number[], through = MAX_LEVEL_ID): num
   return repaired;
 }
 
+/** Baked levels built on demand; they depend only on their own table entry. */
+const directCache = new Map<number, GeneratedLevel>();
+
 export function generateLevel(levelId: number): GeneratedLevel {
   if (!Number.isInteger(levelId) || levelId < 1 || levelId > MAX_LEVEL_ID) {
     throw new RangeError(`Level id must be an integer from 1 to ${MAX_LEVEL_ID}. Received: ${levelId}`);
+  }
+  // A baked level is exactly createCandidate(id, variant, extra), so opening
+  // level 300 on a phone does not have to build the 299 levels before it.
+  const packed = VARIANT_TABLE[levelId - 1];
+  if (packed !== undefined) {
+    let level = directCache.get(levelId);
+    if (!level) {
+      level = createCandidate(levelId, packed >> 3, packed & 7);
+      directCache.set(levelId, level);
+    }
+    return level;
   }
   generateThrough(levelId);
   return levelCache.get(levelId)!;

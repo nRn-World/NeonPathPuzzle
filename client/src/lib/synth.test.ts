@@ -172,3 +172,15 @@ test("dispose releases the master bus", () => {
 
   assert.ok(fake.gains[0].disconnected > 0, "master gain is disconnected from the destination");
 });
+
+test("a crash falls in pitch and ends on a sub thud", () => {
+  const fake = createFakeContext();
+  const synth = createSynth(fake.ctx);
+
+  synth.playCrash();
+
+  const frequencies = fake.oscillators.map(oscillator => oscillator.frequency.events[0].value);
+  const fall = frequencies.slice(0, -1);
+  assert.deepEqual(fall, [...fall].sort((a, b) => b - a), "the sawtooth notes descend");
+  assert.equal(frequencies.at(-1), 55);
+});

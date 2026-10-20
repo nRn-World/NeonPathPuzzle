@@ -30,6 +30,18 @@ import { unlockLevelsThroughCode } from "@/lib/sessionLevelUnlock";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
 import { getProgress, markTutorialSeen, TOTAL_LEVELS } from "@/lib/progress";
+import type { TranslationKey } from "@/lib/i18n";
+
+const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
+  ["howObjectiveTitle", "howObjectiveBody"],
+  ["howControlsTitle", "howControlsBody"],
+  ["howAttemptsTitle", "howAttemptsBody"],
+  ["howStarsTitle", "howStarsBody"],
+  ["howNodesTitle", "howNodesBody"],
+  ["howDailyTitle", "howDailyBody"],
+  ["howPowerTitle", "howPowerBody"],
+  ["howProgressTitle", "howProgressBody"],
+];
 import { playClickSound } from "@/lib/sounds";
 import { useI18n } from "@/lib/i18n";
 
@@ -479,35 +491,11 @@ export function StartMenu() {
                   </div>
 
                   <div className="space-y-5 rounded-lg border border-primary/20 bg-muted/20 p-5 font-exo md:p-6">
-                    <InfoBlock title="OBJECTIVE" tone="primary">
-                      Connect every node with one continuous line. Move up, down, left or right. You
-                      may not revisit a node or cross your own line.
-                    </InfoBlock>
-
-                    <InfoBlock title="CONTROLS" tone="secondary">
-                      Drag from the glowing start node. Backspace or the undo button steps back.
-                      Arrow keys extend the line one cell at a time. Restart is always available.
-                    </InfoBlock>
-
-                    <InfoBlock title="THREE STARS" tone="primary">
-                      Finish without hints, without backtracks, and under par time. Backtracks are
-                      free — they only cost a star, never a life.
-                    </InfoBlock>
-
-                    <InfoBlock title="DAILY CHALLENGE" tone="secondary">
-                      One seeded level per day, identical for everyone. Build a streak and share
-                      your result card.
-                    </InfoBlock>
-
-                    <InfoBlock title="POWER-UPS & CODES" tone="primary">
-                      Earn a power-up every fifth new level. Hints reveal the path for 1.5 seconds,
-                      or 5 seconds with Path Reveal. Codes from level 10 jump straight to a level.
-                    </InfoBlock>
-
-                    <InfoBlock title="PROGRESSION" tone="secondary">
-                      Complete levels in order. Levels 101–300 unlock after all 100 main levels.
-                      Replay any level to improve your stars and best time.
-                    </InfoBlock>
+                    {HOW_TO_PLAY.map(([title, body], index) => (
+                      <InfoBlock key={title} title={t(title).toUpperCase()} tone={index % 2 === 0 ? "primary" : "secondary"}>
+                        {t(body)}
+                      </InfoBlock>
+                    ))}
                   </div>
 
                   <Button

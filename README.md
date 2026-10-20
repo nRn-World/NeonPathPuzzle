@@ -10,7 +10,7 @@
 
 **A cyber-logic puzzle game where you connect all nodes with a single continuous line.**
 
-🔥 **200 Unique Levels** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **5 Neon Themes** | 📱 **Mobile Ready**
+🔥 **300 Unique Levels** | 💥 **3 Attempts or Crash** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **6 Neon Themes** | 📱 **Mobile Ready**
 
 </div>
 
@@ -45,7 +45,9 @@
 
 ## ✨ Features
 
-- 🎯 **200 Unique Levels** - Progressive difficulty across 8 chapters, with walls, one-way nodes, ordered color pairs, portals and boss levels
+- 🎯 **300 Unique Levels** - Progressive difficulty across 12 chapters, with walls, one-way nodes, ordered color pairs, portals, sync nodes, blackout boards and boss levels — every one proven solvable by the test suite
+- 💥 **Three Attempts** - Two restarts per new level; fail the third and the system crashes back to level 1 (stars and records are kept)
+- 🎵 **Procedural Sound** - Ambient music, rising step notes, dead-end and crash effects, all synthesised live
 - ⭐ **Stars, best times & best scores** - Chase three-star clears without losing lives
 - 👻 **Personal best ghost** - Race a faint trace of your fastest run
 - 🗓️ **Daily & weekly challenges** - One seeded puzzle per day plus a rotating weekly modifier and shareable cards

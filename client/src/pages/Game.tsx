@@ -27,7 +27,9 @@ import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKe
 import { useI18n } from "@/lib/i18n";
 import { customLevelToResponse, decodeCustomLevel } from "@/lib/customLevels";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
+import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
 import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
+import { hasSeenIntro, markIntroSeen, MechanicIntro, MECHANIC_INTROS } from "@/components/MechanicIntro";
 import {
   crashRun,
   getAttemptsUsed,
@@ -173,6 +175,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const [stuck, setStuck] = useState(false);
   const [confirmCrash, setConfirmCrash] = useState(false);
   const [crash, setCrash] = useState<{ levelId: number; lost: number } | null>(null);
+  const [introLevel, setIntroLevel] = useState<number | null>(null);
   const limited = mode === "level" && frontier;
   const attemptNumber = attemptStarted ? attemptsUsed : Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
 
@@ -246,6 +249,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     if (!userId) return;
     const lost = getProgress(userId).runCompleted.length;
     crashRun(userId);
+    playCrashSound();
     frontierRef.current = true;
     setFrontier(true);
     setAttemptsUsed(0);
@@ -289,6 +293,8 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       crashNow();
       return;
     }
+
+    setIntroLevel(mode === "level" && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
 
     if (mode === "level") {
       markLevelPlayed(userId, levelId);
@@ -637,6 +643,10 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     }
   };
 
+  useEffect(() => {
+    if (stuck && !hasWon) playDeadEndSound();
+  }, [hasWon, stuck]);
+
   const handleRestart = useCallback(() => {
     if (frontierRef.current && attemptStartedRef.current && attemptsUsed >= MAX_ATTEMPTS) {
       setConfirmCrash(true);
@@ -658,7 +668,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       if (target && (target.isContentEditable
         || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
-      if (crash || confirmCrash) return;
+      if (crash || confirmCrash || introLevel !== null) return;
 
       if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         if (!isScored) return;
@@ -685,7 +695,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmCrash, crash, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
+  }, [confirmCrash, crash, introLevel, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
 
   const crashModal = (
     <CrashModal
@@ -805,7 +815,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
 
       {(mechanics.oneWays.length > 0 || mechanics.pairs.length > 0 || mechanics.portals.length > 0
         || mechanics.syncNodes.length > 0 || mechanics.blackout) && (
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 border-b border-white/5 bg-background/40 px-2 py-1 font-exo text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-x-3 gap-y-0.5 overflow-x-auto whitespace-nowrap border-b border-white/5 bg-background/40 px-2 py-1 font-exo text-[10px] text-muted-foreground sm:flex-wrap sm:justify-center sm:whitespace-normal">
           {mechanics.oneWays.length > 0 && <span>{t("symbolOneWay")}</span>}
           {mechanics.pairs.length > 0 && <span>{t("symbolPairs")}</span>}
           {mechanics.portals.length > 0 && <span>{t("symbolPortals")}</span>}
@@ -835,7 +845,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
               onPathChange={handlePathChange}
               onStuckChange={setStuck}
               reducedMotion={reducedMotion}
-              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null}
+              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null}
             />
           </div>
         </div>
@@ -874,6 +884,13 @@ export default function Game({ mode = "level", customCode }: GameProps) {
           attemptsLeft={limited ? MAX_ATTEMPTS - attemptNumber : null}
           onUndo={() => canvasRef.current?.undo()}
           onRestart={() => (limited && attemptNumber >= MAX_ATTEMPTS ? crashNow() : resetTransientState())}
+        />
+        <MechanicIntro
+          levelId={introLevel}
+          onClose={() => {
+            if (introLevel !== null) markIntroSeen(introLevel);
+            setIntroLevel(null);
+          }}
         />
         <LastAttemptConfirm
           open={confirmCrash && crash === null}

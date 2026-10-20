@@ -109,3 +109,13 @@ export function playClickSound() {
   if (audioAllowed()) getEngine()?.playClick();
   nativeHaptic(() => Haptics.selectionStart().then(() => Haptics.selectionEnd()));
 }
+
+export function playDeadEndSound() {
+  if (audioAllowed()) getEngine()?.playAlert();
+  nativeHaptic(() => Haptics.notification({ type: NotificationType.Warning }));
+}
+
+export function playCrashSound() {
+  if (audioAllowed()) getEngine()?.playCrash();
+  nativeHaptic(() => Haptics.notification({ type: NotificationType.Error }));
+}

@@ -1,28 +1,19 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Hand, Sparkles, Star, Undo2 } from "lucide-react";
+import { ArrowRight, Hand, ShieldAlert, Sparkles, Star, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n, type TranslationKey } from "@/lib/i18n";
 
-const steps = [
-  {
-    icon: Hand,
-    title: "Draw one continuous line",
-    body: "Start on the glowing node and drag through every node. You can move up, down, left and right — never diagonally, and never across your own line.",
-  },
-  {
-    icon: Undo2,
-    title: "Three backtracks per level",
-    body: "Drag backwards, press Backspace, or use the undo button — up to three times per level. A backtrack costs a star, never a life. Keyboard arrows work too.",
-  },
-  {
-    icon: Star,
-    title: "Chase three stars",
-    body: "Finish without hints, without backtracks, and under par time to earn all three. Replay any level to improve your best time.",
-  },
+const steps: { icon: typeof Hand; title: TranslationKey; body: TranslationKey }[] = [
+  { icon: Hand, title: "tutLineTitle", body: "tutLineBody" },
+  { icon: Undo2, title: "tutUndoTitle", body: "tutUndoBody" },
+  { icon: ShieldAlert, title: "tutAttemptsTitle", body: "tutAttemptsBody" },
+  { icon: Star, title: "tutStarsTitle", body: "tutStarsBody" },
 ];
 
 export function TutorialOverlay({ onDone }: { onDone: () => void }) {
   const [stepIndex, setStepIndex] = useState(0);
+  const { t } = useI18n();
   const step = steps[stepIndex];
   const Icon = step.icon;
   const isLast = stepIndex === steps.length - 1;
@@ -31,7 +22,7 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="How to play"
+      aria-label={t("howToPlay")}
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
     >
       <motion.div
@@ -56,7 +47,7 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
               onClick={onDone}
               className="text-xs font-exo text-muted-foreground transition-colors hover:text-primary"
             >
-              Skip
+              {t("tutSkip")}
             </button>
           </div>
 
@@ -65,8 +56,8 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
           </div>
 
           <div className="space-y-2">
-            <h2 className="font-orbitron text-2xl font-bold text-foreground">{step.title}</h2>
-            <p className="font-exo leading-relaxed text-muted-foreground">{step.body}</p>
+            <h2 className="font-orbitron text-2xl font-bold text-foreground">{t(step.title)}</h2>
+            <p className="font-exo leading-relaxed text-muted-foreground">{t(step.body)}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -77,11 +68,11 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
               {isLast ? (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Let&apos;s play
+                  {t("tutPlay")}
                 </>
               ) : (
                 <>
-                  Next
+                  {t("tutNext")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
@@ -92,7 +83,7 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
                 onClick={() => setStepIndex(index => index - 1)}
                 className="h-11 border-white/15"
               >
-                Back
+                {t("tutBack")}
               </Button>
             )}
           </div>
