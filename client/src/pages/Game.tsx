@@ -26,6 +26,7 @@ import { getDailyLevelId, getDateKey } from "@/lib/daily";
 import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKeys } from "@/lib/weekly";
 import { useI18n } from "@/lib/i18n";
 import { customLevelToResponse, decodeCustomLevel } from "@/lib/customLevels";
+import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
 import {
   getLevelRecord,
   getProgress,
@@ -128,11 +129,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
 
   const canvasRef = useRef<GameCanvasHandle>(null);
   const wonRef = useRef(false);
-  const startedAtRef = useRef<number | null>(null);
-  const frozenTotalRef = useRef(0);
-  const freezeStartRef = useRef<number | null>(null);
-  const pausedAtRef = useRef<number | null>(null);
-  const pausedTotalRef = useRef(0);
+  const clockRef = useRef(createRunClock());
   const backtracksRef = useRef(0);
 
   const [showHint, setShowHint] = useState(false);
@@ -167,46 +164,35 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     )
     : 0;
 
-  const isFrozen = activeEffects.some(
-    effect => effect.type === "time_freeze" && (!effect.endTime || Date.now() <= effect.endTime),
-  );
+  const freezeEffect = activeEffects.find(effect => effect.type === "time_freeze");
+  const freezeEndAt = freezeEffect?.endTime ?? null;
+  const [isFrozen, setIsFrozen] = useState(false);
   const pathRevealActive = activeEffects.some(
     effect => effect.type === "path_hint" && (!effect.endTime || Date.now() <= effect.endTime),
   );
 
-  const getElapsed = useCallback(() => {
-    if (!startedAtRef.current) return 0;
-    const now = Date.now();
-    const currentFreeze = freezeStartRef.current ? now - freezeStartRef.current : 0;
-    const currentPause = pausedAtRef.current ? now - pausedAtRef.current : 0;
-    return Math.max(
-      0,
-      now - startedAtRef.current - frozenTotalRef.current - currentFreeze
-        - pausedTotalRef.current - currentPause,
-    );
-  }, []);
+  const getElapsed = useCallback(() => elapsedAt(clockRef.current, Date.now()), []);
+
+  const isTimeFrozen = useCallback(
+    () => usePowerUpsStore.getState().hasActiveEffect("time_freeze"),
+    [],
+  );
 
   const pauseGame = useCallback((reason: PauseReason = "manual") => {
-    if (wonRef.current || pausedAtRef.current !== null || !isScored) return;
-    pausedAtRef.current = Date.now();
+    if (wonRef.current || clockRef.current.pausedAt !== null || !isScored) return;
+    // Settle the freeze clock before pausing so stopped time is credited once, not twice.
+    clockRef.current = pauseClock(clockRef.current, Date.now());
     setPauseReason(reason);
   }, [isScored]);
 
   const resumeGame = useCallback(() => {
-    if (pausedAtRef.current !== null) {
-      pausedTotalRef.current += Date.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
-    }
+    clockRef.current = resumeClock(clockRef.current, Date.now(), isTimeFrozen());
     setPauseReason(null);
-  }, []);
+  }, [isTimeFrozen]);
 
   const resetTransientState = useCallback(() => {
     wonRef.current = false;
-    startedAtRef.current = null;
-    frozenTotalRef.current = 0;
-    freezeStartRef.current = null;
-    pausedAtRef.current = null;
-    pausedTotalRef.current = 0;
+    clockRef.current = createRunClock();
     setShowHint(false);
     setHintUsedThisLevel(false);
     setHintPaidWithTokens(false);
@@ -285,13 +271,32 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     return () => window.clearInterval(interval);
   }, [getElapsed, hasWon, isScored, timerRunning]);
 
+  // The freeze expiry cannot wait for a render: a frozen clock keeps the shown
+  // time constant, so React would never recompute the effect's end time.
   useEffect(() => {
-    if (isFrozen && freezeStartRef.current === null) {
-      freezeStartRef.current = Date.now();
-    } else if (!isFrozen && freezeStartRef.current !== null) {
-      frozenTotalRef.current += Date.now() - freezeStartRef.current;
-      freezeStartRef.current = null;
+    if (!freezeEffect) {
+      setIsFrozen(false);
+      return;
     }
+    if (freezeEndAt === null) {
+      setIsFrozen(true);
+      return;
+    }
+    const remaining = freezeEndAt - Date.now();
+    if (remaining <= 0) {
+      setIsFrozen(false);
+      return;
+    }
+    setIsFrozen(true);
+    const timeout = window.setTimeout(() => {
+      setIsFrozen(false);
+      usePowerUpsStore.getState().removeEffect("time_freeze");
+    }, remaining);
+    return () => window.clearTimeout(timeout);
+  }, [freezeEffect, freezeEndAt]);
+
+  useEffect(() => {
+    clockRef.current = setFrozen(clockRef.current, Date.now(), isFrozen);
   }, [isFrozen]);
 
   useEffect(() => {
@@ -331,11 +336,11 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const handlePathChange = useCallback((visitedNodes: number, pathLength = 1) => {
     setConnectedCount(visitedNodes);
     setCanUndo(pathLength > 1);
-    if (pathLength > 1 && !startedAtRef.current) {
-      startedAtRef.current = Date.now();
+    if (pathLength > 1 && clockRef.current.startedAt === null) {
+      clockRef.current = startRun(clockRef.current, Date.now(), isTimeFrozen());
       setTimerRunning(true);
     }
-  }, []);
+  }, [isTimeFrozen]);
 
   const handleBacktrack = useCallback((): boolean => {
     if (hasWon || backtracksRef.current >= MAX_BACKTRACKS) return false;
@@ -429,16 +434,17 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     setStars(finalStars);
     setScore(finalScore);
     setStarReasons(reasons);
-    setIsNewBest(isScored && (!previousBest || runTime < previousBest));
+    setIsNewBest(isScored && (previousBest === null || runTime < previousBest));
     setIsNewBestScore(isScored && !isDaily && !isWeekly
-      && (!recordBefore?.bestScore || finalScore > recordBefore.bestScore));
+      && (recordBefore?.bestScore === null || recordBefore?.bestScore === undefined
+        || finalScore > recordBefore.bestScore));
     setBestTimeMs(current => (!isScored
       ? current
       : current === null ? runTime : Math.min(current, runTime)));
     setBestScore(current => (isScored && !isDaily && !isWeekly
       ? current === null ? finalScore : Math.max(current, finalScore)
       : current));
-    if (isScored && !isDaily && !isWeekly && (!previousBest || runTime <= previousBest)) {
+    if (isScored && !isDaily && !isWeekly && (previousBest === null || runTime <= previousBest)) {
       setGhostPath(completedPath);
     }
 

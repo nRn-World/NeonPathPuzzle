@@ -12,6 +12,7 @@ import { EMPTY_MECHANICS, type LevelMechanics } from "@shared/mechanics";
 import { motion } from "framer-motion";
 import { playMoveSound, playBacktrackSound, playWinSound } from "@/lib/sounds";
 import { useTheme } from "@/hooks/use-theme";
+import { undoLastStep } from "@/lib/undoPath";
 
 export const MAX_BACKTRACKS = 3;
 
@@ -562,20 +563,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     if (current.length <= 1) return false;
     if (!callbacksRef.current.onBacktrack()) return false;
 
-    let next = current.slice(0, -1);
     // Undo a portal hop as a single action instead of leaving the pad behind.
-    const last = next[next.length - 1];
-    const beforeLast = next[next.length - 2];
-    const portalExit = last ? portalMap.get(pointKey(last)) : undefined;
-    if (portalExit && beforeLast && pointKey(portalExit) === pointKey(beforeLast)) {
-      next = next.slice(0, -1);
-    }
+    const next = undoLastStep(current, mechanics.portals);
     pathRef.current = next;
     setPath(next);
     notifyPathChange(next);
     playBacktrackSound();
     return true;
-  }, [countVisitedNodes, disableUndo, portalMap]);
+  }, [countVisitedNodes, disableUndo, mechanics.portals]);
 
   useImperativeHandle(ref, () => ({
     undo: () => {

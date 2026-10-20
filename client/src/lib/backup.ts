@@ -121,12 +121,14 @@ export function applyBackup(userId: string, backup: BackupFile): BackupStats {
   const progress = importProgress(userId, backup.progress);
   const storage = getStorage();
 
-  if (storage && backup.stores) {
+  if (storage) {
     for (const key of BACKUP_STORE_KEYS) {
-      const value = backup.stores[key];
-      if (typeof value !== "string") continue;
+      const value = backup.stores?.[key];
       try {
-        storage.setItem(key, value);
+        // A restore must leave the device exactly as the file was: stores the
+        // backup does not contain are cleared instead of keeping newer data.
+        if (typeof value === "string") storage.setItem(key, value);
+        else storage.removeItem(key);
       } catch {
         // A full or blocked storage should not abort the progress import.
       }

@@ -335,8 +335,11 @@ export function applyLevelResult(
 ): AppliedLevelResult {
   const levelId = clampLevel(input.levelId);
   const existing = progress.records[String(levelId)];
+  // 0 ms is a real time: only a missing value counts as "no best yet".
   const isNewBest = input.completed && (
-    !existing?.bestTimeMs || input.timeMs < existing.bestTimeMs
+    existing?.bestTimeMs === null
+    || existing?.bestTimeMs === undefined
+    || input.timeMs < existing.bestTimeMs
   );
 
   const record: LevelRecord = {
@@ -344,10 +347,14 @@ export function applyLevelResult(
     completed: input.completed || Boolean(existing?.completed),
     stars: input.completed ? Math.max(existing?.stars ?? 0, input.stars) : existing?.stars ?? 0,
     bestTimeMs: input.completed
-      ? (existing?.bestTimeMs ? Math.min(existing.bestTimeMs, input.timeMs) : input.timeMs)
+      ? (existing?.bestTimeMs === null || existing?.bestTimeMs === undefined
+        ? input.timeMs
+        : Math.min(existing.bestTimeMs, input.timeMs))
       : existing?.bestTimeMs ?? null,
     bestMoves: input.completed
-      ? (existing?.bestMoves ? Math.min(existing.bestMoves, input.moves) : input.moves)
+      ? (existing?.bestMoves === null || existing?.bestMoves === undefined
+        ? input.moves
+        : Math.min(existing.bestMoves, input.moves))
       : existing?.bestMoves ?? null,
     bestMistakes: input.completed
       ? (existing?.bestMistakes === null || existing?.bestMistakes === undefined

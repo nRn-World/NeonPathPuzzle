@@ -132,6 +132,39 @@ test("the ghost path follows the fastest run", () => {
   assert.deepEqual(getLevelRecord(slower.progress, 6)?.bestPath, fastPath);
 });
 
+test("a 0 ms best time is kept when a slower run follows", () => {
+  const fastPath = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+  const slowPath = [{ x: 0, y: 0 }, { x: 0, y: 1 }];
+
+  const first = applyLevelResult(createEmptyProgress(), {
+    levelId: 3,
+    completed: true,
+    hintsUsed: false,
+    stars: 3,
+    timeMs: 0,
+    moves: 0,
+    mistakes: 0,
+    path: fastPath,
+  });
+  assert.equal(first.record.bestTimeMs, 0);
+  assert.equal(first.isNewBest, true);
+
+  const slower = applyLevelResult(first.progress, {
+    levelId: 3,
+    completed: true,
+    hintsUsed: false,
+    stars: 1,
+    timeMs: 5_000,
+    moves: 8,
+    mistakes: 0,
+    path: slowPath,
+  });
+  assert.equal(slower.record.bestTimeMs, 0);
+  assert.equal(slower.record.bestMoves, 0);
+  assert.equal(slower.isNewBest, false);
+  assert.deepEqual(slower.record.bestPath, fastPath);
+});
+
 test("malformed ghost paths are ignored", () => {
   const applied = applyLevelResult(createEmptyProgress(), {
     levelId: 7,

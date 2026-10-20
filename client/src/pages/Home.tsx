@@ -34,7 +34,7 @@ export default function Home() {
     return {
       threeStars: values.filter(record => record.stars === 3).length,
       bestTime: values.reduce<number | null>((best, record) => {
-        if (!record.bestTimeMs) return best;
+        if (record.bestTimeMs === null) return best;
         return best === null ? record.bestTimeMs : Math.min(best, record.bestTimeMs);
       }, null),
       totalScore: values.reduce((total, record) => total + (record.bestScore ?? 0), 0),
