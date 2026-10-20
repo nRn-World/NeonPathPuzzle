@@ -28,10 +28,12 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
   const hintTokens = useHintTokenStore(state => state.tokens);
   const {
     soundEnabled,
+    musicEnabled,
     hapticsEnabled,
     reducedMotion,
     showGhost,
     setSoundEnabled,
+    setMusicEnabled,
     setHapticsEnabled,
     setReducedMotion,
     setShowGhost,
@@ -115,6 +117,12 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             description={t("soundDesc")}
             checked={soundEnabled}
             onChange={setSoundEnabled}
+          />
+          <SettingRow
+            label={t("music")}
+            description={t("musicDesc")}
+            checked={musicEnabled}
+            onChange={setMusicEnabled}
           />
           <SettingRow
             label={t("haptics")}
