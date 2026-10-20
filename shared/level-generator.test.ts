@@ -7,11 +7,12 @@ import {
   getLevelDifficulty,
   isValidSolutionPath,
   LAYOUT_FAMILIES,
+  MAX_LEVEL_ID,
   type GeneratedLevel,
 } from "./level-generator";
 import { type Point } from "./schema";
 
-const levels = Array.from({ length: 200 }, (_, index) => generateLevel(index + 1));
+const levels = Array.from({ length: MAX_LEVEL_ID }, (_, index) => generateLevel(index + 1));
 
 function pointKey(point: Point) {
   return `${point.x},${point.y}`;
@@ -40,8 +41,9 @@ function canonicalLayout(level: GeneratedLevel) {
   }).sort()[0];
 }
 
-test("all 200 levels are valid and solvable", () => {
-  assert.equal(levels.length, 200);
+test("all 300 levels are valid and solvable", () => {
+  assert.equal(MAX_LEVEL_ID, 300);
+  assert.equal(levels.length, 300);
 
   for (const level of levels) {
     const nodes = new Set(level.nodes.map(pointKey));
@@ -79,7 +81,7 @@ test("no two levels match after rotation or reflection", () => {
   const signatures = levels.map(canonicalLayout);
   assert.equal(
     new Set(signatures).size,
-    200,
+    MAX_LEVEL_ID,
     "Every level must have a visually unique node layout, including symmetry variants",
   );
 });
@@ -132,7 +134,7 @@ test("the campaign uses every layout family and keeps the mix balanced", () => {
 
   for (const family of LAYOUT_FAMILIES) {
     assert.ok((counts.get(family) ?? 0) > 0, `The ${family} family never appears`);
-    assert.ok((counts.get(family) ?? 0) <= 35, `The ${family} family repeats too often`);
+    assert.ok((counts.get(family) ?? 0) <= Math.ceil(levels.length * 0.175), `The ${family} family repeats too often`);
   }
 });
 
@@ -148,6 +150,8 @@ test("difficulty follows the designed grid bands", () => {
     { from: 116, to: 150, grids: [10] },
     { from: 151, to: 175, grids: [11] },
     { from: 176, to: 200, grids: [12] },
+    { from: 201, to: 240, grids: [12] },
+    { from: 241, to: 300, grids: [13] },
   ];
 
   const averages = bands.map(({ from, to, grids }) => {
@@ -170,7 +174,7 @@ test("difficulty follows the designed grid bands", () => {
 
 test("every twenty-level block is harder than the previous block", () => {
   const averages: number[] = [];
-  for (let from = 1; from <= 200; from += 20) {
+  for (let from = 1; from <= MAX_LEVEL_ID; from += 20) {
     const block = levels.filter(level => level.id >= from && level.id < from + 20);
     averages.push(block.reduce((sum, level) => sum + getLevelDifficulty(level), 0) / block.length);
   }
@@ -190,7 +194,8 @@ test("node counts never shrink and boards keep room for distinct shapes", () => 
       level.nodes.length >= previous,
       `Level ${level.id} has fewer nodes (${level.nodes.length}) than the previous level (${previous})`,
     );
-    const coverageLimit = level.gridSize <= 5 ? 0.8 : 0.7;
+    // The expansion boards lean on rules rather than size, so they run a little denser.
+    const coverageLimit = level.gridSize <= 5 ? 0.8 : level.gridSize >= 12 && level.id > 200 ? 0.78 : 0.7;
     assert.ok(
       level.nodes.length <= level.gridSize * level.gridSize * coverageLimit,
       `Level ${level.id} fills ${level.nodes.length} of ${level.gridSize * level.gridSize} cells`,
@@ -199,7 +204,7 @@ test("node counts never shrink and boards keep room for distinct shapes", () => 
   }
 });
 
-test("level 1 is the easiest and level 200 the hardest", () => {
+test("level 1 is the easiest and level 300 the hardest", () => {
   const difficulties = levels.map(getLevelDifficulty);
   const first = difficulties[0];
   const last = difficulties[difficulties.length - 1];
@@ -210,14 +215,14 @@ test("level 1 is the easiest and level 200 the hardest", () => {
   );
   assert.ok(
     difficulties.slice(0, -1).every(value => value < last),
-    `Level 200 must be the only level at difficulty ${last}`,
+    `Level 300 must be the only level at difficulty ${last}`,
   );
   assert.equal(Math.min(...difficulties), first);
   assert.equal(Math.max(...difficulties), last);
 });
 
 test("the closing levels climb one step each", () => {
-  for (let id = 191; id <= 200; id++) {
+  for (const id of [...Array.from({ length: 10 }, (_, index) => 191 + index), ...Array.from({ length: 10 }, (_, index) => 291 + index)]) {
     const previous = getLevelDifficulty(levels[id - 2]);
     const current = getLevelDifficulty(levels[id - 1]);
     assert.ok(
@@ -251,6 +256,6 @@ test("generation is deterministic and invalid ids are rejected", () => {
   }
 
   assert.throws(() => generateLevel(0), RangeError);
-  assert.throws(() => generateLevel(201), RangeError);
+  assert.throws(() => generateLevel(301), RangeError);
   assert.throws(() => generateLevel(1.5), RangeError);
 });

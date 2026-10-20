@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { generateLevel } from "@shared/level-generator";
+import { generateLevel, MAX_LEVEL_ID } from "@shared/level-generator";
 
 function firstString(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
@@ -19,9 +19,8 @@ export async function registerRoutes(
   
   // === API: List Levels ===
   app.get(api.levels.list.path, async (req, res) => {
-    // We have 200 levels (1-100 and 101-200).
     // Levels 1-100: Level 1 unlocked, others locked unless completed previous.
-    // Levels 101-200: Locked until ALL levels 1-100 are completed, then follow same logic.
+    // Levels 101+: Locked until ALL levels 1-100 are completed, then follow same logic.
     const userId = firstString(req.headers["x-user-id"]) ?? "guest";
     
     const progress = await storage.getUserProgress(userId);
@@ -47,8 +46,8 @@ export async function registerRoutes(
       });
     }
     
-    // Levels 101-200
-    for (let i = 101; i <= 200; i++) {
+    // Levels 101+
+    for (let i = 101; i <= MAX_LEVEL_ID; i++) {
       const isCompleted = completedSet.has(i);
       // Locked if: first 100 not all completed OR previous level not completed
       const isLocked = !allFirstHundredCompleted || !completedSet.has(i - 1);
@@ -67,7 +66,7 @@ export async function registerRoutes(
   // === API: Get Level Data ===
   app.get(api.levels.get.path, async (req, res) => {
     const levelId = parseInt(firstString(req.params.id) ?? "", 10);
-    if (isNaN(levelId) || levelId < 1 || levelId > 200) {
+    if (isNaN(levelId) || levelId < 1 || levelId > MAX_LEVEL_ID) {
       return res.status(404).json({ message: "Level not found" });
     }
 
@@ -87,7 +86,7 @@ export async function registerRoutes(
     const levelId = parseInt(firstString(req.params.id) ?? "", 10);
     const userId = firstString(req.headers["x-user-id"]) ?? "guest";
     
-    if (isNaN(levelId) || levelId < 1 || levelId > 200) {
+    if (isNaN(levelId) || levelId < 1 || levelId > MAX_LEVEL_ID) {
       return res.status(404).json({ message: "Level not found" });
     }
 

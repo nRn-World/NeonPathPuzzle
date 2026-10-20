@@ -11,6 +11,7 @@ import {
   getProgress,
   getTotalStars,
   saveLevelResult,
+  TOTAL_LEVELS,
   type LevelRecord,
   type ProgressData,
 } from "@/lib/progress";
@@ -49,6 +50,7 @@ export interface LevelSummary {
   bestScore: number | null;
 }
 
+/** `completed` is the current run: a crash locks everything after level 1 again. */
 function isLevelLocked(levelId: number, completed: Set<number>, codeUnlockedThrough: number) {
   if (completed.has(levelId)) return false;
   if (levelId <= codeUnlockedThrough) return false;
@@ -66,15 +68,16 @@ export function useLevels(userId?: string) {
     queryFn: async (): Promise<LevelSummary[]> => {
       if (!userId) return [];
       const progress = getProgress(userId);
-      const completed = new Set(progress.completed);
+      const run = new Set(progress.runCompleted);
       const hints = new Set(progress.hints);
-      return Array.from({ length: 200 }, (_, index) => {
+      return Array.from({ length: TOTAL_LEVELS }, (_, index) => {
         const id = index + 1;
         const record = getLevelRecord(progress, id);
         return {
           id,
-          isCompleted: completed.has(id),
-          isLocked: isLevelLocked(id, completed, codeUnlockedThrough),
+          // Cleared in this run; stars below stay from every run.
+          isCompleted: run.has(id),
+          isLocked: isLevelLocked(id, run, codeUnlockedThrough),
           hintsUsed: hints.has(id),
           stars: record?.stars ?? 0,
           bestTimeMs: record?.bestTimeMs ?? null,
@@ -91,11 +94,11 @@ export function useLevel(id: number, userId?: string, allowLocked = false) {
   return useQuery({
     queryKey: [api.levels.get.path, id, userId, codeUnlockedThrough, allowLocked],
     queryFn: async () => {
-      if (!Number.isInteger(id) || id < 1 || id > 200) throw new Error("Invalid level");
+      if (!Number.isInteger(id) || id < 1 || id > TOTAL_LEVELS) throw new Error("Invalid level");
       if (!userId) throw new Error("Missing player id");
       const progress = getProgress(userId);
       const completed = new Set(progress.completed);
-      if (!allowLocked && isLevelLocked(id, completed, codeUnlockedThrough)) {
+      if (!allowLocked && isLevelLocked(id, new Set(progress.runCompleted), codeUnlockedThrough)) {
         throw new Error("Level is locked");
       }
       const level = generateLevel(id);
@@ -114,7 +117,7 @@ export function useLevel(id: number, userId?: string, allowLocked = false) {
         bestPath: record?.bestPath ?? null,
       };
     },
-    enabled: !!userId && Number.isInteger(id) && id >= 1 && id <= 200,
+    enabled: !!userId && Number.isInteger(id) && id >= 1 && id <= TOTAL_LEVELS,
   });
 }
 
@@ -162,6 +165,9 @@ export interface ProgressSummary {
   unlockedLevels: number[];
   completedLevels: number[];
   completedCount: number;
+  /** Levels cleared in the current run (resets on a crash). */
+  runCount: number;
+  crashes: number;
   totalStars: number;
   dailyStreak: number;
   bestStreak: number;
@@ -174,11 +180,11 @@ export function useUserProgress(userId: string) {
     queryKey: [api.progress.get.path, userId],
     queryFn: async (): Promise<ProgressSummary> => {
       const progress: ProgressData = getProgress(userId);
-      const completed = new Set(progress.completed);
+      const run = new Set(progress.runCompleted);
       let continueLevel = getContinueLevel(progress);
-      if (isLevelLocked(continueLevel, completed, getCodeUnlockedThrough())) {
-        for (let levelId = 1; levelId <= 200; levelId++) {
-          if (!completed.has(levelId)) {
+      if (isLevelLocked(continueLevel, run, getCodeUnlockedThrough())) {
+        for (let levelId = 1; levelId <= TOTAL_LEVELS; levelId++) {
+          if (!run.has(levelId)) {
             continueLevel = levelId;
             break;
           }
@@ -187,9 +193,11 @@ export function useUserProgress(userId: string) {
       return {
         currentLevel: continueLevel,
         continueLevel,
-        unlockedLevels: progress.completed,
+        unlockedLevels: progress.runCompleted,
         completedLevels: progress.completed,
         completedCount: progress.completed.length,
+        runCount: progress.runCompleted.length,
+        crashes: progress.crashes,
         totalStars: getTotalStars(progress),
         dailyStreak: getActiveStreak(progress.daily),
         bestStreak: progress.daily.bestStreak,

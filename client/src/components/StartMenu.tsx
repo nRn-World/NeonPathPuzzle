@@ -29,7 +29,19 @@ import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
 import { unlockLevelsThroughCode } from "@/lib/sessionLevelUnlock";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
-import { getProgress, markTutorialSeen } from "@/lib/progress";
+import { getProgress, markTutorialSeen, TOTAL_LEVELS } from "@/lib/progress";
+import type { TranslationKey } from "@/lib/i18n";
+
+const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
+  ["howObjectiveTitle", "howObjectiveBody"],
+  ["howControlsTitle", "howControlsBody"],
+  ["howAttemptsTitle", "howAttemptsBody"],
+  ["howStarsTitle", "howStarsBody"],
+  ["howNodesTitle", "howNodesBody"],
+  ["howDailyTitle", "howDailyBody"],
+  ["howPowerTitle", "howPowerBody"],
+  ["howProgressTitle", "howProgressBody"],
+];
 import { playClickSound } from "@/lib/sounds";
 import { useI18n } from "@/lib/i18n";
 
@@ -145,6 +157,8 @@ export function StartMenu() {
   const totalStars = summary?.totalStars ?? 0;
   const bestStreak = summary?.bestStreak ?? 0;
   const continueLevel = summary?.continueLevel ?? 1;
+  const runCount = summary?.runCount ?? completedCount;
+  const maxStars = TOTAL_LEVELS * 3;
   const hasProgress = completedCount > 0;
   const recordValues = Object.values(summary?.records ?? {});
   const threeStarClears = recordValues.filter(record => record.stars === 3).length;
@@ -285,12 +299,12 @@ export function StartMenu() {
                       <span className="relative mt-3 block h-1.5 overflow-hidden rounded-full bg-white/10">
                         <span
                           className="block h-full rounded-full bg-gradient-to-r from-primary to-secondary"
-                          style={{ width: `${Math.min(100, (completedCount / 200) * 100)}%` }}
+                          style={{ width: `${Math.min(100, (runCount / TOTAL_LEVELS) * 100)}%` }}
                         />
                       </span>
                       <span className="relative mt-1.5 flex justify-between font-exo text-[10px] text-muted-foreground">
-                        <span>{completedCount}/200 {t("levelsSolved")}</span>
-                        <span>{totalStars}/600 <Star className="mb-0.5 inline h-3 w-3 fill-secondary text-secondary" /></span>
+                        <span>{runCount}/{TOTAL_LEVELS} {t("levelsSolved")}</span>
+                        <span>{totalStars}/{maxStars} <Star className="mb-0.5 inline h-3 w-3 fill-secondary text-secondary" /></span>
                       </span>
                     </button>
 
@@ -361,8 +375,8 @@ export function StartMenu() {
 
                       <TabsContent value="stats" className="mt-4">
                         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-                          <StatCard label={t("levelsSolvedStat")} value={`${completedCount}/200`} />
-                          <StatCard label={t("starsEarnedStat")} value={`${totalStars}/600`} />
+                          <StatCard label={t("levelsSolvedStat")} value={`${completedCount}/${TOTAL_LEVELS}`} />
+                          <StatCard label={t("starsEarnedStat")} value={`${totalStars}/${maxStars}`} />
                           <StatCard label={t("threeStarClears")} value={String(threeStarClears)} />
                           <StatCard
                             label={t("bestTimeStat")}
@@ -372,9 +386,11 @@ export function StartMenu() {
                           <StatCard label={t("bestStreakStat")} value={String(bestStreak)} />
                           <StatCard
                             label={t("completion")}
-                            value={`${Math.round((completedCount / 200) * 100)}%`}
+                            value={`${Math.round((completedCount / TOTAL_LEVELS) * 100)}%`}
                           />
                           <StatCard label={t("totalScore")} value={totalScore.toLocaleString()} />
+                          <StatCard label={t("runStat")} value={`${runCount}/${TOTAL_LEVELS}`} />
+                          <StatCard label={t("crashesStat")} value={String(summary?.crashes ?? 0)} />
                         </div>
                       </TabsContent>
                     </Tabs>
@@ -475,35 +491,11 @@ export function StartMenu() {
                   </div>
 
                   <div className="space-y-5 rounded-lg border border-primary/20 bg-muted/20 p-5 font-exo md:p-6">
-                    <InfoBlock title="OBJECTIVE" tone="primary">
-                      Connect every node with one continuous line. Move up, down, left or right. You
-                      may not revisit a node or cross your own line.
-                    </InfoBlock>
-
-                    <InfoBlock title="CONTROLS" tone="secondary">
-                      Drag from the glowing start node. Backspace or the undo button steps back.
-                      Arrow keys extend the line one cell at a time. Restart is always available.
-                    </InfoBlock>
-
-                    <InfoBlock title="THREE STARS" tone="primary">
-                      Finish without hints, without backtracks, and under par time. Backtracks are
-                      free — they only cost a star, never a life.
-                    </InfoBlock>
-
-                    <InfoBlock title="DAILY CHALLENGE" tone="secondary">
-                      One seeded level per day, identical for everyone. Build a streak and share
-                      your result card.
-                    </InfoBlock>
-
-                    <InfoBlock title="POWER-UPS & CODES" tone="primary">
-                      Earn a power-up every fifth new level. Hints reveal the path for 1.5 seconds,
-                      or 5 seconds with Path Reveal. Codes from level 10 jump straight to a level.
-                    </InfoBlock>
-
-                    <InfoBlock title="PROGRESSION" tone="secondary">
-                      Complete levels in order. Levels 101–200 unlock after all 100 main levels.
-                      Replay any level to improve your stars and best time.
-                    </InfoBlock>
+                    {HOW_TO_PLAY.map(([title, body], index) => (
+                      <InfoBlock key={title} title={t(title).toUpperCase()} tone={index % 2 === 0 ? "primary" : "secondary"}>
+                        {t(body)}
+                      </InfoBlock>
+                    ))}
                   </div>
 
                   <Button
@@ -553,9 +545,17 @@ export function StartMenu() {
                     unlocked={completedCount >= 100}
                     onLevelClick={handleLevelClick}
                   />
+                  <CompletedSection
+                    title="LEVELS 201–300"
+                    from={201}
+                    to={TOTAL_LEVELS}
+                    levels={levels ?? []}
+                    unlocked={completedCount >= 100}
+                    onLevelClick={handleLevelClick}
+                  />
 
                   <p className="text-center font-exo text-sm text-muted-foreground">
-                    Progress: <span className="text-primary">{completedCount}</span> / 200 levels ·{" "}
+                    Progress: <span className="text-primary">{completedCount}</span> / {TOTAL_LEVELS} levels ·{" "}
                     <span className="text-secondary">{totalStars}</span> stars
                   </p>
 

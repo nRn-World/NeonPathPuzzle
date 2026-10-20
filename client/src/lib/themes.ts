@@ -102,6 +102,23 @@ export const themes: Theme[] = [
       particle: 'orange'
     },
     unlockAtLevels: 200
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora',
+    description: 'Polar green, violet and coral light',
+    colors: {
+      primary: '#00e5a0',
+      secondary: '#7b8cff',
+      accent: '#ff6b8b',
+      background: '#020b10',
+      neon: ['#00e5a0', '#7b8cff', '#ff6b8b']
+    },
+    effects: {
+      glow: '0 0 28px rgba(0, 229, 160, 0.6)',
+      particle: 'aqua'
+    },
+    unlockAtLevels: 250
   }
 ];
 

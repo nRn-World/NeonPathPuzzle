@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { generateLevel } from "./level-generator";
 import {
+  createMoveRules,
   EMPTY_MECHANICS,
   getLevelMechanics,
   isValidPlayerPath,
@@ -11,8 +12,8 @@ import {
 
 const key = (point: { x: number; y: number }) => `${point.x},${point.y}`;
 
-test("all 200 levels keep their canonical solution valid with mechanics", () => {
-  for (let levelId = 1; levelId <= 200; levelId++) {
+test("all 300 levels keep their canonical solution valid with mechanics", () => {
+  for (let levelId = 1; levelId <= 300; levelId++) {
     const level = generateLevel(levelId);
     const mechanics = getLevelMechanics(level, level.solution);
 
@@ -135,4 +136,54 @@ test("mirroring keeps a level solvable", () => {
     assert.deepEqual(new Set(mirrored.level.nodes.map(key)), new Set(mirrored.solution.map(key)));
     assert.deepEqual(mirrored.level.start, mirrored.solution[0]);
   }
+});
+
+test("every level can be finished by playing its solution through the real move rules", () => {
+  for (let levelId = 1; levelId <= 300; levelId++) {
+    const level = generateLevel(levelId);
+    const mechanics = getLevelMechanics(level, level.solution);
+    const rules = createMoveRules(level, mechanics);
+    let path = [level.solution[0]];
+    for (const point of level.solution.slice(1)) {
+      const next = rules.step(path, point);
+      assert.ok(next, `level ${levelId}: solution step to ${key(point)} is rejected`);
+      path = next;
+      assert.ok(!rules.isStuck(path), `level ${levelId}: solution walks into a dead end`);
+    }
+    assert.ok(rules.isComplete(path), `level ${levelId}: solution does not finish the board`);
+  }
+});
+
+test("expansion levels add sync nodes and blackout", () => {
+  const sync = getLevelMechanics(generateLevel(230), generateLevel(230).solution);
+  assert.equal(sync.syncNodes.length, 3);
+  assert.equal(sync.blackout, false);
+  const dark = getLevelMechanics(generateLevel(280), generateLevel(280).solution);
+  assert.equal(dark.blackout, true);
+  assert.ok(dark.syncNodes.length >= 3);
+  assert.deepEqual(getLevelMechanics(generateLevel(150), generateLevel(150).solution).syncNodes, []);
+});
+
+test("a sync node rejects arriving on the wrong step", () => {
+  const level = generateLevel(210);
+  const mechanics = getLevelMechanics(level, level.solution);
+  const [sync] = mechanics.syncNodes;
+  assert.ok(sync);
+  const rules = createMoveRules(level, { ...EMPTY_MECHANICS, syncNodes: [{ ...sync, step: sync.step + 1 }] });
+  const before = level.solution.slice(0, sync.step);
+  assert.equal(rules.step(before, sync.point), null);
+});
+
+test("a line with no legal forward move is stuck, a finished one is not", () => {
+  const level = {
+    id: 1,
+    gridSize: 3,
+    start: { x: 1, y: 0 },
+    nodes: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 1, y: 1 }],
+  };
+  const rules = createMoveRules(level, EMPTY_MECHANICS);
+  const stuck = rules.step([level.start], { x: 0, y: 0 });
+  assert.ok(stuck);
+  assert.equal(rules.isStuck(stuck), true);
+  assert.equal(rules.isStuck([level.start]), false);
 });

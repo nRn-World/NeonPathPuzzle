@@ -85,9 +85,13 @@ const DIFFICULTY_TIERS: DifficultyTier[] = [
   { from: 116, to: 150, gridSize: 10, startNodes: 54, endNodes: 65 },
   { from: 151, to: 175, gridSize: 11, startNodes: 66, endNodes: 78 },
   { from: 176, to: 200, gridSize: 12, startNodes: 79, endNodes: 92 },
+  // Expansion: difficulty now comes mostly from the new rules (sync nodes,
+  // blackout), so the boards only grow a little and stay readable on a phone.
+  { from: 201, to: 240, gridSize: 12, startNodes: 93, endNodes: 106 },
+  { from: 241, to: 300, gridSize: 13, startNodes: 107, endNodes: 122 },
 ];
 
-const MAX_LEVEL_ID = 200;
+export const MAX_LEVEL_ID = 300;
 
 /** The final levels must be strictly harder than each other, so the last one is the hardest. */
 const STRICT_TAIL_FROM = 191;
@@ -96,6 +100,12 @@ const STRICT_TAIL_FROM = 191;
  * ten levels aims a little higher so the campaign ends on its hardest board.
  */
 const TAIL_TARGETS = [220, 226, 232, 238, 244, 250, 256, 262, 268, 274];
+/**
+ * The expansion ends on its own staircase: levels 291-299 each take the
+ * smallest step above everything before them, which leaves the most headroom
+ * for level 300 to take the hardest layout the search can find.
+ */
+const EXPANSION_TAIL_FROM = 291;
 /** The first levels must be strictly harder than each other, so level 1 is the easiest. */
 const STRICT_OPENING_THROUGH = 3;
 /** From this level on a layout must branch instead of being a forced corridor. */
@@ -104,6 +114,8 @@ const MIN_BRANCHING_EDGES = 3;
 
 /** Upper bound on the variants searched for a single level. */
 const VARIANT_LIMIT = 96;
+/** The finale searches deeper, so the last board can be the hardest one. */
+const FINALE_VARIANT_LIMIT = 600;
 /** Candidates kept per search before picking the best fit for the curve. */
 const OPTION_LIMIT = 24;
 /** How many times a single level may grow to clear the difficulty floor. */
@@ -112,6 +124,11 @@ const EXTRA_NODE_LIMIT = 5;
 const MASK_WORDS = 6;
 
 type Mask = number[];
+
+/** Most cells a layout may use; the large boards keep a little more air. */
+function capacityFor(size: number) {
+  return Math.floor(size * size * (size >= 12 ? 0.78 : 0.8));
+}
 
 function key(point: Point) {
   return `${point.x},${point.y}`;
@@ -124,7 +141,7 @@ function getLevelShape(levelId: number) {
   const progress = tier.to === tier.from
     ? 1
     : (levelId - tier.from) / (tier.to - tier.from);
-  const capacity = Math.floor(tier.gridSize * tier.gridSize * 0.8);
+  const capacity = capacityFor(tier.gridSize);
   const targetLength = Math.min(
     capacity,
     Math.max(3, Math.round(tier.startNodes + (tier.endNodes - tier.startNodes) * progress)),
@@ -317,7 +334,7 @@ let lastFamily: LayoutFamily | null = null;
 export function createCandidate(levelId: number, variant: number, extraNodes = 0): GeneratedLevel {
   const shape = getLevelShape(levelId);
   const gridSize = shape.gridSize;
-  const capacity = Math.floor(gridSize * gridSize * 0.8);
+  const capacity = capacityFor(gridSize);
   const targetLength = Math.min(capacity, shape.targetLength + extraNodes);
   const random = mulberry32(levelId * 9973 + 12345 + variant * 0x9E3779B9);
   const family = LAYOUT_FAMILIES[variant % FAMILY_COUNT];
@@ -398,7 +415,10 @@ function minLayoutDistance(level: GeneratedLevel, stored: Mask[] | undefined): n
  * differ by several cells, and the large endgame boards get a wide margin.
  */
 function requiredDistance(nodeCount: number): number {
-  return Math.min(12, Math.max(3, Math.round(nodeCount * 0.2)));
+  // The 13x13 expansion boards are big enough to need a wider margin; the cap
+  // stays at 12 below that so levels 1-200 keep their exact layouts.
+  const cap = nodeCount > 106 ? Math.round(nodeCount * 0.125) : 12;
+  return Math.min(cap, Math.max(3, Math.round(nodeCount * 0.2)));
 }
 
 /**
@@ -529,7 +549,12 @@ function difficultyFloor(levelId: number): number {
 }
 
 function tailTarget(levelId: number): number | null {
-  return levelId >= STRICT_TAIL_FROM ? TAIL_TARGETS[levelId - STRICT_TAIL_FROM] : null;
+  if (levelId >= STRICT_TAIL_FROM && levelId < STRICT_TAIL_FROM + TAIL_TARGETS.length) {
+    return TAIL_TARGETS[levelId - STRICT_TAIL_FROM];
+  }
+  if (levelId === MAX_LEVEL_ID) return Number.MAX_SAFE_INTEGER;
+  if (levelId >= EXPANSION_TAIL_FROM) return lastDifficulty + 1;
+  return null;
 }
 
 /**
@@ -545,7 +570,7 @@ function meetsRules(levelId: number, level: GeneratedLevel): boolean {
   const target = tailTarget(levelId);
   const difficulty = getLevelDifficulty(level);
   if (target !== null) {
-    if (difficulty < target - 12 || difficulty <= lastDifficulty) return false;
+    if ((levelId < MAX_LEVEL_ID && difficulty < target - 12) || difficulty <= lastDifficulty) return false;
   } else if (structuralDifficulty(level) < difficultyFloor(levelId)) {
     return false;
   }
@@ -582,11 +607,12 @@ function familyAllowed(levelId: number, family: LayoutFamily): boolean {
  */
 function variantOrder(levelId: number): number[] {
   const target = LAYOUT_FAMILIES.indexOf(targetFamily(levelId));
+  const limit = levelId === MAX_LEVEL_ID ? FINALE_VARIANT_LIMIT : VARIANT_LIMIT;
   const order: number[] = [];
-  for (let sub = 0; sub < VARIANT_LIMIT / FAMILY_COUNT; sub++) {
+  for (let sub = 0; sub < limit / FAMILY_COUNT; sub++) {
     order.push(target + sub * FAMILY_COUNT);
   }
-  for (let variant = 0; variant < VARIANT_LIMIT; variant++) {
+  for (let variant = 0; variant < limit; variant++) {
     if (order.includes(variant)) continue;
     if (!familyAllowed(levelId, LAYOUT_FAMILIES[variant % FAMILY_COUNT])) continue;
     order.push(variant);
@@ -632,14 +658,14 @@ function collectOptions(
     }
 
     if (target !== null) {
-      if (difficulty < target - 12 || difficulty <= lastDifficulty) continue;
+      if ((levelId < MAX_LEVEL_ID && difficulty < target - 12) || difficulty <= lastDifficulty) continue;
     } else if (structural < floor) {
       continue;
     }
     if (distance < needed) continue;
 
     options.push(candidate);
-    if (options.length >= OPTION_LIMIT) break;
+    if (options.length >= OPTION_LIMIT && levelId !== MAX_LEVEL_ID) break;
   }
 
   return options;
@@ -648,7 +674,7 @@ function collectOptions(
 /** Deterministic node count for a level, used when relaxing the separation rule. */
 function createLevelLength(levelId: number, extraNodes: number): number {
   const shape = getLevelShape(levelId);
-  return Math.min(Math.floor(shape.gridSize * shape.gridSize * 0.8), shape.targetLength + extraNodes);
+  return Math.min(capacityFor(shape.gridSize), shape.targetLength + extraNodes);
 }
 
 function selectBest(options: Candidate[], levelId: number): Candidate {
@@ -723,6 +749,11 @@ const VARIANT_TABLE: number[] = [
   320, 56, 112, 432, 64, 232, 536, 336, 640, 104, 168, 344, 120, 152, 712, 568, 544, 512, 80, 376,
   696, 536, 616, 760, 448, 416, 80, 520, 504, 328, 544, 472, 736, 184, 80, 632, 600, 264, 616, 664,
   64, 128, 56, 88, 440, 136, 280, 56, 352, 704, 176, 120, 176, 32, 176, 664, 176, 88, 179, 668,
+  363, 27, 138, 666, 162, 521, 153, 353, 152, 40, 56, 184, 544, 424, 560, 728, 408, 64, 424, 184,
+  352, 512, 560, 536, 232, 448, 712, 280, 256, 416, 328, 536, 160, 328, 56, 760, 352, 232, 464, 344,
+  264, 128, 40, 184, 64, 320, 464, 56, 504, 424, 256, 376, 544, 320, 176, 440, 408, 160, 232, 472,
+  64, 328, 464, 632, 40, 536, 520, 376, 736, 424, 464, 184, 248, 136, 64, 664, 64, 728, 176, 616,
+  448, 424, 544, 376, 160, 464, 536, 80, 136, 248, 736, 560, 329, 657, 376, 413, 189, 45, 661, 45,
 ];
 
 /**
@@ -808,9 +839,23 @@ export function repairVariantTable(table: number[], through = MAX_LEVEL_ID): num
   return repaired;
 }
 
+/** Baked levels built on demand; they depend only on their own table entry. */
+const directCache = new Map<number, GeneratedLevel>();
+
 export function generateLevel(levelId: number): GeneratedLevel {
   if (!Number.isInteger(levelId) || levelId < 1 || levelId > MAX_LEVEL_ID) {
     throw new RangeError(`Level id must be an integer from 1 to ${MAX_LEVEL_ID}. Received: ${levelId}`);
+  }
+  // A baked level is exactly createCandidate(id, variant, extra), so opening
+  // level 300 on a phone does not have to build the 299 levels before it.
+  const packed = VARIANT_TABLE[levelId - 1];
+  if (packed !== undefined) {
+    let level = directCache.get(levelId);
+    if (!level) {
+      level = createCandidate(levelId, packed >> 3, packed & 7);
+      directCache.set(levelId, level);
+    }
+    return level;
   }
   generateThrough(levelId);
   return levelCache.get(levelId)!;

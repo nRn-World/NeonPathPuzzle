@@ -1,4 +1,5 @@
 import type { Point } from "@shared/schema";
+import { MAX_LEVEL_ID } from "@shared/level-generator";
 import {
   emptyDailyState,
   getDateKey,
@@ -7,7 +8,10 @@ import {
   type DailyState,
 } from "./daily";
 
-export const TOTAL_LEVELS = 200;
+export const TOTAL_LEVELS = MAX_LEVEL_ID;
+
+/** Tries per campaign level: the first run plus two restarts. */
+export const MAX_ATTEMPTS = 3;
 
 const STORAGE_PREFIX = "neon_path_progress_v2_";
 const LEGACY_PREFIX = "neon_path_progress_";
@@ -28,7 +32,18 @@ export interface LevelRecord {
 
 export interface ProgressData {
   version: 2;
+  /** Every level ever finished; drives stars, themes and statistics. */
   completed: number[];
+  /**
+   * Levels finished in the current run; drives unlocking and "continue". A
+   * system crash (three failed attempts on one level) empties it, so the
+   * player starts over from level 1 while keeping stars and records.
+   */
+  runCompleted: number[];
+  /** Attempts started per level in the current run, keyed by level id. */
+  attempts: Record<string, number>;
+  /** How many times the run has been reset by a crash. */
+  crashes: number;
   hints: number[];
   records: Record<string, LevelRecord>;
   lastLevelId: number;
@@ -70,6 +85,9 @@ export function createEmptyProgress(): ProgressData {
   return {
     version: 2,
     completed: [],
+    runCompleted: [],
+    attempts: {},
+    crashes: 0,
     hints: [],
     records: {},
     lastLevelId: 1,
@@ -196,13 +214,32 @@ function normalizeProgress(value: unknown): ProgressData {
     }
   });
 
+  // Saves from before the crash rule have no run: their run is everything they
+  // have finished, so nothing they unlocked becomes locked by the update.
+  const runCompleted = Array.isArray(candidate.runCompleted)
+    ? normalizeLevelIds(candidate.runCompleted).filter(levelId => completed.includes(levelId))
+    : completed;
+  const attempts: Record<string, number> = {};
+  if (candidate.attempts && typeof candidate.attempts === "object") {
+    Object.entries(candidate.attempts).forEach(([key, raw]) => {
+      const levelId = Number(key);
+      if (!Number.isInteger(levelId) || levelId < 1 || levelId > TOTAL_LEVELS) return;
+      if (runCompleted.includes(levelId)) return;
+      const used = Math.trunc(Number(raw));
+      if (Number.isFinite(used) && used > 0) attempts[String(levelId)] = Math.min(MAX_ATTEMPTS, used);
+    });
+  }
+
   const lastLevelId = Number.isInteger(candidate.lastLevelId)
     ? clampLevel(Number(candidate.lastLevelId))
-    : getFirstUnsolvedLevel(completed);
+    : getFirstUnsolvedLevel(runCompleted);
 
   return {
     version: 2,
     completed,
+    runCompleted,
+    attempts,
+    crashes: Math.max(0, Math.trunc(Number(candidate.crashes) || 0)),
     hints,
     records,
     lastLevelId,
@@ -233,6 +270,7 @@ function readLegacy(userId: string): ProgressData | null {
     const hints = normalizeLevelIds(parsed.hints);
     const progress = createEmptyProgress();
     progress.completed = completed;
+    progress.runCompleted = completed;
     progress.hints = hints;
     progress.tutorialSeen = completed.length > 0;
     progress.lastLevelId = getFirstUnsolvedLevel(completed);
@@ -317,11 +355,50 @@ function getFirstUnsolvedLevel(completed: number[]): number {
  * Continue means "resume the level I was on, otherwise the next unsolved one".
  */
 export function getContinueLevel(progress: ProgressData): number {
-  const completed = new Set(progress.completed);
+  const completed = new Set(progress.runCompleted);
   if (progress.lastLevelId >= 1 && progress.lastLevelId <= TOTAL_LEVELS) {
     if (!completed.has(progress.lastLevelId)) return progress.lastLevelId;
   }
-  return getFirstUnsolvedLevel(progress.completed);
+  return getFirstUnsolvedLevel(progress.runCompleted);
+}
+
+/** A level the current run has not cleared yet: only these use attempts. */
+export function isFrontierLevel(progress: ProgressData, levelId: number): boolean {
+  return !progress.runCompleted.includes(levelId);
+}
+
+export function getAttemptsUsed(progress: ProgressData, levelId: number): number {
+  return progress.attempts[String(levelId)] ?? 0;
+}
+
+/** Counts a new attempt on a frontier level and returns how many are used. */
+export function startAttempt(userId: string, levelId: number): number {
+  const progress = getProgress(userId);
+  if (!isFrontierLevel(progress, levelId)) return 0;
+  const used = Math.min(MAX_ATTEMPTS, getAttemptsUsed(progress, levelId) + 1);
+  progress.attempts = { ...progress.attempts, [String(levelId)]: used };
+  saveProgress(userId, progress);
+  return used;
+}
+
+/**
+ * Three failed attempts on one level: the run starts over from level 1. Stars,
+ * records, themes and achievements are kept; only the run is cleared.
+ */
+export function applyCrash(progress: ProgressData): ProgressData {
+  return {
+    ...progress,
+    runCompleted: [],
+    attempts: {},
+    crashes: progress.crashes + 1,
+    lastLevelId: 1,
+  };
+}
+
+export function crashRun(userId: string): ProgressData {
+  const crashed = applyCrash(getProgress(userId));
+  saveProgress(userId, crashed);
+  return crashed;
 }
 
 export function getTotalStars(progress: ProgressData): number {
@@ -390,6 +467,11 @@ export function applyLevelResult(
   const completed = input.completed
     ? Array.from(new Set([...progress.completed, levelId])).sort((a, b) => a - b)
     : progress.completed;
+  const runCompleted = input.completed
+    ? Array.from(new Set([...progress.runCompleted, levelId])).sort((a, b) => a - b)
+    : progress.runCompleted;
+  const attempts = { ...progress.attempts };
+  if (input.completed) delete attempts[String(levelId)];
   const hints = input.hintsUsed
     ? Array.from(new Set([...progress.hints, levelId])).sort((a, b) => a - b)
     : progress.hints;
@@ -398,6 +480,8 @@ export function applyLevelResult(
     progress: {
       ...progress,
       completed,
+      runCompleted,
+      attempts,
       hints,
       records: { ...progress.records, [String(levelId)]: record },
       lastLevelId: levelId,

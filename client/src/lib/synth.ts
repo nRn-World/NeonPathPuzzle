@@ -27,6 +27,10 @@ export interface SynthEngine {
   playUndo: () => void;
   playWin: () => void;
   playClick: () => void;
+  /** Two low warning blips: the line has no move left. */
+  playAlert: () => void;
+  /** A collapsing sawtooth fall and a sub thud: the run has crashed. */
+  playCrash: () => void;
   dispose: () => void;
 }
 
@@ -113,6 +117,17 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
     },
     playClick: () => {
       playVoice(ctx, master, { frequency: 1200, type: "triangle", duration: 0.045, peak: 0.05 });
+    },
+    playAlert: () => {
+      [0, 0.16].forEach(delay => {
+        playVoice(ctx, master, { frequency: 233, type: "square", duration: 0.12, peak: 0.06, delay });
+      });
+    },
+    playCrash: () => {
+      [466, 349, 262, 196, 147, 110].forEach((frequency, index) => {
+        playVoice(ctx, master, { frequency, type: "sawtooth", duration: 0.22, peak: 0.08, delay: index * 0.07 });
+      });
+      playVoice(ctx, master, { frequency: 55, type: "sine", duration: 1.2, peak: 0.3, attack: 0.01, delay: 0.42 });
     },
     dispose: () => {
       try {

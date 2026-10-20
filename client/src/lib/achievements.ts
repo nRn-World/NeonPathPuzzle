@@ -67,6 +67,11 @@ export const achievements: Achievement[] = [
     reward: { type: "theme_unlock", value: "sunset", description: "Unlock Neon Sunset theme" }, rarity: "platinum",
   },
   {
+    id: "omega_architect", name: "Omega Architect", description: "Complete all 300 levels", icon: "🌌",
+    requirement: { type: "levels_completed", value: 300 },
+    reward: { type: "theme_unlock", value: "aurora", description: "Unlock Aurora theme" }, rarity: "diamond",
+  },
+  {
     id: "perfect_run", name: "Perfect Run", description: "Complete 25 levels without losing a single life", icon: "🛡️",
     requirement: { type: "perfect_levels", value: 25 },
     reward: { type: "title", value: "Perfect", description: "Perfect title badge" }, rarity: "diamond",

@@ -1,12 +1,12 @@
 export const MIN_CODED_LEVEL = 10;
-export const MAX_CODED_LEVEL = 200;
+export const MAX_CODED_LEVEL = 300;
 
 /**
  * Permanent public level-code contract.
  *
  * Never change this multiplier or the formula: players may save a code and
  * expect it to keep opening the same level after every refresh and release.
- * 9973 is coprime with 10000, so levels 10-200 all receive unique codes.
+ * 9973 is coprime with 10000, so levels 10-300 all receive unique codes.
  */
 const PERMANENT_CODE_MULTIPLIER = 9973;
 
