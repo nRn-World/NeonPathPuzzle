@@ -71,7 +71,7 @@ export function ChapterBoard({
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 overflow-x-auto pb-1 safe-scroll">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 safe-scroll">
         {chapters.map(item => {
           const isActive = item.id === chapter.id;
           const chapterLevels = levels.filter(level => level.id >= item.from && level.id <= item.to);
@@ -198,7 +198,7 @@ export function ChapterBoard({
                 : t("noLevels")}
           </div>
         ) : (
-          <div className="grid grid-cols-5 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-5 gap-2.5 sm:grid-cols-6 sm:gap-3 md:grid-cols-8">
             {visibleLevels.map((level, index) => (
               <LevelCard
                 key={level.id}

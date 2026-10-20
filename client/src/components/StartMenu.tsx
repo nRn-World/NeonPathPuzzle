@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowRight,
   Heart,
   HelpCircle,
-  LayoutGrid,
   Lock,
   PenLine,
   Play,
@@ -14,11 +14,15 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AchievementsPanel } from "@/components/AchievementsPanel";
+import { ChapterBoard } from "@/components/ChapterBoard";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
+import { formatDuration } from "@/lib/scoring";
 import { getLevelFromCode } from "@/lib/levelCodes";
 import { getLevelMessage } from "@/lib/levelMessages";
 import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
@@ -28,11 +32,6 @@ import { useSettingsStore } from "@/lib/settings";
 import { getProgress, markTutorialSeen } from "@/lib/progress";
 import { playClickSound } from "@/lib/sounds";
 import { useI18n } from "@/lib/i18n";
-
-interface StartMenuProps {
-  onStart: () => void;
-  onStartLevel?: (levelId: number) => void;
-}
 
 type MenuScreen = "main" | "info" | "completed";
 
@@ -128,8 +127,9 @@ function GlowingOrb({ className, color = "#00f3ff" }: { className?: string; colo
   );
 }
 
-export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
+export function StartMenu() {
   const [screen, setScreen] = useState<MenuScreen>("main");
+  const [activeTab, setActiveTab] = useState("levels");
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState("");
   const [selectedLevelMessage, setSelectedLevelMessage] = useState<{ id: number; message: string } | null>(null);
@@ -146,6 +146,13 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
   const bestStreak = summary?.bestStreak ?? 0;
   const continueLevel = summary?.continueLevel ?? 1;
   const hasProgress = completedCount > 0;
+  const recordValues = Object.values(summary?.records ?? {});
+  const threeStarClears = recordValues.filter(record => record.stars === 3).length;
+  const bestTime = recordValues.reduce<number | null>((best, record) => {
+    if (record.bestTimeMs === null) return best;
+    return best === null ? record.bestTimeMs : Math.min(best, record.bestTimeMs);
+  }, null);
+  const totalScore = recordValues.reduce((total, record) => total + (record.bestScore ?? 0), 0);
 
   useEffect(() => {
     if (screen === "completed") void refetch();
@@ -157,8 +164,7 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
   };
 
   const handleStartClick = () => {
-    if (onStartLevel) onStartLevel(continueLevel);
-    else onStart();
+    setLocation(`/play/${continueLevel}`);
   };
 
   const handleLevelClick = (levelId: number) => {
@@ -189,7 +195,7 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
       <GlowingOrb className="-bottom-40 left-1/3 h-[400px] w-[400px]" color="#00f3ff" />
 
       <div className="relative z-10 h-full overflow-y-auto safe-scroll">
-        <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
+        <div className="flex min-h-screen flex-col items-center justify-start px-4 pb-14 pt-8 sm:pt-12">
           <AnimatePresence mode="wait">
             {screen === "main" && (
               <motion.div
@@ -197,7 +203,7 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-xl"
+                className="w-full max-w-3xl"
               >
                 <div className="space-y-7 text-center">
                   <motion.div
@@ -215,9 +221,9 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
                           ],
                         }}
                         transition={{ duration: 2.6, repeat: Infinity }}
-                        className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border-2 border-primary"
+                        className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary sm:h-24 sm:w-24"
                       >
-                        <Zap className="h-14 w-14 text-primary" />
+                        <Zap className="h-10 w-10 text-primary sm:h-12 sm:w-12" />
                       </motion.div>
                       <motion.div
                         className="absolute -inset-4 rounded-full border border-primary/30"
@@ -232,7 +238,7 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 }}
-                      className="bg-gradient-to-r from-white via-primary to-white bg-clip-text font-orbitron text-5xl font-black tracking-wider text-transparent md:text-7xl"
+                      className="bg-gradient-to-r from-white via-primary to-white bg-clip-text font-orbitron text-4xl font-black tracking-wider text-transparent sm:text-6xl md:text-7xl"
                       style={{
                         textShadow: "0 0 40px rgba(0,243,255,0.5)",
                         filter: "drop-shadow(0 0 20px rgba(0,243,255,0.3))",
@@ -256,29 +262,43 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
                     transition={{ delay: 0.4 }}
                     className="flex flex-col gap-3"
                   >
-                    <Button
+                    <button
+                      type="button"
                       onClick={() => handleButtonClick(handleStartClick)}
-                      className="group relative h-16 overflow-hidden bg-gradient-to-r from-primary via-primary to-secondary px-4 font-orbitron text-base font-bold text-black shadow-[0_0_28px_rgba(0,243,255,0.35)] transition-all hover:scale-[1.02] hover:shadow-[0_0_45px_rgba(0,243,255,0.5)] sm:text-lg"
+                      className="group relative w-full overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/20 via-primary/5 to-secondary/20 p-4 text-left shadow-[0_0_28px_rgba(0,243,255,0.18)] transition-all hover:border-primary/70 hover:shadow-[0_0_45px_rgba(0,243,255,0.32)] active:scale-[0.99]"
                     >
-                      <span className="relative z-10 flex items-center justify-center gap-3">
-                        <Play className="h-6 w-6" />
-                        {hasProgress
-                          ? t("continueLevel", { level: continueLevel }).toUpperCase()
-                          : t("startGame").toUpperCase()}
+                      <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-700 group-hover:translate-x-full" />
+                      <span className="relative flex items-center gap-3">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-primary/50 bg-primary/15 text-primary">
+                          <Play className="h-5 w-5 fill-current" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-exo text-[11px] uppercase tracking-[0.18em] text-primary/80">
+                            {hasProgress ? t("continueGame") : t("startGame")}
+                          </span>
+                          <span className="block font-orbitron text-xl font-bold text-white sm:text-2xl">
+                            {t("level").toUpperCase()} {continueLevel}
+                          </span>
+                        </span>
+                        <ArrowRight className="h-5 w-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" />
                       </span>
-                      <span className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-500 group-hover:translate-x-full" />
-                    </Button>
+                      <span className="relative mt-3 block h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <span
+                          className="block h-full rounded-full bg-gradient-to-r from-primary to-secondary"
+                          style={{ width: `${Math.min(100, (completedCount / 200) * 100)}%` }}
+                        />
+                      </span>
+                      <span className="relative mt-1.5 flex justify-between font-exo text-[10px] text-muted-foreground">
+                        <span>{completedCount}/200 {t("levelsSolved")}</span>
+                        <span>{totalStars}/600 <Star className="mb-0.5 inline h-3 w-3 fill-secondary text-secondary" /></span>
+                      </span>
+                    </button>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <MenuButton
                         icon={<HelpCircle className="h-4 w-4" />}
                         label={t("howToPlay")}
                         onClick={() => handleButtonClick(() => setScreen("info"))}
-                      />
-                      <MenuButton
-                        icon={<LayoutGrid className="h-4 w-4" />}
-                        label={t("chapters")}
-                        onClick={() => handleButtonClick(onStart)}
                       />
                       <MenuButton
                         icon={<Trophy className="h-4 w-4" />}
@@ -310,10 +330,61 @@ export function StartMenu({ onStart, onStartLevel }: StartMenuProps) {
                   </motion.div>
 
                   <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 }}
+                    className="text-left"
+                  >
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="levels" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
+                          <Star className="h-3.5 w-3.5" />
+                          {t("chaptersTab")}
+                        </TabsTrigger>
+                        <TabsTrigger value="achievements" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
+                          <Trophy className="h-3.5 w-3.5" />
+                          {t("achievementsTab")}
+                        </TabsTrigger>
+                        <TabsTrigger value="stats" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
+                          <Zap className="h-3.5 w-3.5" />
+                          {t("statsTab")}
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="levels" className="mt-4">
+                        <ChapterBoard levels={levels ?? []} continueLevel={continueLevel} />
+                      </TabsContent>
+
+                      <TabsContent value="achievements" className="mt-4">
+                        <AchievementsPanel />
+                      </TabsContent>
+
+                      <TabsContent value="stats" className="mt-4">
+                        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+                          <StatCard label={t("levelsSolvedStat")} value={`${completedCount}/200`} />
+                          <StatCard label={t("starsEarnedStat")} value={`${totalStars}/600`} />
+                          <StatCard label={t("threeStarClears")} value={String(threeStarClears)} />
+                          <StatCard
+                            label={t("bestTimeStat")}
+                            value={bestTime !== null ? formatDuration(bestTime) : "—"}
+                          />
+                          <StatCard label={t("dailyStreak")} value={String(summary?.dailyStreak ?? 0)} />
+                          <StatCard label={t("bestStreakStat")} value={String(bestStreak)} />
+                          <StatCard
+                            label={t("completion")}
+                            value={`${Math.round((completedCount / 200) * 100)}%`}
+                          />
+                          <StatCard label={t("totalScore")} value={totalScore.toLocaleString()} />
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </motion.div>
+
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
+                    className="mx-auto w-full max-w-md rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
                   >
                     <p className="mb-3 font-exo text-sm text-muted-foreground">
                       {t("haveLevelCode")}
@@ -565,6 +636,15 @@ function MenuButton({
       {icon}
       {label}
     </Button>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
+      <div className="font-orbitron text-xl font-bold text-primary">{value}</div>
+      <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
+    </div>
   );
 }
 

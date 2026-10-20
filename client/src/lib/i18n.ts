@@ -23,6 +23,7 @@ const en = {
 
   startTagline: "Connect the nodes. One continuous line.",
   startGame: "Start game",
+  continueGame: "Continue",
   continueLevel: "Continue · Level {level}",
   howToPlay: "How to play",
   chapters: "Chapters",
@@ -215,6 +216,7 @@ const sv: Record<TranslationKey, string> = {
 
   startTagline: "Koppla ihop noderna. En obruten linje.",
   startGame: "Starta spelet",
+  continueGame: "Fortsätt",
   continueLevel: "Fortsätt · nivå {level}",
   howToPlay: "Så spelar du",
   chapters: "Kapitel",

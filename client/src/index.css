@@ -99,6 +99,14 @@ h1, h2, h3, h4, h5, h6 {
   background: hsl(var(--primary)); 
 }
 
+/* Horizontal touch scrollers: no visible scrollbar track on any platform. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Glassmorphism Card */
 .glass-card {
   @apply bg-opacity-30 backdrop-blur-md border border-white/10 shadow-xl;
