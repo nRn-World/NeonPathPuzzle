@@ -1,0 +1,35 @@
+NEON PATH PUZZLE — GOOGLE PLAY IMAGE PACKAGE
+
+RECOMMENDED PHONE SCREENSHOTS
+Upload these four images in this order:
+
+1. phone-1080x1920/01-connect-every-node.png
+2. phone-1080x1920/02-master-the-path.png
+3. phone-1080x1920/03-feel-every-win.png
+4. phone-1080x1920/04-choose-your-glow.png
+
+The phone-1440x2560 folder contains higher-resolution copies.
+Do not upload both sizes to the same phone screenshot section; use the
+1080x1920 set unless you specifically prefer the higher-resolution set.
+
+OTHER REQUIRED STORE ASSETS
+
+- Feature graphic:
+  feature-graphic/feature-graphic-1024x500.png
+
+- App icon:
+  app-icon/app-icon-512x512.png
+
+SUGGESTED ALT TEXT
+
+1. Neon Path Puzzle main menu showing 200 levels and the start button.
+2. Neon puzzle board with one glowing path connecting nodes.
+3. Level completion screen with the next-level and replay controls.
+4. Theme selector showing five distinct neon color themes.
+
+NOTES
+
+- All store screenshots are opaque 24-bit PNG files.
+- Phone screenshots use the recommended 9:16 aspect ratio.
+- The source screenshots in the parent screenshots folder were not changed.
+- The generated marketing background is stored in _source.

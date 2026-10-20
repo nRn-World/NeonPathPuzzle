@@ -13,13 +13,15 @@ export interface Theme {
     glow: string;
     particle: string;
   };
+  /** Levels that must be completed before the theme can be selected. */
+  unlockAtLevels: number;
 }
 
 export const themes: Theme[] = [
   {
     id: 'cyberpunk',
     name: 'Cyberpunk',
-    description: 'Klassisk neon-blå och lila estetik',
+    description: 'Classic neon blue and violet',
     colors: {
       primary: '#00f3ff',
       secondary: '#8a2be2',
@@ -30,12 +32,13 @@ export const themes: Theme[] = [
     effects: {
       glow: '0 0 20px rgba(0, 243, 255, 0.5)',
       particle: 'cyan'
-    }
+    },
+    unlockAtLevels: 0
   },
   {
     id: 'retro',
     name: 'Retro Wave',
-    description: '80-tals inspirerad rosa och cyan',
+    description: '80s-inspired pink and cyan',
     colors: {
       primary: '#ff6ec7',
       secondary: '#00ffff',
@@ -46,12 +49,13 @@ export const themes: Theme[] = [
     effects: {
       glow: '0 0 25px rgba(255, 110, 199, 0.6)',
       particle: 'pink'
-    }
+    },
+    unlockAtLevels: 10
   },
   {
     id: 'cosmic',
     name: 'Cosmic',
-    description: 'Rymdinspirerad med djupblå och guld',
+    description: 'Deep space blue with gold',
     colors: {
       primary: '#4a90e2',
       secondary: '#ffd700',
@@ -62,12 +66,13 @@ export const themes: Theme[] = [
     effects: {
       glow: '0 0 30px rgba(74, 144, 226, 0.7)',
       particle: 'gold'
-    }
+    },
+    unlockAtLevels: 50
   },
   {
     id: 'matrix',
     name: 'Matrix',
-    description: 'Grön digital regn-effekt',
+    description: 'Green digital rain',
     colors: {
       primary: '#00ff41',
       secondary: '#008f11',
@@ -78,12 +83,13 @@ export const themes: Theme[] = [
     effects: {
       glow: '0 0 15px rgba(0, 255, 65, 0.8)',
       particle: 'lime'
-    }
+    },
+    unlockAtLevels: 100
   },
   {
     id: 'sunset',
     name: 'Neon Sunset',
-    description: 'Varm orange och lila solnedgång',
+    description: 'Warm orange and violet sunset',
     colors: {
       primary: '#ff6b35',
       secondary: '#c77dff',
@@ -94,9 +100,15 @@ export const themes: Theme[] = [
     effects: {
       glow: '0 0 25px rgba(255, 107, 53, 0.6)',
       particle: 'orange'
-    }
+    },
+    unlockAtLevels: 200
   }
 ];
+
+export const isThemeUnlocked = (themeId: string, completedLevels: number): boolean => {
+  const theme = getTheme(themeId);
+  return completedLevels >= theme.unlockAtLevels;
+};
 
 export const getTheme = (themeId: string): Theme => {
   return themes.find(theme => theme.id === themeId) || themes[0];

@@ -11,16 +11,37 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Game from "@/pages/Game";
+import Daily from "@/pages/Daily";
+import Weekly from "@/pages/Weekly";
+import Editor from "@/pages/Editor";
 import Privacy from "@/pages/Privacy";
 import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
+import { applyMotionPreference, useSettingsStore } from "@/lib/settings";
 import { useEffect } from "react";
+
+function LevelGame() {
+  return <Game />;
+}
+
+function ZenGame() {
+  return <Game mode="zen" />;
+}
+
+function CustomGame() {
+  return <Game mode="custom" />;
+}
 
 function AppRouter() {
   return (
     <Router hook={useHashLocation}>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/play/:id" component={Game} />
+        <Route path="/play/:id" component={LevelGame} />
+        <Route path="/daily" component={Daily} />
+        <Route path="/weekly" component={Weekly} />
+        <Route path="/zen/:id" component={ZenGame} />
+        <Route path="/custom/:code" component={CustomGame} />
+        <Route path="/editor" component={Editor} />
         <Route path="/privacy" component={Privacy} />
         <Route component={NotFound} />
       </Switch>
@@ -29,6 +50,12 @@ function AppRouter() {
 }
 
 function App() {
+  const reducedMotion = useSettingsStore(state => state.reducedMotion);
+
+  useEffect(() => {
+    applyMotionPreference(reducedMotion);
+  }, [reducedMotion]);
+
   useEffect(() => {
     const handleInteraction = () => {
       initAudio();

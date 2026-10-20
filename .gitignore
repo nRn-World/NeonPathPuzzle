@@ -39,3 +39,7 @@ local-secrets/
 # Android local build files
 android/local.properties
 android/.gradle/
+
+# Test tooling artifacts (may contain API keys)
+testsprite_tests/tmp/
+nul
