@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Check, Lock, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatDuration } from "@/lib/scoring";
+import { useI18n } from "@/lib/i18n";
 
 interface LevelCardProps {
   id: number;
@@ -24,6 +25,7 @@ export function LevelCard({
   hrefBase = "/play",
   delay = 0,
 }: LevelCardProps) {
+  const { t } = useI18n();
   if (isLocked) {
     return (
       <div className="aspect-square rounded-[4px] border border-white/5 bg-card/40 shadow-inner flex flex-col items-center justify-center gap-1 text-muted-foreground/25">
@@ -40,7 +42,7 @@ export function LevelCard({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: delay * 0.03 }}
         title={bestTimeMs !== null
-          ? `Best time ${formatDuration(bestTimeMs)}${bestScore ? ` · Best score ${bestScore.toLocaleString()}` : ""}`
+          ? `${t("bestTimeStat")} ${formatDuration(bestTimeMs)}${bestScore ? ` · ${t("bestScore")} ${bestScore.toLocaleString()}` : ""}`
           : undefined}
         className={`
           relative aspect-square rounded-[4px] cursor-pointer group overflow-hidden

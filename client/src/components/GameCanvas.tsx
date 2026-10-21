@@ -460,9 +460,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Personal-best ghost, kept faint so the live line stays dominant.
     if (showGhost && ghostPath && ghostPath.length > 1) {
       context.save();
-      context.globalAlpha = 0.22;
+      context.globalAlpha = 0.2;
       context.strokeStyle = colors.accent;
-      context.lineWidth = Math.max(1, cell * 0.08);
+      context.lineWidth = Math.min(4, Math.max(1.5, cell * 0.04));
       context.lineCap = "round";
       context.lineJoin = "round";
       context.setLineDash([cell * 0.12, cell * 0.1]);
@@ -504,13 +504,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.lineCap = "round";
       context.lineJoin = "round";
       context.strokeStyle = `${colors.primary}40`;
-      context.lineWidth = cell * 0.34;
+      context.lineWidth = Math.min(cell * 0.34, 46);
       trace();
       context.stroke();
       context.strokeStyle = colors.primary;
       context.shadowColor = colors.primary;
       context.shadowBlur = 26;
-      context.lineWidth = cell * 0.17;
+      context.lineWidth = Math.min(cell * 0.17, 24);
       trace();
       context.stroke();
       context.shadowBlur = 0;
@@ -565,7 +565,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.save();
       context.globalAlpha = 0.55;
       context.strokeStyle = colors.secondary;
-      context.lineWidth = Math.max(2, cell * 0.08);
+      context.lineWidth = Math.min(6, Math.max(2, cell * 0.06));
       context.setLineDash([cell * 0.18, cell * 0.12]);
       context.beginPath();
       hintPath.forEach((point, index) => {

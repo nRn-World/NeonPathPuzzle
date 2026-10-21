@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Flame, Play, Star } from "lucide-react";
+import { Brain, ChevronDown, Flame, Play, Star } from "lucide-react";
+import { getBrainRank } from "@/lib/rank";
 import type { Point } from "@shared/schema";
 import { HERO_BOARD } from "@/lib/heroBoard";
 import { useTheme } from "@/hooks/use-theme";
@@ -165,6 +166,7 @@ interface MenuHeroProps {
   totalStars: number;
   maxStars: number;
   streak: number;
+  chapterName: string;
   onPlay: () => void;
   /** Secondary actions: how to play, completed, daily, theme, settings, editor. */
   actions: ReactNode;
@@ -178,10 +180,12 @@ export function MenuHero({
   totalStars,
   maxStars,
   streak,
+  chapterName,
   onPlay,
   actions,
 }: MenuHeroProps) {
   const { t } = useI18n();
+  const rank = getBrainRank(totalStars);
   const segments = 30;
   const filled = Math.round((runCount / totalLevels) * segments);
 
@@ -240,6 +244,9 @@ export function MenuHero({
               <span className="block font-orbitron text-2xl font-black tracking-wide">
                 {upper(t("level"))} {continueLevel}
               </span>
+              <span className="mt-0.5 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">
+                {chapterName}
+              </span>
             </span>
             <Play className="h-8 w-8 fill-current transition-transform group-hover:translate-x-1" />
           </button>
@@ -262,6 +269,10 @@ export function MenuHero({
           <div className="mt-2 flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             <span>{runCount}/{totalLevels} {t("levelsSolved")}</span>
             <span className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-primary" title={t("brainRank")}>
+                <Brain className="h-3 w-3" />
+                {upper(t(rank.key))}
+              </span>
               <span className="flex items-center gap-1">
                 <Star className="h-3 w-3 fill-accent text-accent" />
                 {totalStars}/{maxStars}

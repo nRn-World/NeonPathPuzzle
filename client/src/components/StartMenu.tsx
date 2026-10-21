@@ -16,6 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
 import { MenuHero } from "@/components/MenuHero";
+import { content } from "@/lib/contentText";
+import { getChapterForLevel } from "@/lib/chapters";
+import { getBrainRank } from "@/lib/rank";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
@@ -130,6 +133,7 @@ export function StartMenu() {
                   totalStars={totalStars}
                   maxStars={maxStars}
                   streak={summary?.dailyStreak ?? 0}
+                  chapterName={upper(content.chapter(getChapterForLevel(continueLevel)).name)}
                   onPlay={() => handleButtonClick(handleStartClick)}
                   actions={(
                     <>
@@ -217,6 +221,10 @@ export function StartMenu() {
                             value={`${Math.round((completedCount / TOTAL_LEVELS) * 100)}%`}
                           />
                           <StatCard label={t("totalScore")} value={totalScore.toLocaleString()} />
+                          <StatCard
+                            label={t("brainRank")}
+                            value={upper(t(getBrainRank(totalStars).key))}
+                          />
                           <StatCard label={t("runStat")} value={`${runCount}/${TOTAL_LEVELS}`} />
                           <StatCard label={t("crashesStat")} value={String(summary?.crashes ?? 0)} />
                         </div>
