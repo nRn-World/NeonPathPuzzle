@@ -60,8 +60,10 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const [, customParams] = useRoute("/custom/:code");
   const [, setLocation] = useLocation();
 
-  const dailyKey = getDateKey();
-  const dailyLevelId = getDailyLevelId(dailyKey);
+  // Pinned for the session: a timer tick past local midnight must not swap the
+  // puzzle (and reset the board) under the player's line.
+  const dailyKey = useMemo(() => getDateKey(), []);
+  const dailyLevelId = useMemo(() => getDailyLevelId(dailyKey), [dailyKey]);
   const weeklyChallenge = useMemo(() => getWeeklyChallenge(), []);
   const activeCustomCode = customCode ?? customParams?.code;
   const customResult = useMemo(
@@ -150,6 +152,8 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const [mistakes, setMistakes] = useState(0);
   const [backtracks, setBacktracks] = useState(0);
   const [canvasKey, setCanvasKey] = useState(0);
+  /** False until the first reset has run: the fresh board needs no remount. */
+  const hasResetOnceRef = useRef(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [finalTimeMs, setFinalTimeMs] = useState(0);
   const [score, setScore] = useState(0);
@@ -242,7 +246,10 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     setAttemptStarted(false);
     setStuck(false);
     setConfirmCrash(false);
-    setCanvasKey(previous => previous + 1);
+    // A brand-new canvas already opens on a clean path, so remounting it here
+    // would only throw that board away and make the level fade in twice.
+    if (hasResetOnceRef.current) setCanvasKey(previous => previous + 1);
+    else hasResetOnceRef.current = true;
     usePowerUpsStore.getState().removeEffect("path_hint");
     usePowerUpsStore.getState().removeEffect("time_freeze");
   }, []);
@@ -838,7 +845,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
               ref={canvasRef}
               level={level}
               mechanics={mechanics}
-              ghostPath={!isDaily && !isWeekly && !isCustom ? ghostPath : null}
+              ghostPath={!isDaily && !isWeekly && !isCustom && !mechanics.blackout ? ghostPath : null}
               showGhost={showGhost}
               disableUndo={noUndo || backtracks >= MAX_BACKTRACKS}
               gridLabel={t("gridLabel", { size: level.gridSize })}

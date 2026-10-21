@@ -264,7 +264,7 @@ export function Header({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <TrophyIcon className="h-5 w-5 text-primary" />
-                Achievements
+                {t("achievementsTitle")}
               </DialogTitle>
               <DialogDescription className="sr-only">
                 Your unlocked achievements and progress.
@@ -318,6 +318,8 @@ export function Header({
               <p>{t("symbolOneWay")}</p>
               <p>{t("symbolPairs")}</p>
               <p>{t("symbolPortals")}</p>
+              <p>{t("symbolSync")}</p>
+              <p>{t("symbolBlackout")}</p>
             </div>
           </DialogContent>
         </Dialog>
