@@ -1,3 +1,4 @@
+import { content } from "@/lib/contentText";
 import { useEffect } from 'react';
 import { usePowerUps } from '@/hooks/use-powerups';
 import { powerUps, getRarityColor } from '@/lib/powerups';
@@ -50,7 +51,7 @@ export function PowerUpInventory() {
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{powerUp.icon}</span>
                     <div className="flex-1">
-                      <div className="text-xs font-medium">{powerUp.name}</div>
+                      <div className="text-xs font-medium">{content.powerUp(powerUp).name}</div>
                       <div className="text-xs text-green-400">Active</div>
                     </div>
                   </div>
@@ -75,7 +76,7 @@ export function PowerUpInventory() {
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl">{powerUp.icon}</span>
                       <div className="flex-1">
-                        <div className="text-sm font-medium">{powerUp.name}</div>
+                        <div className="text-sm font-medium">{content.powerUp(powerUp).name}</div>
                         <Badge 
                           variant="outline" 
                           className="text-xs"
@@ -86,7 +87,7 @@ export function PowerUpInventory() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">
-                      {powerUp.description}
+                      {content.powerUp(powerUp).description}
                     </p>
                     <Button
                       size="sm"

@@ -228,7 +228,7 @@ export function StartMenu() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="mx-auto w-full max-w-md rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
+                    className="mx-auto w-full max-w-md rounded-none border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
                   >
                     <p className="mb-3 font-exo text-sm text-muted-foreground">
                       {t("haveLevelCode")}
@@ -291,7 +291,7 @@ export function StartMenu() {
                 exit={{ opacity: 0, x: -40 }}
                 className="w-full max-w-2xl"
               >
-                <div className="space-y-6 rounded-2xl border border-primary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
+                <div className="space-y-6 rounded-none border border-primary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-primary md:text-4xl">
                       HOW TO PLAY
@@ -315,7 +315,7 @@ export function StartMenu() {
 
                   <Button
                     onClick={() => handleButtonClick(() => setScreen("main"))}
-                    className="w-full bg-gradient-to-r from-primary to-secondary py-6 text-lg font-semibold text-black hover:opacity-90"
+                    className="w-full rounded-none bg-primary py-6 font-orbitron text-sm font-bold uppercase tracking-wider text-background hover:bg-primary/90"
                   >
                     BACK TO MENU
                   </Button>
@@ -331,7 +331,7 @@ export function StartMenu() {
                 exit={{ opacity: 0, x: -40 }}
                 className="w-full max-w-4xl"
               >
-                <div className="space-y-6 rounded-2xl border border-secondary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
+                <div className="space-y-6 rounded-none border border-secondary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-secondary md:text-4xl">
                       COMPLETED LEVELS
@@ -376,7 +376,7 @@ export function StartMenu() {
 
                   <Button
                     onClick={() => handleButtonClick(() => setScreen("main"))}
-                    className="w-full bg-gradient-to-r from-secondary to-primary py-6 text-lg font-semibold text-black hover:opacity-90"
+                    className="w-full rounded-none bg-primary py-6 font-orbitron text-sm font-bold uppercase tracking-wider text-background hover:bg-primary/90"
                   >
                     BACK TO MENU
                   </Button>
@@ -401,9 +401,9 @@ export function StartMenu() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.85, opacity: 0 }}
               onClick={event => event.stopPropagation()}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-[#0a0f1e] to-[#1a1a2e] p-8"
+              className="relative w-full max-w-md overflow-hidden rounded-none border border-white/10 bg-background p-8"
             >
-              <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-primary to-secondary" />
+              <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
               <div className="relative z-10 space-y-6 text-center">
                 <Heart className="mx-auto h-12 w-12 animate-pulse fill-primary text-primary" />
                 <div>
@@ -457,7 +457,7 @@ function MenuButton({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
+    <div className="rounded-none border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
       <div className="font-orbitron text-xl font-bold text-primary">{value}</div>
       <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
     </div>
@@ -514,9 +514,9 @@ function CompletedSection({
               key={levelId}
               onClick={() => isCompleted && onLevelClick(levelId)}
               disabled={!isCompleted}
-              className={`relative flex aspect-square flex-col items-center justify-center rounded-lg font-orbitron text-xs font-bold transition-all ${
+              className={`relative flex aspect-square flex-col items-center justify-center rounded-none font-orbitron text-xs font-bold transition-all ${
                 isCompleted
-                  ? "bg-gradient-to-br from-primary to-secondary text-black shadow-[0_0_12px_rgba(0,243,255,0.25)] hover:scale-105"
+                  ? "bg-primary text-background hover:brightness-110"
                   : "bg-white/5 text-white/20"
               }`}
             >

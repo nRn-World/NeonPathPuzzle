@@ -1,5 +1,7 @@
+import { content } from "@/lib/contentText";
 import { useState } from 'react';
 import { useAchievements } from '@/hooks/use-achievements';
+import { useI18n } from '@/lib/i18n';
 import { achievements, getRarityColor, getRarityOrder } from '@/lib/achievements';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +10,7 @@ import { Trophy, Lock, Check } from 'lucide-react';
 
 export function AchievementsPanel() {
   const { unlockedAchievements, progress, isUnlocked } = useAchievements();
+  const { t } = useI18n();
   const [showAll, setShowAll] = useState(false);
 
   // Sort achievements by rarity and unlock status
@@ -35,10 +38,10 @@ export function AchievementsPanel() {
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-400" />
-          <h3 className="text-lg font-semibold">Achievements</h3>
+          <h3 className="text-lg font-semibold">{t("achievementsTitle")}</h3>
         </div>
         <div className="text-sm text-muted-foreground">
-          {unlockedCount} / {totalCount} Unlocked
+          {t("unlockedOf", { count: unlockedCount, total: totalCount })}
         </div>
         <div className="w-full bg-muted rounded-full h-2">
           <div 
@@ -78,7 +81,7 @@ export function AchievementsPanel() {
                       <h4 className={`font-medium text-sm truncate ${
                         isUnlockedAchievement ? 'text-yellow-400' : 'text-muted-foreground'
                       }`}>
-                        {achievement.name}
+                        {content.achievement(achievement).name}
                       </h4>
                       {isUnlockedAchievement && (
                         <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
@@ -86,14 +89,14 @@ export function AchievementsPanel() {
                     </div>
                     
                     <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                      {achievement.description}
+                      {content.achievement(achievement).description}
                     </p>
                     
                     {/* Progress Bar */}
                     {isProgressAchievement && !isUnlockedAchievement && (
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Progress</span>
+                          <span>{content.progress()}</span>
                           <span>{progressValue}/{achievement.requirement.value}</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-1.5">
@@ -114,12 +117,12 @@ export function AchievementsPanel() {
                           color: isUnlockedAchievement ? getRarityColor(achievement.rarity) : '#64748b'
                         }}
                       >
-                        {achievement.rarity}
+                        {content.rarity(achievement.rarity)}
                       </Badge>
                       
                       <div className="text-xs text-muted-foreground text-right">
                         <div className="truncate max-w-[100px]">
-                          {achievement.reward.description}
+                          {content.achievement(achievement).reward}
                         </div>
                       </div>
                     </div>
@@ -139,7 +142,7 @@ export function AchievementsPanel() {
           onClick={() => setShowAll(!showAll)}
           className="w-full"
         >
-          {showAll ? 'Show Less' : `Show All (${achievements.length})`}
+          {showAll ? t("showLess") : t("showAll", { count: achievements.length })}
         </Button>
       )}
     </div>

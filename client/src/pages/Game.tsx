@@ -1,3 +1,5 @@
+import { content } from "@/lib/contentText";
+import { getChapterForLevel } from "@/lib/chapters";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -571,8 +573,8 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       const newlyUnlocked = checkAchievements();
       newlyUnlocked.forEach(achievement => {
         toast({
-          title: t("achievementUnlocked", { name: achievement.name }),
-          description: achievement.description,
+          title: t("achievementUnlocked", { name: content.achievement(achievement).name }),
+          description: content.achievement(achievement).description,
         });
       });
       if (newlyUnlocked.length > 0) addTokens(newlyUnlocked.length);
@@ -756,6 +758,9 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     parTimeMs,
   });
 
+  // The chapter gives every level a place in the campaign.
+  const chapterName = mode === "level" ? upper(content.chapter(getChapterForLevel(levelId)).name) : undefined;
+
   const modeTitle = isDaily
     ? undefined
     : isWeekly
@@ -779,7 +784,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         levelId={levelId}
         isDaily={isDaily}
         title={modeTitle}
-        subtitle={limited ? upper(t("attemptOf", { n: attemptNumber, max: MAX_ATTEMPTS })) : modeSubtitle}
+        subtitle={limited ? `${upper(t("attemptOf", { n: attemptNumber, max: MAX_ATTEMPTS }))} · ${chapterName}` : modeSubtitle ?? chapterName}
         timeMs={elapsedMs}
         stars={hasWon ? stars : potentialStars}
         isFrozen={isFrozen}
@@ -808,7 +813,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         aria-valuenow={connectedCount}
       >
         <div
-          className="h-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-200"
+          className="h-full bg-primary transition-[width] duration-200"
           style={{ width: `${(connectedCount / level.nodes.length) * 100}%` }}
         />
       </div>

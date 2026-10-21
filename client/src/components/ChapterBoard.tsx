@@ -1,3 +1,4 @@
+import { content } from "@/lib/contentText";
 import { TOTAL_LEVELS } from "@/lib/progress";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
@@ -88,7 +89,7 @@ export function ChapterBoard({
               }`}
             >
               <div className="font-orbitron text-[11px] font-bold uppercase tracking-wide">
-                {item.name}
+                {content.chapter(item).name}
               </div>
               <div className="mt-0.5 text-[10px] font-exo">
                 {done}/{chapterLevels.length}
@@ -103,13 +104,13 @@ export function ChapterBoard({
           <div>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-none" style={{ backgroundColor: chapter.accent }} />
-              <h3 className="font-orbitron text-lg font-bold">{chapter.name}</h3>
+              <h3 className="font-orbitron text-lg font-bold">{content.chapter(chapter).name}</h3>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="font-exo text-xs text-muted-foreground">
-                Levels {chapter.from}–{chapter.to}
+                {content.levelsRange(chapter.from, chapter.to)}
               </span>
             </div>
-            <p className="mt-1 font-exo text-sm text-muted-foreground">{chapter.tagline}</p>
+            <p className="mt-1 font-exo text-sm text-muted-foreground">{content.chapter(chapter).tagline}</p>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1 text-primary">
@@ -123,7 +124,7 @@ export function ChapterBoard({
 
         <div className="mb-4 h-1.5 overflow-hidden rounded-none bg-white/10">
           <div
-            className="h-full rounded-none bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+            className="h-full rounded-none bg-primary transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
