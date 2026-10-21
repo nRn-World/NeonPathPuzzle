@@ -97,6 +97,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const wonRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
   const lastFrameRef = useRef(0);
+  /** Glow shadows are the costly part of a frame; they switch off on slow devices. */
+  const lowQualityRef = useRef(false);
+  const slowFramesRef = useRef(0);
   const previousPathLengthRef = useRef(1);
   const celebrateAtRef = useRef<number | null>(null);
 
@@ -227,6 +230,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     if (!cell || !size) return;
 
     const colors = getThemeColors();
+    const glow = (amount: number) => (lowQualityRef.current ? 0 : amount);
     const currentPath = path;
     const visited = new Set(currentPath.map(pointKey));
     const head = currentPath[currentPath.length - 1];
@@ -349,7 +353,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.save();
       if (isVisited) {
         context.shadowColor = colors.primary;
-        context.shadowBlur = 14;
+        context.shadowBlur = glow(14);
         context.beginPath();
         context.arc(centerX, centerY, cell * 0.12, 0, Math.PI * 2);
         context.fillStyle = colors.primary;
@@ -362,7 +366,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.stroke();
       } else {
         context.shadowColor = colors.primary;
-        context.shadowBlur = 6 + breathe * 10;
+        context.shadowBlur = glow(6 + breathe * 10);
         context.beginPath();
         context.arc(centerX, centerY, cell * 0.17, 0, Math.PI * 2);
         context.strokeStyle = `${colors.primary}${Math.round(70 + breathe * 100).toString(16).padStart(2, "0")}`;
@@ -433,7 +437,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.lineWidth = Math.max(1.5, cell * (isNext ? 0.05 : 0.035));
         if (isNext || isVisited) {
           context.shadowColor = color;
-          context.shadowBlur = 12;
+          context.shadowBlur = glow(12);
         }
         context.stroke();
         context.shadowBlur = 0;
@@ -509,7 +513,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.stroke();
       context.strokeStyle = colors.primary;
       context.shadowColor = colors.primary;
-      context.shadowBlur = 26;
+      context.shadowBlur = glow(26);
       context.lineWidth = Math.min(cell * 0.17, 24);
       trace();
       context.stroke();
@@ -675,7 +679,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     }
 
     let frame = 0;
+    let previous = 0;
     const tick = (time: number) => {
+      // Thirty frames in a row slower than ~24 ms (under 40 fps) drop the glow.
+      if (previous && !lowQualityRef.current) {
+        slowFramesRef.current = time - previous > 24 ? slowFramesRef.current + 1 : 0;
+        if (slowFramesRef.current >= 30) lowQualityRef.current = true;
+      }
+      previous = time;
       render(time);
       frame = requestAnimationFrame(tick);
     };
