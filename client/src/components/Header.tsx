@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { Crown } from "lucide-react";
 import {
-  ArrowLeft,
-  Crown,
-  HelpCircle,
-  Lightbulb,
-  RotateCcw,
-  Star,
-  Timer,
-  Trophy,
-  Undo2,
-  Zap,
-} from "lucide-react";
+  BackIcon,
+  BadgeIcon,
+  HintIcon,
+  KeysIcon,
+  PowerIcon,
+  RestartIcon,
+  StarIcon,
+  TimerIcon,
+  UndoIcon,
+} from "@/components/icons/GameIcons";
 import { Button } from "@/components/ui/button";
 import { PowerUpInventory } from "@/components/PowerUpInventory";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
@@ -53,7 +53,9 @@ interface HeaderProps {
   onRestart: () => void;
 }
 
-const iconButton = "h-7 w-7 p-0 flex-shrink-0 md:h-9 md:w-9";
+const iconButton = "h-8 w-8 flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&_svg]:!size-[18px] md:[&_svg]:!size-5";
+/** Small solid counter pinned to a button corner. */
+const badge = "pointer-events-none absolute -right-1.5 -top-1.5 min-w-[15px] bg-primary px-1 text-center font-mono text-[9px] font-bold leading-[15px] text-background";
 
 export function Header({
   levelId,
@@ -95,7 +97,7 @@ export function Header({
           aria-label="Back to menu"
           className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-primary"
         >
-          <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
+          <BackIcon className="h-5 w-5" />
         </Link>
         <div className="min-w-0">
           <h2 className="flex items-center gap-1.5 truncate font-orbitron text-xs font-bold md:text-lg">
@@ -122,12 +124,12 @@ export function Header({
       <div className="ml-auto flex min-w-0 flex-shrink-0 items-center gap-0.5 overflow-x-auto md:gap-1.5">
         {!hideTimer && (
           <div
-            className={`flex h-7 items-center gap-1 rounded-md border px-1.5 font-mono text-[10px] md:h-9 md:gap-1.5 md:px-2 md:text-xs ${
+            className={`flex h-8 items-center gap-1 rounded-none border px-1.5 font-mono text-[10px] md:h-9 md:gap-1.5 md:px-2 md:text-xs ${
               isFrozen
                 ? "border-sky-400/50 bg-sky-400/10 text-sky-300"
                 : overPar
                   ? "border-amber-400/40 bg-amber-400/5 text-amber-300"
-                  : "border-white/10 text-muted-foreground"
+                  : "border-white/15 text-foreground/70"
             }`}
             title={isFrozen
               ? "Timer frozen"
@@ -135,7 +137,7 @@ export function Header({
                 ? `Level timer · par ${formatDuration(parTimeMs)}`
                 : "Level timer"}
           >
-            <Timer className="h-3 w-3 md:h-3.5 md:w-3.5" />
+            <TimerIcon className="h-3.5 w-3.5" />
             {formatDuration(timeMs)}
             {parTimeMs !== undefined && (
               <span className="text-muted-foreground/50">/{formatDuration(parTimeMs)}</span>
@@ -146,10 +148,11 @@ export function Header({
         {!hideStars && (
           <div className="hidden items-center gap-0.5 px-1 sm:flex" title={`${stars} of 3 stars available`}>
             {Array.from({ length: 3 }).map((_, index) => (
-              <Star
+              <StarIcon
                 key={index}
+                filled={index < stars}
                 className={`h-3.5 w-3.5 transition-colors ${
-                  index < stars ? "fill-primary text-primary" : "text-white/15"
+                  index < stars ? "text-primary" : "text-white/15"
                 }`}
               />
             ))}
@@ -172,17 +175,13 @@ export function Header({
               : undoRemaining <= 0
                 ? t("undoLimitReached")
                 : `${t("undoHint")} · ${t("undoRemaining", { count: undoRemaining })}`}
-            className={`${iconButton} border-white/10 text-muted-foreground hover:border-primary/50 hover:bg-primary/10 hover:text-primary disabled:opacity-30`}
+            className={`${iconButton} border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary disabled:opacity-30`}
           >
-            <Undo2 className="h-3.5 w-3.5" />
+            <UndoIcon className="" />
           </Button>
           {!undoDisabled && (
             <span
-              className={`pointer-events-none absolute -right-1 -top-1 min-w-3.5 rounded-full border bg-background px-0.5 text-center font-mono text-[9px] leading-3 ${
-                undoRemaining > 0
-                  ? "border-primary/50 text-primary"
-                  : "border-amber-400/50 text-amber-300"
-              }`}
+              className={`${badge} ${undoRemaining > 0 ? "" : "!bg-amber-400"}`}
               title={t("undoRemaining", { count: undoRemaining })}
             >
               {undoRemaining}
@@ -202,16 +201,14 @@ export function Header({
               ? t("restartLevel")
               : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
             className={`${iconButton} ${restartsLeft === 0
-              ? "border-red-500/40 text-red-300 hover:bg-red-500/10"
-              : "border-white/10 text-muted-foreground hover:border-white/30 hover:bg-white/5 hover:text-foreground"}`}
+              ? "border-red-500/60 text-red-300 hover:bg-red-500/10"
+              : "border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"}`}
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RestartIcon className="" />
           </Button>
           {restartsLeft !== undefined && (
             <span
-              className={`pointer-events-none absolute -right-1 -top-1 min-w-3.5 rounded-full border bg-background px-0.5 text-center font-mono text-[9px] leading-3 ${
-                restartsLeft > 0 ? "border-white/30 text-foreground" : "border-red-500/60 text-red-300"
-              }`}
+              className={`${badge} ${restartsLeft > 0 ? "!bg-white" : "!bg-red-500 !text-white"}`}
             >
               {restartsLeft}
             </span>
@@ -232,17 +229,17 @@ export function Header({
                 : usesTokens
                   ? `${t("hintReveal")} (1 token)`
                   : t("hintReveal")}
-            className={`${iconButton} border-white/10 transition-all duration-300 ${
+            className={`${iconButton} border-white/15 transition-colors ${
               hintLocked
-                ? "cursor-not-allowed text-muted-foreground opacity-50"
-                : "text-secondary hover:border-secondary/50 hover:bg-secondary/10 hover:shadow-[0_0_15px_rgba(138,43,226,0.3)]"
+                ? "cursor-not-allowed text-muted-foreground opacity-40"
+                : "text-accent hover:border-accent hover:bg-accent/10"
             }`}
           >
-            <Lightbulb className={`h-3.5 w-3.5 ${isHintLoading ? "animate-pulse" : ""}`} />
+            <HintIcon className={isHintLoading ? "animate-pulse" : ""} />
           </Button>
           {usesTokens && !hintDisabled && (
             <span
-              className="pointer-events-none absolute -right-1 -top-1 min-w-3.5 rounded-full border border-secondary/50 bg-background px-0.5 text-center font-mono text-[9px] leading-3 text-secondary"
+              className={`${badge} !bg-accent !text-white`}
               title={`${hintTokens} hint tokens`}
             >
               {hintTokens}
@@ -256,15 +253,15 @@ export function Header({
               variant="outline"
               size="sm"
               aria-label="Power-ups"
-              className={`${iconButton} border-white/10 text-yellow-400 hover:border-yellow-500/50 hover:bg-yellow-500/10`}
+              className={`${iconButton} border-white/15 text-amber-300 hover:border-amber-300 hover:bg-amber-300/10`}
             >
-              <Zap className="h-3.5 w-3.5" />
+              <PowerIcon className="" />
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-yellow-400" />
+                <PowerIcon className="h-5 w-5 text-amber-300" />
                 Power-ups
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -281,15 +278,15 @@ export function Header({
               variant="outline"
               size="sm"
               aria-label="Achievements"
-              className={`${iconButton} hidden border-primary/50 bg-primary/5 text-primary hover:border-primary hover:bg-primary/15 sm:inline-flex`}
+              className={`${iconButton} hidden border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary sm:inline-flex`}
             >
-              <Trophy className="h-3.5 w-3.5" />
+              <BadgeIcon className="" />
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
+                <BadgeIcon className="h-5 w-5 text-primary" />
                 Achievements
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -307,15 +304,15 @@ export function Header({
               size="sm"
               aria-label="Keyboard shortcuts"
               title="Keyboard shortcuts"
-              className={`${iconButton} hidden border-white/10 text-muted-foreground hover:border-primary/50 hover:bg-primary/10 sm:inline-flex`}
+              className={`${iconButton} hidden border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary sm:inline-flex`}
             >
-              <HelpCircle className="h-3.5 w-3.5" />
+              <KeysIcon className="" />
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-primary" />
+                <KeysIcon className="h-5 w-5 text-primary" />
                 {t("shortcutsTitle")}
               </DialogTitle>
               <DialogDescription className="sr-only">

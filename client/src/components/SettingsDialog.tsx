@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { DatabaseBackup, Download, Settings, Upload } from "lucide-react";
+import { DatabaseBackup, Download,  Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SlidersIcon } from "@/components/icons/GameIcons";
 import {
   Dialog,
   DialogContent,
@@ -95,15 +96,15 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
           variant="outline"
           size="sm"
           aria-label="Settings"
-          className={triggerClassName ?? "border-white/15 hover:border-primary/50 hover:bg-primary/10"}
+          className={triggerClassName ?? "h-8 w-8 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary md:h-9 md:w-9"}
         >
-          <Settings className="w-4 h-4" />
+          <SlidersIcon className="h-[18px] w-[18px] md:h-5 md:w-5" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-primary" />
+            <SlidersIcon className="h-5 w-5 text-primary" />
             {t("settingsTitle")}
           </DialogTitle>
           <DialogDescription>

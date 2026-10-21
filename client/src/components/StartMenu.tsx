@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight,
   Heart,
   HelpCircle,
   Lock,
   PenLine,
-  Play,
   Star,
   Trophy,
   X,
@@ -17,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
+import { MenuHero } from "@/components/MenuHero";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -27,8 +26,6 @@ import { getLevelFromCode } from "@/lib/levelCodes";
 import { getLevelMessage } from "@/lib/levelMessages";
 import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
 import { unlockLevelsThroughCode } from "@/lib/sessionLevelUnlock";
-import { useTheme } from "@/hooks/use-theme";
-import { useSettingsStore } from "@/lib/settings";
 import { getProgress, markTutorialSeen, TOTAL_LEVELS } from "@/lib/progress";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -46,98 +43,6 @@ import { playClickSound } from "@/lib/sounds";
 import { useI18n } from "@/lib/i18n";
 
 type MenuScreen = "main" | "info" | "completed";
-
-function ParticleBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { getThemeColors } = useTheme();
-  const reducedMotion = useSettingsStore(state => state.reducedMotion);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-
-    let animation = 0;
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    const dpr = window.devicePixelRatio || 1;
-    const particles = Array.from({ length: 80 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: (Math.random() - 0.5) * 0.5,
-      size: Math.random() * 2 + 1,
-      alpha: Math.random() * 0.5 + 0.1,
-    }));
-
-    const resize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const animate = () => {
-      context.clearRect(0, 0, width, height);
-      const colors = getThemeColors();
-
-      particles.forEach(particle => {
-        if (!reducedMotion) {
-          particle.x += particle.vx;
-          particle.y += particle.vy;
-          if (particle.x < 0 || particle.x > width) particle.vx *= -1;
-          if (particle.y < 0 || particle.y > height) particle.vy *= -1;
-        }
-
-        context.beginPath();
-        context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        context.fillStyle = colors.primary + Math.floor(particle.alpha * 255).toString(16).padStart(2, "0");
-        context.fill();
-
-        if (reducedMotion) return;
-        particles.forEach(other => {
-          const dx = particle.x - other.x;
-          const dy = particle.y - other.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < 150) {
-            context.beginPath();
-            context.moveTo(particle.x, particle.y);
-            context.lineTo(other.x, other.y);
-            context.strokeStyle = colors.primary
-              + Math.floor(0.1 * (1 - distance / 150) * 255).toString(16).padStart(2, "0");
-            context.lineWidth = 0.5;
-            context.stroke();
-          }
-        });
-      });
-
-      if (!reducedMotion) animation = requestAnimationFrame(animate);
-    };
-    animate();
-
-    return () => {
-      cancelAnimationFrame(animation);
-      window.removeEventListener("resize", resize);
-    };
-  }, [getThemeColors, reducedMotion]);
-
-  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-0" />;
-}
-
-function GlowingOrb({ className, color = "#00f3ff" }: { className?: string; color?: string }) {
-  return (
-    <div
-      className={`absolute rounded-full opacity-30 blur-[100px] ${className}`}
-      style={{ background: color }}
-    />
-  );
-}
 
 export function StartMenu() {
   const [screen, setScreen] = useState<MenuScreen>("main");
@@ -203,10 +108,7 @@ export function StartMenu() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#0a0f1e]">
-      <ParticleBackground />
-      <GlowingOrb className="-left-40 -top-40 h-[600px] w-[600px]" color="#00f3ff" />
-      <GlowingOrb className="-right-40 top-1/2 h-[500px] w-[500px]" color="#8a2be2" />
-      <GlowingOrb className="-bottom-40 left-1/3 h-[400px] w-[400px]" color="#00f3ff" />
+      <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
 
       <div className="relative z-10 h-full overflow-y-auto safe-scroll">
         <div className="flex min-h-screen flex-col items-center justify-start px-4 pb-14 pt-8 sm:pt-12">
@@ -217,98 +119,19 @@ export function StartMenu() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="w-full max-w-3xl"
+                className="w-full"
               >
-                <div className="space-y-7 text-center">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
-                  >
-                    <div className="relative inline-block">
-                      <motion.div
-                        animate={{
-                          boxShadow: [
-                            "0 0 20px rgba(0,243,255,0.25)",
-                            "0 0 45px rgba(0,243,255,0.45)",
-                            "0 0 20px rgba(0,243,255,0.25)",
-                          ],
-                        }}
-                        transition={{ duration: 2.6, repeat: Infinity }}
-                        className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary sm:h-24 sm:w-24"
-                      >
-                        <Zap className="h-10 w-10 text-primary sm:h-12 sm:w-12" />
-                      </motion.div>
-                      <motion.div
-                        className="absolute -inset-4 rounded-full border border-primary/30"
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
-                      />
-                    </div>
-                  </motion.div>
-
-                  <div>
-                    <motion.h1
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 }}
-                      className="bg-gradient-to-r from-white via-primary to-white bg-clip-text font-orbitron text-4xl font-black tracking-wider text-transparent sm:text-6xl md:text-7xl"
-                      style={{
-                        textShadow: "0 0 40px rgba(0,243,255,0.5)",
-                        filter: "drop-shadow(0 0 20px rgba(0,243,255,0.3))",
-                      }}
-                    >
-                      NEON PATH
-                    </motion.h1>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="mt-3 font-exo text-lg text-cyan-200/80"
-                    >
-                      {t("startTagline")}
-                    </motion.p>
-                  </div>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="flex flex-col gap-3"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleButtonClick(handleStartClick)}
-                      className="group relative w-full overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/20 via-primary/5 to-secondary/20 p-4 text-left shadow-[0_0_28px_rgba(0,243,255,0.18)] transition-all hover:border-primary/70 hover:shadow-[0_0_45px_rgba(0,243,255,0.32)] active:scale-[0.99]"
-                    >
-                      <span className="absolute inset-0 -translate-x-full bg-white/10 transition-transform duration-700 group-hover:translate-x-full" />
-                      <span className="relative flex items-center gap-3">
-                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-primary/50 bg-primary/15 text-primary">
-                          <Play className="h-5 w-5 fill-current" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-exo text-[11px] uppercase tracking-[0.18em] text-primary/80">
-                            {hasProgress ? t("continueGame") : t("startGame")}
-                          </span>
-                          <span className="block font-orbitron text-xl font-bold text-white sm:text-2xl">
-                            {t("level").toUpperCase()} {continueLevel}
-                          </span>
-                        </span>
-                        <ArrowRight className="h-5 w-5 shrink-0 text-primary transition-transform group-hover:translate-x-1" />
-                      </span>
-                      <span className="relative mt-3 block h-1.5 overflow-hidden rounded-full bg-white/10">
-                        <span
-                          className="block h-full rounded-full bg-gradient-to-r from-primary to-secondary"
-                          style={{ width: `${Math.min(100, (runCount / TOTAL_LEVELS) * 100)}%` }}
-                        />
-                      </span>
-                      <span className="relative mt-1.5 flex justify-between font-exo text-[10px] text-muted-foreground">
-                        <span>{runCount}/{TOTAL_LEVELS} {t("levelsSolved")}</span>
-                        <span>{totalStars}/{maxStars} <Star className="mb-0.5 inline h-3 w-3 fill-secondary text-secondary" /></span>
-                      </span>
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-2">
+                <MenuHero
+                  hasProgress={hasProgress}
+                  continueLevel={continueLevel}
+                  runCount={runCount}
+                  totalLevels={TOTAL_LEVELS}
+                  totalStars={totalStars}
+                  maxStars={maxStars}
+                  streak={summary?.dailyStreak ?? 0}
+                  onPlay={() => handleButtonClick(handleStartClick)}
+                  actions={(
+                    <>
                       <MenuButton
                         icon={<HelpCircle className="h-4 w-4" />}
                         label={t("howToPlay")}
@@ -319,25 +142,28 @@ export function StartMenu() {
                         label={t("completed")}
                         onClick={() => handleButtonClick(() => setScreen("completed"))}
                       />
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-center gap-2">
                       <ThemeSelector />
-                      <SettingsDialog />
-                      <Button asChild variant="outline" size="sm" className="border-white/15">
+                      <SettingsDialog triggerClassName="h-9 w-9 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary" />
+                      <Button asChild variant="outline" size="sm" className="h-9 rounded-none border-white/15 font-mono text-[11px] uppercase tracking-wider">
                         <Link href="/editor">
                           <PenLine className="mr-1.5 h-3.5 w-3.5" />
                           {t("editor")}
                         </Link>
                       </Button>
-                    </div>
-                  </motion.div>
+                    </>
+                  )}
+                />
 
+                <div id="dashboard" className="mx-auto max-w-3xl space-y-7 pb-4 pt-12 text-center">
+                  <div className="flex items-center gap-4 text-left">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-primary">{t("dashboardTitle")}</span>
+                    <span className="h-px flex-1 bg-white/10" />
+                  </div>
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="space-y-3 text-left"
+                    className="grid gap-3 text-left md:grid-cols-2"
                   >
                     <DailyCard compact />
                     <WeeklyCard compact />
@@ -428,19 +254,6 @@ export function StartMenu() {
                       </Button>
                     </div>
                     {codeError && <p className="mt-2 font-exo text-sm text-destructive">{codeError}</p>}
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.7 }}
-                    className="flex justify-center gap-8 pt-1"
-                  >
-                    <Stat value={completedCount} label={t("completed").toUpperCase()} tone="primary" />
-                    <Divider />
-                    <Stat value={totalStars} label={t("stars").toUpperCase()} tone="secondary" />
-                    <Divider />
-                    <Stat value={bestStreak} label={t("bestStreak").toUpperCase()} tone="primary" />
                   </motion.div>
 
                   <motion.div
@@ -631,7 +444,8 @@ function MenuButton({
     <Button
       onClick={onClick}
       variant="outline"
-      className="h-14 flex-col gap-1 border-white/15 px-1 font-orbitron text-[10px] uppercase tracking-wide text-muted-foreground hover:border-primary/50 hover:bg-primary/10 hover:text-primary sm:text-xs"
+      size="sm"
+      className="h-9 gap-1.5 rounded-none border-white/15 px-3 font-mono text-[11px] uppercase tracking-wider text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"
     >
       {icon}
       {label}
@@ -646,21 +460,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
     </div>
   );
-}
-
-function Stat({ value, label, tone }: { value: number; label: string; tone: "primary" | "secondary" }) {
-  return (
-    <div className="min-w-16 text-center">
-      <div className={`font-orbitron text-2xl font-bold ${tone === "primary" ? "text-primary" : "text-secondary"}`}>
-        {value}
-      </div>
-      <div className="font-exo text-[10px] tracking-wide text-muted-foreground">{label}</div>
-    </div>
-  );
-}
-
-function Divider() {
-  return <div className="w-px bg-white/10" />;
 }
 
 function InfoBlock({
