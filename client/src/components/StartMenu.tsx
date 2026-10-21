@@ -245,7 +245,7 @@ export function StartMenu() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="mx-auto w-full max-w-md rounded-none border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
+                    className="mx-auto w-full max-w-md rounded-none border border-white/10 bg-black/30 p-5"
                   >
                     <p className="mb-3 font-exo text-sm text-muted-foreground">
                       {t("haveLevelCode")}
@@ -308,7 +308,7 @@ export function StartMenu() {
                 exit={{ opacity: 0, x: -40 }}
                 className="w-full max-w-2xl"
               >
-                <div className="space-y-6 rounded-none border border-primary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
+                <div className="space-y-6 rounded-none border border-primary/20 bg-[#0a0f1e]/95 p-6 md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-primary md:text-4xl">
                       {upper(t("howToPlay"))}
@@ -348,7 +348,7 @@ export function StartMenu() {
                 exit={{ opacity: 0, x: -40 }}
                 className="w-full max-w-4xl"
               >
-                <div className="space-y-6 rounded-none border border-secondary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
+                <div className="space-y-6 rounded-none border border-secondary/20 bg-[#0a0f1e]/95 p-6 md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-secondary md:text-4xl">
                       {upper(t("completed"))}
@@ -418,7 +418,7 @@ export function StartMenu() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.85, opacity: 0 }}
               onClick={event => event.stopPropagation()}
-              className="relative w-full max-w-md overflow-hidden rounded-none border border-white/10 bg-background p-8"
+              className="relative w-full max-w-md transform-gpu overflow-hidden rounded-none border border-white/10 bg-background p-8 will-change-transform"
             >
               <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
               <div className="relative z-10 space-y-6 text-center">
@@ -474,7 +474,7 @@ function MenuButton({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-none border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
+    <div className="rounded-none border border-white/10 bg-black/30 p-4">
       <div className="font-orbitron text-xl font-bold text-primary">{value}</div>
       <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
     </div>
