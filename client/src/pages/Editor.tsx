@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 import type { Point } from "@shared/schema";
 import {
   deleteCustomLevel,
@@ -97,8 +97,8 @@ export default function Editor() {
               <ArrowLeft className="h-4 w-4" />
               {t("menu")}
             </Link>
-            <h1 className="bg-gradient-to-br from-primary via-white to-secondary bg-clip-text font-orbitron text-3xl font-bold text-transparent md:text-4xl">
-              {t("editorTitle").toUpperCase()}
+            <h1 className="font-orbitron text-3xl font-black tracking-wide text-white md:text-4xl">
+              {upper(t("editorTitle"))}
             </h1>
             <p className="font-exo text-sm text-muted-foreground">
               {t("editorSubtitle")}
@@ -115,7 +115,7 @@ export default function Editor() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="rounded-xl border border-white/10 bg-card/50 p-4 md:p-6">
+          <div className="rounded-none border border-white/10 bg-card/50 p-4 md:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-1.5" role="group" aria-label="Grid size">
                 {GRID_SIZES.map(size => (
@@ -123,7 +123,7 @@ export default function Editor() {
                     key={size}
                     onClick={() => changeGrid(size)}
                     aria-pressed={size === gridSize}
-                    className={`h-8 w-8 rounded-md border font-mono text-xs transition-colors ${
+                    className={`h-8 w-8 rounded-none border font-mono text-xs transition-colors ${
                       size === gridSize
                         ? "border-primary/60 bg-primary/15 text-primary"
                         : "border-white/10 text-muted-foreground hover:border-white/30"
@@ -158,7 +158,7 @@ export default function Editor() {
             </div>
 
             <div
-              className="mx-auto grid aspect-square w-full max-w-xl gap-1.5 rounded-xl border border-white/10 bg-background/60 p-3"
+              className="mx-auto grid aspect-square w-full max-w-xl gap-1.5 rounded-none border border-white/10 bg-background/60 p-3"
               style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))` }}
             >
               {Array.from({ length: gridSize * gridSize }, (_, index) => {
@@ -171,7 +171,7 @@ export default function Editor() {
                     key={index}
                     onClick={() => handleCell(point)}
                     aria-label={`Cell ${point.x + 1}, ${point.y + 1}${order !== undefined ? `, step ${order + 1}` : ""}`}
-                    className={`flex aspect-square items-center justify-center rounded-lg border font-orbitron text-sm transition-all ${
+                    className={`flex aspect-square items-center justify-center rounded-none border font-orbitron text-sm transition-all ${
                       order !== undefined
                         ? "border-primary/50 bg-primary/15 text-primary"
                         : "border-white/5 bg-white/[0.02] text-muted-foreground/30 hover:border-white/20 hover:bg-white/5"
@@ -191,7 +191,7 @@ export default function Editor() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/10 bg-card/50 p-4">
+            <div className="rounded-none border border-white/10 bg-card/50 p-4">
               <label className="mb-1.5 block font-exo text-xs text-muted-foreground" htmlFor="circuit-name">
                 {t("circuitName")}
               </label>
@@ -200,15 +200,15 @@ export default function Editor() {
                 value={name}
                 maxLength={40}
                 onChange={event => setName(event.target.value)}
-                className="w-full rounded-md border border-white/15 bg-background/60 px-3 py-2 font-exo text-sm outline-none focus:border-primary/60"
+                className="w-full rounded-none border border-white/15 bg-background/60 px-3 py-2 font-exo text-sm outline-none focus:border-primary/60"
               />
 
               <dl className="mt-4 grid grid-cols-2 gap-2 font-exo text-xs">
-                <div className="rounded-lg border border-white/10 p-2">
+                <div className="rounded-none border border-white/10 p-2">
                   <dt className="text-muted-foreground">{t("nodes")}</dt>
                   <dd className="font-orbitron text-lg text-primary">{path.length}</dd>
                 </div>
-                <div className="rounded-lg border border-white/10 p-2">
+                <div className="rounded-none border border-white/10 p-2">
                   <dt className="text-muted-foreground">{t("grid")}</dt>
                   <dd className="font-orbitron text-lg text-primary">{gridSize}×{gridSize}</dd>
                 </div>
@@ -242,13 +242,13 @@ export default function Editor() {
               </div>
 
               {encoded.ok && (
-                <p className="mt-3 break-all rounded-md border border-white/10 bg-background/50 p-2 font-mono text-[9px] text-muted-foreground">
+                <p className="mt-3 break-all rounded-none border border-white/10 bg-background/50 p-2 font-mono text-[9px] text-muted-foreground">
                   {encoded.level.code}
                 </p>
               )}
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-card/50 p-4">
+            <div className="rounded-none border border-white/10 bg-card/50 p-4">
               <h2 className="mb-2 flex items-center gap-2 font-orbitron text-sm font-bold">
                 <Wand2 className="h-4 w-4 text-secondary" />
                 {t("savedCircuits")}
@@ -262,7 +262,7 @@ export default function Editor() {
                   {saved.map(level => (
                     <li
                       key={level.code}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/10 p-2"
+                      className="flex items-center justify-between gap-2 rounded-none border border-white/10 p-2"
                     >
                       <div className="min-w-0">
                         <div className="truncate font-exo text-sm">{level.name}</div>

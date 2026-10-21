@@ -10,6 +10,8 @@
 
 **A cyber-logic puzzle game where you connect all nodes with a single continuous line.**
 
+<img src="docs/hero.gif" alt="The board draws its own solution: one continuous line through every node" width="460">
+
 🔥 **300 Unique Levels** | 💥 **3 Attempts or Crash** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **6 Neon Themes** | 📱 **Mobile Ready**
 
 </div>
@@ -47,7 +49,7 @@
 
 - 🎯 **300 Unique Levels** - Progressive difficulty across 12 chapters, with walls, one-way nodes, ordered color pairs, portals, sync nodes, blackout boards and boss levels — every one proven solvable by the test suite
 - 💥 **Three Attempts** - Two restarts per new level; fail the third and the system crashes back to level 1 (stars and records are kept)
-- 🎵 **Procedural Sound** - Ambient music, rising step notes, dead-end and crash effects, all synthesised live
+- 🎵 **Procedural Sound Effects** - Layered step notes that rise with your progress, a win chime, dead-end and crash effects, all synthesised live (no audio files)
 - ⭐ **Stars, best times & best scores** - Chase three-star clears without losing lives
 - 👻 **Personal best ghost** - Race a faint trace of your fastest run
 - 🗓️ **Daily & weekly challenges** - One seeded puzzle per day plus a rotating weekly modifier and shareable cards
@@ -60,7 +62,7 @@
 - 💾 **Level Code System** - Jump to any level with permanent 4-digit codes
 - ☁️ **Save backup** - Export and restore progress, achievements, power-ups, tokens and themes as JSON
 - ⚙️ **Settings & Accessibility** - Sound, haptics, reduced motion, ghost toggle, keyboard shortcuts, auto-pause
-- 🌍 **Svenska / English** - UI chrome follows your browser language, switchable in Settings
+- 🌍 **English, Svenska, Türkçe and Español** - English by default; your choice is remembered on each device (language picker with flags on the title screen and in Settings)
 - 📲 **Installable & offline** - PWA manifest plus a service worker for offline play
 - 📱 **Fully Responsive** - Play on desktop, tablet, or mobile
 

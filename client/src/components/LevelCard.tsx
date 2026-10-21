@@ -26,7 +26,7 @@ export function LevelCard({
 }: LevelCardProps) {
   if (isLocked) {
     return (
-      <div className="aspect-square rounded-xl border border-white/5 bg-card/40 shadow-inner flex flex-col items-center justify-center gap-1 text-muted-foreground/25">
+      <div className="aspect-square rounded-[4px] border border-white/5 bg-card/40 shadow-inner flex flex-col items-center justify-center gap-1 text-muted-foreground/25">
         <Lock className="h-5 w-5" />
         <span className="font-orbitron text-[10px]">{id}</span>
       </div>
@@ -43,7 +43,7 @@ export function LevelCard({
           ? `Best time ${formatDuration(bestTimeMs)}${bestScore ? ` · Best score ${bestScore.toLocaleString()}` : ""}`
           : undefined}
         className={`
-          relative aspect-square rounded-xl cursor-pointer group overflow-hidden
+          relative aspect-square rounded-[4px] cursor-pointer group overflow-hidden
           flex flex-col items-center justify-center gap-1.5
           border transition-all duration-300
           ${isCompleted

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { CalendarClock, Check, Play, Sparkles, Star } from "lucide-react";
 import { formatDuration } from "@/lib/scoring";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 import {
   getTimeUntilNextWeekly,
   getWeekKey,
@@ -38,19 +38,18 @@ export function WeeklyCard({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/weekly">
       <div
-        className={`group relative cursor-pointer overflow-hidden rounded-xl border border-amber-400/30 bg-gradient-to-br from-amber-400/10 to-primary/5 transition-all hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(255,215,0,0.15)] ${
+        className={`group relative cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-amber-400 bg-white/[0.03] transition-all hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(255,215,0,0.15)] ${
           compact ? "p-4" : "p-5"
         }`}
       >
-        <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-400/15 blur-2xl" />
         <div className="relative flex items-center gap-4">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-amber-400/40 bg-amber-400/10">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none border border-amber-400/40 bg-amber-400/10">
             {result ? <Check className="h-5 w-5 text-amber-300" /> : <CalendarClock className="h-5 w-5 text-amber-300" />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-orbitron text-sm font-bold text-amber-300">{t("weeklyChallenge").toUpperCase()}</h3>
-              <span className="flex items-center gap-1 rounded-full border border-amber-400/30 px-2 py-0.5 font-exo text-[10px] text-amber-200/90">
+              <h3 className="font-orbitron text-sm font-bold text-amber-300">{upper(t("weeklyChallenge"))}</h3>
+              <span className="flex items-center gap-1 rounded-none border border-amber-400/30 px-2 py-0.5 font-exo text-[10px] text-amber-200/90">
                 <Sparkles className="h-2.5 w-2.5" />
                 {t(modifier.label)}
               </span>
@@ -76,7 +75,7 @@ export function WeeklyCard({ compact = false }: { compact?: boolean }) {
                 ))}
               </div>
             )}
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-300 transition-transform group-hover:scale-110">
+            <span className="flex h-8 w-8 items-center justify-center rounded-none border border-amber-400/40 bg-amber-400/10 text-amber-300 transition-transform group-hover:scale-110">
               <Play className="h-3.5 w-3.5 fill-current" />
             </span>
           </div>

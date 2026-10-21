@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
 import { MenuHero } from "@/components/MenuHero";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -40,7 +41,7 @@ const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
   ["howProgressTitle", "howProgressBody"],
 ];
 import { playClickSound } from "@/lib/sounds";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
 type MenuScreen = "main" | "info" | "completed";
 
@@ -142,6 +143,7 @@ export function StartMenu() {
                         label={t("completed")}
                         onClick={() => handleButtonClick(() => setScreen("completed"))}
                       />
+                      <LanguageSwitch />
                       <ThemeSelector />
                       <SettingsDialog triggerClassName="h-9 w-9 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary" />
                       <Button asChild variant="outline" size="sm" className="h-9 rounded-none border-white/15 font-mono text-[11px] uppercase tracking-wider">
@@ -226,7 +228,7 @@ export function StartMenu() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.6 }}
-                    className="mx-auto w-full max-w-md rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
+                    className="mx-auto w-full max-w-md rounded-none border border-white/10 bg-black/30 p-5 backdrop-blur-sm"
                   >
                     <p className="mb-3 font-exo text-sm text-muted-foreground">
                       {t("haveLevelCode")}
@@ -250,7 +252,7 @@ export function StartMenu() {
                         disabled={codeInput.length !== 4}
                         className="h-full w-full bg-secondary font-bold text-black hover:bg-secondary/90 disabled:opacity-30"
                       >
-                        {t("go").toUpperCase()}
+                        {upper(t("go"))}
                       </Button>
                     </div>
                     {codeError && <p className="mt-2 font-exo text-sm text-destructive">{codeError}</p>}
@@ -267,7 +269,7 @@ export function StartMenu() {
                     </p>
                     <div className="mt-2 flex items-center justify-center gap-3">
                       <a href="#/privacy" className="text-xs text-primary/70 transition-colors hover:text-primary">
-                        Privacy Policy
+                        {t("privacyPolicy")}
                       </a>
                       <a
                         href="mailto:bynrnworld@gmail.com"
@@ -289,7 +291,7 @@ export function StartMenu() {
                 exit={{ opacity: 0, x: -40 }}
                 className="w-full max-w-2xl"
               >
-                <div className="space-y-6 rounded-2xl border border-primary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
+                <div className="space-y-6 rounded-none border border-primary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-primary md:text-4xl">
                       HOW TO PLAY
@@ -305,7 +307,7 @@ export function StartMenu() {
 
                   <div className="space-y-5 rounded-lg border border-primary/20 bg-muted/20 p-5 font-exo md:p-6">
                     {HOW_TO_PLAY.map(([title, body], index) => (
-                      <InfoBlock key={title} title={t(title).toUpperCase()} tone={index % 2 === 0 ? "primary" : "secondary"}>
+                      <InfoBlock key={title} title={upper(t(title))} tone={index % 2 === 0 ? "primary" : "secondary"}>
                         {t(body)}
                       </InfoBlock>
                     ))}
@@ -313,7 +315,7 @@ export function StartMenu() {
 
                   <Button
                     onClick={() => handleButtonClick(() => setScreen("main"))}
-                    className="w-full bg-gradient-to-r from-primary to-secondary py-6 text-lg font-semibold text-black hover:opacity-90"
+                    className="w-full rounded-none bg-primary py-6 font-orbitron text-sm font-bold uppercase tracking-wider text-background hover:bg-primary/90"
                   >
                     BACK TO MENU
                   </Button>
@@ -329,7 +331,7 @@ export function StartMenu() {
                 exit={{ opacity: 0, x: -40 }}
                 className="w-full max-w-4xl"
               >
-                <div className="space-y-6 rounded-2xl border border-secondary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
+                <div className="space-y-6 rounded-none border border-secondary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-secondary md:text-4xl">
                       COMPLETED LEVELS
@@ -344,14 +346,14 @@ export function StartMenu() {
                   </div>
 
                   <CompletedSection
-                    title="LEVELS 1–100"
+                    title={t("levelsRange", { from: 1, to: 100 })}
                     from={1}
                     to={100}
                     levels={levels ?? []}
                     onLevelClick={handleLevelClick}
                   />
                   <CompletedSection
-                    title="LEVELS 101–200"
+                    title={t("levelsRange", { from: 101, to: 200 })}
                     from={101}
                     to={200}
                     levels={levels ?? []}
@@ -359,7 +361,7 @@ export function StartMenu() {
                     onLevelClick={handleLevelClick}
                   />
                   <CompletedSection
-                    title="LEVELS 201–300"
+                    title={t("levelsRange", { from: 201, to: 300 })}
                     from={201}
                     to={TOTAL_LEVELS}
                     levels={levels ?? []}
@@ -374,7 +376,7 @@ export function StartMenu() {
 
                   <Button
                     onClick={() => handleButtonClick(() => setScreen("main"))}
-                    className="w-full bg-gradient-to-r from-secondary to-primary py-6 text-lg font-semibold text-black hover:opacity-90"
+                    className="w-full rounded-none bg-primary py-6 font-orbitron text-sm font-bold uppercase tracking-wider text-background hover:bg-primary/90"
                   >
                     BACK TO MENU
                   </Button>
@@ -399,9 +401,9 @@ export function StartMenu() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.85, opacity: 0 }}
               onClick={event => event.stopPropagation()}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-[#0a0f1e] to-[#1a1a2e] p-8"
+              className="relative w-full max-w-md overflow-hidden rounded-none border border-white/10 bg-background p-8"
             >
-              <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-primary to-secondary" />
+              <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
               <div className="relative z-10 space-y-6 text-center">
                 <Heart className="mx-auto h-12 w-12 animate-pulse fill-primary text-primary" />
                 <div>
@@ -455,7 +457,7 @@ function MenuButton({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
+    <div className="rounded-none border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
       <div className="font-orbitron text-xl font-bold text-primary">{value}</div>
       <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
     </div>
@@ -512,9 +514,9 @@ function CompletedSection({
               key={levelId}
               onClick={() => isCompleted && onLevelClick(levelId)}
               disabled={!isCompleted}
-              className={`relative flex aspect-square flex-col items-center justify-center rounded-lg font-orbitron text-xs font-bold transition-all ${
+              className={`relative flex aspect-square flex-col items-center justify-center rounded-none font-orbitron text-xs font-bold transition-all ${
                 isCompleted
-                  ? "bg-gradient-to-br from-primary to-secondary text-black shadow-[0_0_12px_rgba(0,243,255,0.25)] hover:scale-105"
+                  ? "bg-primary text-background hover:brightness-110"
                   : "bg-white/5 text-white/20"
               }`}
             >

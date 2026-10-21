@@ -62,7 +62,7 @@ export const achievements: Achievement[] = [
     reward: { type: "theme_unlock", value: "matrix", description: "Unlock Matrix theme" }, rarity: "gold",
   },
   {
-    id: "legendary_puzzler", name: "Legendary Puzzler", description: "Complete all 200 levels", icon: "👑",
+    id: "legendary_puzzler", name: "Legendary Puzzler", description: "Complete 200 levels", icon: "👑",
     requirement: { type: "levels_completed", value: 200 },
     reward: { type: "theme_unlock", value: "sunset", description: "Unlock Neon Sunset theme" }, rarity: "platinum",
   },
@@ -72,7 +72,7 @@ export const achievements: Achievement[] = [
     reward: { type: "theme_unlock", value: "aurora", description: "Unlock Aurora theme" }, rarity: "diamond",
   },
   {
-    id: "perfect_run", name: "Perfect Run", description: "Complete 25 levels without losing a single life", icon: "🛡️",
+    id: "perfect_run", name: "Perfect Run", description: "Complete 25 levels without a single backtrack", icon: "🛡️",
     requirement: { type: "perfect_levels", value: 25 },
     reward: { type: "title", value: "Perfect", description: "Perfect title badge" }, rarity: "diamond",
   },

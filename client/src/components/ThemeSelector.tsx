@@ -1,3 +1,4 @@
+import { content } from "@/lib/contentText";
 import { useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
 import { useUserProgress, useUserId } from "@/hooks/use-game";
@@ -37,7 +38,7 @@ export function ThemeSelector() {
           <div className="absolute top-full mt-2 right-0 z-50">
             <Card className="w-[22rem] max-w-[calc(100vw-2rem)] bg-background/95 backdrop-blur-md border-border shadow-2xl">
               <CardContent className="p-4">
-                <h3 className="font-semibold mb-3">Choose Theme</h3>
+                <h3 className="font-semibold mb-3">{t("chooseTheme")}</h3>
                 <div className="space-y-2">
                   {themes.map((theme) => {
                     const isActive = currentTheme === theme.id;
@@ -61,11 +62,11 @@ export function ThemeSelector() {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="font-medium">{theme.name}</div>
+                            <div className="font-medium">{content.theme(theme).name}</div>
                             <div className="text-sm text-muted-foreground">
                               {unlocked
-                                ? theme.description
-                                : `Complete ${theme.unlockAtLevels} levels to unlock`}
+                                ? content.theme(theme).description
+                                : t("themeLocked", { count: theme.unlockAtLevels })}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">

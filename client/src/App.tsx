@@ -15,9 +15,10 @@ import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
 import Editor from "@/pages/Editor";
 import Privacy from "@/pages/Privacy";
-import { initAudio, resumeAudio, suspendAudio, syncMusic } from "@/lib/sounds";
+import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
 import { applyMotionPreference, useSettingsStore } from "@/lib/settings";
 import { useEffect } from "react";
+import { useLanguageStore } from "@/lib/i18n";
 
 function LevelGame() {
   return <Game />;
@@ -56,7 +57,11 @@ function App() {
     applyMotionPreference(reducedMotion);
   }, [reducedMotion]);
 
-  useEffect(() => useSettingsStore.subscribe(syncMusic), []);
+  // Keeps CSS text-transform and screen readers on the chosen language.
+  const language = useLanguageStore(state => state.language);
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   useEffect(() => {
     const handleInteraction = () => {

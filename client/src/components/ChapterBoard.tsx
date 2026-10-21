@@ -1,3 +1,4 @@
+import { content } from "@/lib/contentText";
 import { TOTAL_LEVELS } from "@/lib/progress";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
@@ -81,14 +82,14 @@ export function ChapterBoard({
             <button
               key={item.id}
               onClick={() => setSelectedChapter(item.id)}
-              className={`flex-shrink-0 rounded-lg border px-3 py-2 text-left transition-all ${
+              className={`flex-shrink-0 rounded-none border px-3 py-2 text-left transition-all ${
                 isActive
                   ? "border-primary/60 bg-primary/10 text-primary"
                   : "border-white/10 bg-white/[0.02] text-muted-foreground hover:border-white/25 hover:text-foreground"
               }`}
             >
               <div className="font-orbitron text-[11px] font-bold uppercase tracking-wide">
-                {item.name}
+                {content.chapter(item).name}
               </div>
               <div className="mt-0.5 text-[10px] font-exo">
                 {done}/{chapterLevels.length}
@@ -98,18 +99,18 @@ export function ChapterBoard({
         })}
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-card/50 p-5">
+      <div className="rounded-none border border-white/10 bg-card/50 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: chapter.accent }} />
-              <h3 className="font-orbitron text-lg font-bold">{chapter.name}</h3>
+              <span className="h-2 w-2 rounded-none" style={{ backgroundColor: chapter.accent }} />
+              <h3 className="font-orbitron text-lg font-bold">{content.chapter(chapter).name}</h3>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="font-exo text-xs text-muted-foreground">
-                Levels {chapter.from}–{chapter.to}
+                {content.levelsRange(chapter.from, chapter.to)}
               </span>
             </div>
-            <p className="mt-1 font-exo text-sm text-muted-foreground">{chapter.tagline}</p>
+            <p className="mt-1 font-exo text-sm text-muted-foreground">{content.chapter(chapter).tagline}</p>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1 text-primary">
@@ -121,9 +122,9 @@ export function ChapterBoard({
           </div>
         </div>
 
-        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="mb-4 h-1.5 overflow-hidden rounded-none bg-white/10">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+            className="h-full rounded-none bg-primary transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -135,7 +136,7 @@ export function ChapterBoard({
                 key={item.id}
                 onClick={() => setFilter(item.id)}
                 aria-pressed={filter === item.id}
-                className={`rounded-full border px-3 py-1 font-exo text-[11px] transition-colors ${
+                className={`rounded-none border px-3 py-1 font-exo text-[11px] transition-colors ${
                   filter === item.id
                     ? "border-primary/60 bg-primary/15 text-primary"
                     : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground"
@@ -149,7 +150,7 @@ export function ChapterBoard({
           <button
             onClick={() => setPractice(value => !value)}
             aria-pressed={practice}
-            className={`rounded-full border px-3 py-1 font-exo text-[11px] transition-colors ${
+            className={`rounded-none border px-3 py-1 font-exo text-[11px] transition-colors ${
               practice
                 ? "border-secondary/60 bg-secondary/15 text-secondary"
                 : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground"
@@ -172,12 +173,12 @@ export function ChapterBoard({
               }}
               placeholder={t("goToLevelPlaceholder")}
               aria-label={t("goToLevelPlaceholder")}
-              className="h-8 w-28 rounded-md border border-white/15 bg-background/60 px-2 font-mono text-xs text-foreground outline-none placeholder:font-exo placeholder:text-muted-foreground/60 focus:border-primary/60"
+              className="h-8 w-28 rounded-none border border-white/15 bg-background/60 px-2 font-mono text-xs text-foreground outline-none placeholder:font-exo placeholder:text-muted-foreground/60 focus:border-primary/60"
             />
             <button
               type="submit"
               aria-label="Open level"
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              className="flex h-8 w-8 items-center justify-center rounded-none border border-white/15 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
             >
               <CornerDownLeft className="h-3.5 w-3.5" />
             </button>
@@ -191,7 +192,7 @@ export function ChapterBoard({
         )}
 
         {visibleLevels.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-white/10 p-6 text-center font-exo text-sm text-muted-foreground">
+          <div className="rounded-none border border-dashed border-white/10 p-6 text-center font-exo text-sm text-muted-foreground">
             {filter === "unsolved"
               ? t("everySolved")
               : filter === "missing-stars"

@@ -2,7 +2,18 @@ import { useCallback } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Language = "en" | "sv";
+import { tr } from "./i18n-tr";
+import { es } from "./i18n-es";
+
+export type Language = "en" | "sv" | "tr" | "es";
+
+/** Display order and native names for the language pickers. */
+export const LANGUAGES: { code: Language; name: string }[] = [
+  { code: "en", name: "English" },
+  { code: "sv", name: "Svenska" },
+  { code: "tr", name: "Türkçe" },
+  { code: "es", name: "Español" },
+];
 
 const en = {
   menu: "Menu",
@@ -121,6 +132,31 @@ const en = {
   restartsLeft: "Restart level · {count} restarts left",
   restartFinal: "Last attempt — restarting crashes the system",
   crashesStat: "System crashes",
+  chooseTheme: "Choose theme",
+  themeLocked: "Complete {count} levels to unlock",
+  achievementsTitle: "Achievements",
+  unlockedOf: "{count} / {total} unlocked",
+  showAll: "Show all ({count})",
+  showLess: "Show less",
+  paused: "PAUSED",
+  achievementUnlocked: "Achievement: {name}",
+  powerUpEarned: "Power-up earned",
+  powerUpEarnedDesc: "{icon} {name} added to your inventory.",
+  levelsRange: "LEVELS {from}–{to}",
+  privacyPolicy: "Privacy Policy",
+  timerFrozen: "Timer frozen",
+  levelTimer: "Level timer",
+  levelTimerPar: "Level timer · par {time}",
+  undoOffMode: "Undo disabled in this mode",
+  undoOffWeek: "Undo is disabled this week",
+  hintsOffMode: "Hints are disabled in this mode",
+  hintCost: "{label} (1 token)",
+  hintTokenCount: "{count} hint tokens",
+  powerUps: "Power-ups",
+  achievements: "Achievements",
+  keyboardShortcuts: "Keyboard shortcuts",
+  starsAvailable: "{stars} of 3 stars available",
+  availablePowerUps: "Available power-ups",
   tutLineTitle: "Draw one continuous line",
   tutLineBody: "Start on the glowing node and drag through every node. You can move up, down, left and right — never diagonally, and never across your own line.",
   tutUndoTitle: "Three backtracks per level",
@@ -134,7 +170,7 @@ const en = {
   tutBack: "Back",
   tutPlay: "Let's play",
   heroEyebrow: "One line · {count} circuits",
-  heroBoardCaption: "Solving itself",
+  heroBoardCaption: "Train your brain",
   heroScroll: "Progress",
   dashboardTitle: "Your run",
   newMechanic: "NEW MECHANIC",
@@ -216,8 +252,6 @@ const en = {
   settingsDesc: "Preferences are stored on this device.",
   sound: "Sound effects",
   soundDesc: "Moves, hints and win chimes.",
-  music: "Music",
-  musicDesc: "Calm ambient background music.",
   haptics: "Haptics",
   hapticsDesc: "Vibration feedback on supported devices.",
   reduceMotion: "Reduce motion",
@@ -378,6 +412,31 @@ const sv: Record<TranslationKey, string> = {
   restartsLeft: "Starta om nivån · {count} omstarter kvar",
   restartFinal: "Sista försöket — omstart kraschar systemet",
   crashesStat: "Systemkrascher",
+  chooseTheme: "Välj tema",
+  themeLocked: "Klara {count} nivåer för att låsa upp",
+  achievementsTitle: "Prestationer",
+  unlockedOf: "{count} / {total} upplåsta",
+  showAll: "Visa alla ({count})",
+  showLess: "Visa färre",
+  paused: "PAUSAD",
+  achievementUnlocked: "Prestation: {name}",
+  powerUpEarned: "Power-up intjänad",
+  powerUpEarnedDesc: "{icon} {name} lades till i ditt förråd.",
+  levelsRange: "NIVÅ {from}–{to}",
+  privacyPolicy: "Integritetspolicy",
+  timerFrozen: "Timern är fryst",
+  levelTimer: "Nivåtimer",
+  levelTimerPar: "Nivåtimer · par {time}",
+  undoOffMode: "Ångra är avstängt i det här läget",
+  undoOffWeek: "Ångra är avstängt den här veckan",
+  hintsOffMode: "Ledtrådar är avstängda i det här läget",
+  hintCost: "{label} (1 jeton)",
+  hintTokenCount: "{count} ledtrådsjetonger",
+  powerUps: "Power-ups",
+  achievements: "Prestationer",
+  keyboardShortcuts: "Kortkommandon",
+  starsAvailable: "{stars} av 3 stjärnor möjliga",
+  availablePowerUps: "Tillgängliga power-ups",
   tutLineTitle: "Dra en obruten linje",
   tutLineBody: "Börja på den lysande noden och dra genom varje nod. Du kan gå upp, ner, vänster och höger — aldrig diagonalt och aldrig över din egen linje.",
   tutUndoTitle: "Tre backningar per nivå",
@@ -391,7 +450,7 @@ const sv: Record<TranslationKey, string> = {
   tutBack: "Tillbaka",
   tutPlay: "Nu kör vi",
   heroEyebrow: "En linje · {count} kretsar",
-  heroBoardCaption: "Löser sig själv",
+  heroBoardCaption: "Träna hjärnan",
   heroScroll: "Framsteg",
   dashboardTitle: "Din omgång",
   newMechanic: "NY MEKANIK",
@@ -473,8 +532,6 @@ const sv: Record<TranslationKey, string> = {
   settingsDesc: "Inställningarna sparas på den här enheten.",
   sound: "Ljud",
   soundDesc: "Drag, ledtrådar och vinstljud.",
-  music: "Musik",
-  musicDesc: "Lugn bakgrundsmusik.",
   haptics: "Vibration",
   hapticsDesc: "Vibrationsfeedback på enheter som stöder det.",
   reduceMotion: "Minska rörelse",
@@ -516,14 +573,16 @@ const sv: Record<TranslationKey, string> = {
   levelSavedDesc: "Hittar du under Sparade banor nedan.",
 };
 
-const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv };
+const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
 
-function detectLanguage(): Language {
-  try {
-    return navigator.language.toLowerCase().startsWith("sv") ? "sv" : "en";
-  } catch {
-    return "en";
-  }
+/**
+ * English is the default on every device, whatever the browser language is.
+ * The player's own choice is stored on the device and wins from then on.
+ */
+const DEFAULT_LANGUAGE: Language = "en";
+
+function isLanguage(value: unknown): value is Language {
+  return typeof value === "string" && LANGUAGES.some(language => language.code === value);
 }
 
 interface LanguageState {
@@ -534,10 +593,20 @@ interface LanguageState {
 export const useLanguageStore = create<LanguageState>()(
   persist(
     set => ({
-      language: detectLanguage(),
+      language: DEFAULT_LANGUAGE,
       setLanguage: language => set({ language }),
     }),
-    { name: "neon-path-language" },
+    {
+      name: "neon-path-language",
+      // Version 1: earlier builds stored the browser's language without the
+      // player ever choosing it, so those saved values reset to English once.
+      version: 1,
+      migrate: () => ({ language: DEFAULT_LANGUAGE }),
+      merge: (persisted, current) => {
+        const language = (persisted as { language?: unknown } | undefined)?.language;
+        return { ...current, language: isLanguage(language) ? language : DEFAULT_LANGUAGE };
+      },
+    },
   ),
 );
 
@@ -551,7 +620,7 @@ function interpolate(text: string, vars?: Record<string, string | number>): stri
 
 export function translate(
   key: TranslationKey,
-  language: Language = detectLanguage(),
+  language: Language = useLanguageStore.getState().language,
   vars?: Record<string, string | number>,
 ): string {
   return interpolate(dictionaries[language]?.[key] ?? en[key] ?? key, vars);
@@ -566,6 +635,11 @@ export function useI18n() {
     [language],
   );
   return { t, language, setLanguage };
+}
+
+/** Locale-aware upper case (Turkish i becomes the dotted capital); plain toUpperCase gets it wrong. */
+export function upper(text: string): string {
+  return text.toLocaleUpperCase(useLanguageStore.getState().language);
 }
 
 export type Translate = ReturnType<typeof useI18n>["t"];

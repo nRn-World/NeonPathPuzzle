@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { DatabaseBackup, Download,  Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SlidersIcon } from "@/components/icons/GameIcons";
+import { GearIcon } from "@/components/icons/GameIcons";
+import { LanguageButtons } from "@/components/LanguageSwitch";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +30,10 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
   const hintTokens = useHintTokenStore(state => state.tokens);
   const {
     soundEnabled,
-    musicEnabled,
     hapticsEnabled,
     reducedMotion,
     showGhost,
     setSoundEnabled,
-    setMusicEnabled,
     setHapticsEnabled,
     setReducedMotion,
     setShowGhost,
@@ -98,13 +97,13 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
           aria-label="Settings"
           className={triggerClassName ?? "h-8 w-8 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary md:h-9 md:w-9"}
         >
-          <SlidersIcon className="h-[18px] w-[18px] md:h-5 md:w-5" />
+          <GearIcon className="h-5 w-5 md:h-[22px] md:w-[22px]" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <SlidersIcon className="h-5 w-5 text-primary" />
+            <GearIcon className="h-5 w-5 text-primary" />
             {t("settingsTitle")}
           </DialogTitle>
           <DialogDescription>
@@ -118,12 +117,6 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             description={t("soundDesc")}
             checked={soundEnabled}
             onChange={setSoundEnabled}
-          />
-          <SettingRow
-            label={t("music")}
-            description={t("musicDesc")}
-            checked={musicEnabled}
-            onChange={setMusicEnabled}
           />
           <SettingRow
             label={t("haptics")}
@@ -157,22 +150,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
               <Label className="text-sm font-medium">{t("language")}</Label>
               <p className="text-xs text-muted-foreground">{t("languageDesc")}</p>
             </div>
-            <div className="flex gap-2" role="group" aria-label={t("language")}>
-              {([["sv", "Svenska"], ["en", "English"]] as const).map(([code, label]) => (
-                <button
-                  key={code}
-                  onClick={() => setLanguage(code)}
-                  aria-pressed={language === code}
-                  className={`rounded-md border px-3 py-1.5 font-exo text-xs transition-colors ${
-                    language === code
-                      ? "border-primary/60 bg-primary/15 text-primary"
-                      : "border-white/15 text-muted-foreground hover:border-white/30 hover:text-foreground"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <LanguageButtons />
           </div>
 
           <div className="space-y-3 rounded-lg border border-white/10 p-3">

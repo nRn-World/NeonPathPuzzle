@@ -156,11 +156,11 @@ Each level awards 1–3 stars:
 
 - 6 neon themes: Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset, Aurora
 - Themes unlock at 10 / 50 / 100 / 200 / 250 completed levels (ever completed, so a crash never re-locks a theme)
-- Settings: sound effects, ambient music, haptics, reduced motion, ghost overlay, language
+- Settings: sound effects, haptics, reduced motion, ghost overlay, language
 - Reduced motion disables particles, pulses, animated trails, and confetti
 - Export and restore a save file (progress, achievements, power-ups, hint tokens, theme, weekly results, custom levels) from Settings
 - Restores are validated before anything is overwritten
-- Swedish and English UI chrome (menus, HUD, results, settings); defaults to the browser language
+- English, Swedish, Turkish and Spanish UI (menus, HUD, results, settings, tutorial). English is the default on every device; the player's choice is stored on that device and kept until changed. Flag pickers on the title screen and in Settings
 
 ---
 

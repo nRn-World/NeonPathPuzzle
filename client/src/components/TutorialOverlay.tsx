@@ -28,9 +28,9 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-primary/30 bg-[#0a0f1e] shadow-[0_0_60px_rgba(0,243,255,0.15)]"
+        className="w-full max-w-md overflow-hidden rounded-none border border-primary/30 bg-[#0a0f1e] shadow-[0_0_60px_rgba(0,243,255,0.15)]"
       >
-        <div className="h-1 w-full bg-gradient-to-r from-primary to-secondary" />
+        <div className="h-[3px] w-full bg-primary" />
         <div className="space-y-6 p-7">
           <div className="flex items-center justify-between">
             <div className="flex gap-1.5">
@@ -51,7 +51,7 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
             </button>
           </div>
 
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
+          <div className="flex h-16 w-16 items-center justify-center rounded-none border border-primary/30 bg-primary/10">
             <Icon className="h-8 w-8 text-primary" />
           </div>
 

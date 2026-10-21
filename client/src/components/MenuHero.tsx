@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, Flame, Play, Star } from "lucide-react";
-import { generateLevel } from "@shared/level-generator";
+import { HERO_BOARD } from "@/lib/heroBoard";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
-/** The board shown on the title screen is a real campaign level. */
-const SHOWCASE_LEVEL = 134;
 /** Nodes drawn per second while the line traces itself. */
 const DRAW_SPEED = 13;
 const HOLD_MS = 1800;
@@ -21,7 +19,7 @@ function HeroBoard() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { getThemeColors } = useTheme();
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
-  const level = useMemo(() => generateLevel(SHOWCASE_LEVEL), []);
+  const level = HERO_BOARD;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -226,7 +224,7 @@ export function MenuHero({
                 {hasProgress ? t("continueGame") : t("startGame")}
               </span>
               <span className="block font-orbitron text-2xl font-black tracking-wide">
-                {t("level").toUpperCase()} {continueLevel}
+                {upper(t("level"))} {continueLevel}
               </span>
             </span>
             <Play className="h-8 w-8 fill-current transition-transform group-hover:translate-x-1" />
@@ -288,7 +286,7 @@ export function MenuHero({
           <span className="absolute -bottom-px -right-px h-4 w-4 border-b-2 border-r-2 border-primary" />
           <HeroBoard />
           <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <span>{t("level")} {SHOWCASE_LEVEL}</span>
+            <span>{HERO_BOARD.gridSize}×{HERO_BOARD.gridSize} · {HERO_BOARD.solution.length} {t("nodes")}</span>
             <span>{t("heroBoardCaption")}</span>
           </div>
         </div>

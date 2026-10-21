@@ -1,3 +1,5 @@
+import { content } from "@/lib/contentText";
+import { getChapterForLevel } from "@/lib/chapters";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,7 +26,7 @@ import { powerUps } from "@/lib/powerups";
 import { calculateScore, calculateStars, getParTimeMs, type StarCount } from "@/lib/scoring";
 import { getDailyLevelId, getDateKey } from "@/lib/daily";
 import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKeys } from "@/lib/weekly";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 import { customLevelToResponse, decodeCustomLevel } from "@/lib/customLevels";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
 import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
@@ -571,8 +573,8 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       const newlyUnlocked = checkAchievements();
       newlyUnlocked.forEach(achievement => {
         toast({
-          title: `Achievement: ${achievement.name}`,
-          description: achievement.description,
+          title: t("achievementUnlocked", { name: content.achievement(achievement).name }),
+          description: content.achievement(achievement).description,
         });
       });
       if (newlyUnlocked.length > 0) addTokens(newlyUnlocked.length);
@@ -581,8 +583,8 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         const reward = powerUps[Math.floor(levelId / 5) % powerUps.length];
         usePowerUpsStore.getState().addPowerUp(reward);
         toast({
-          title: "Power-up earned",
-          description: `${reward.icon} ${reward.name} added to your inventory.`,
+          title: t("powerUpEarned"),
+          description: t("powerUpEarnedDesc", { icon: reward.icon, name: reward.name }),
         });
       }
     }
@@ -756,12 +758,15 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     parTimeMs,
   });
 
+  // The chapter gives every level a place in the campaign.
+  const chapterName = mode === "level" ? upper(content.chapter(getChapterForLevel(levelId)).name) : undefined;
+
   const modeTitle = isDaily
     ? undefined
     : isWeekly
-      ? t("weeklyChallenge").toUpperCase()
+      ? upper(t("weeklyChallenge"))
       : isZen
-        ? `ZEN · ${t("level").toUpperCase()} ${levelId}`
+        ? `ZEN · ${upper(t("level"))} ${levelId}`
         : isCustom
           ? customResult?.ok ? customResult.level.data.name : "CUSTOM CIRCUIT"
           : undefined;
@@ -770,7 +775,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     : isZen
       ? t("practiceNoRecords")
       : isCustom
-        ? t("customCircuit").toUpperCase()
+        ? upper(t("customCircuit"))
         : undefined;
 
   return (
@@ -779,7 +784,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         levelId={levelId}
         isDaily={isDaily}
         title={modeTitle}
-        subtitle={limited ? t("attemptOf", { n: attemptNumber, max: MAX_ATTEMPTS }).toUpperCase() : modeSubtitle}
+        subtitle={limited ? `${upper(t("attemptOf", { n: attemptNumber, max: MAX_ATTEMPTS }))} · ${chapterName}` : modeSubtitle ?? chapterName}
         timeMs={elapsedMs}
         stars={hasWon ? stars : potentialStars}
         isFrozen={isFrozen}
@@ -808,7 +813,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         aria-valuenow={connectedCount}
       >
         <div
-          className="h-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-200"
+          className="h-full bg-primary transition-[width] duration-200"
           style={{ width: `${(connectedCount / level.nodes.length) * 100}%` }}
         />
       </div>
@@ -825,7 +830,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       )}
 
       <main className="relative flex w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 md:px-4 md:py-4">
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
+        <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
         <div className="relative z-10 flex h-full w-full items-center justify-center">
           <div className="h-full max-h-[calc(100vh-120px)] w-full max-w-4xl">
             <GameCanvas
@@ -856,7 +861,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
               <Pause className="h-8 w-8 text-primary" />
             </div>
             <div className="space-y-1">
-              <h2 className="font-orbitron text-2xl font-bold tracking-wide">PAUSED</h2>
+              <h2 className="font-orbitron text-2xl font-bold tracking-wide">{t("paused")}</h2>
               <p className="max-w-xs font-exo text-sm text-muted-foreground">
                 {pauseReason === "system" ? t("pausedSystem") : t("pausedManual")}
               </p>

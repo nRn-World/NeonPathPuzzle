@@ -1,3 +1,4 @@
+import { content } from "@/lib/contentText";
 import { useEffect } from 'react';
 import { usePowerUps } from '@/hooks/use-powerups';
 import { powerUps, getRarityColor } from '@/lib/powerups';
@@ -5,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Zap, Package } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export function PowerUpInventory() {
   const { inventory, activeEffects, usePowerUp, removeEffect } = usePowerUps();
+  const { t } = useI18n();
 
   // Expired effects are pruned after render; checking them during render used
   // to mutate the store from inside the component and could warn in React.
@@ -48,7 +51,7 @@ export function PowerUpInventory() {
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{powerUp.icon}</span>
                     <div className="flex-1">
-                      <div className="text-xs font-medium">{powerUp.name}</div>
+                      <div className="text-xs font-medium">{content.powerUp(powerUp).name}</div>
                       <div className="text-xs text-green-400">Active</div>
                     </div>
                   </div>
@@ -62,7 +65,7 @@ export function PowerUpInventory() {
       {/* Available Power-ups */}
       {inventory.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold mb-2">Available Power-ups</h3>
+          <h3 className="text-sm font-semibold mb-2">{t("availablePowerUps")}</h3>
           <div className="grid grid-cols-2 gap-2">
             {inventory.map((powerUp, idx) => {
               const isActive = activeTypes.has(powerUp.effect.type);
@@ -73,7 +76,7 @@ export function PowerUpInventory() {
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl">{powerUp.icon}</span>
                       <div className="flex-1">
-                        <div className="text-sm font-medium">{powerUp.name}</div>
+                        <div className="text-sm font-medium">{content.powerUp(powerUp).name}</div>
                         <Badge 
                           variant="outline" 
                           className="text-xs"
@@ -84,7 +87,7 @@ export function PowerUpInventory() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">
-                      {powerUp.description}
+                      {content.powerUp(powerUp).description}
                     </p>
                     <Button
                       size="sm"

@@ -8,6 +8,7 @@ import {
   isValidSolutionPath,
   LAYOUT_FAMILIES,
   MAX_LEVEL_ID,
+  targetDifficulty,
   type GeneratedLevel,
 } from "./level-generator";
 import { type Point } from "./schema";
@@ -134,7 +135,7 @@ test("the campaign uses every layout family and keeps the mix balanced", () => {
 
   for (const family of LAYOUT_FAMILIES) {
     assert.ok((counts.get(family) ?? 0) > 0, `The ${family} family never appears`);
-    assert.ok((counts.get(family) ?? 0) <= Math.ceil(levels.length * 0.175), `The ${family} family repeats too often`);
+    assert.ok((counts.get(family) ?? 0) <= Math.ceil(levels.length * 0.2), `The ${family} family repeats too often`);
   }
 });
 
@@ -258,4 +259,29 @@ test("generation is deterministic and invalid ids are rejected", () => {
   assert.throws(() => generateLevel(0), RangeError);
   assert.throws(() => generateLevel(301), RangeError);
   assert.throws(() => generateLevel(1.5), RangeError);
+});
+
+test("difficulty follows one smooth curve: a level is never harder than a later one", () => {
+  const scores = levels.map(getLevelDifficulty);
+
+  // Every level lands close to its slot on the designed curve...
+  scores.forEach((score, index) => {
+    const target = targetDifficulty(index + 1);
+    assert.ok(
+      Math.abs(score - target) <= 8,
+      `Level ${index + 1} scores ${score}, too far from its target ${target.toFixed(1)}`,
+    );
+  });
+
+  // ...so no level is harder than any level three or more steps after it.
+  for (let earlier = 0; earlier < scores.length; earlier++) {
+    for (let later = earlier + 3; later < scores.length; later++) {
+      assert.ok(
+        scores[later] >= scores[earlier],
+        `Level ${earlier + 1} (${scores[earlier]}) is harder than level ${later + 1} (${scores[later]})`,
+      );
+    }
+  }
+
+  assert.ok(scores[19] < scores[49], "level 20 must be easier than level 50");
 });

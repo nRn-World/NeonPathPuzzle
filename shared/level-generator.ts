@@ -93,29 +93,51 @@ const DIFFICULTY_TIERS: DifficultyTier[] = [
 
 export const MAX_LEVEL_ID = 300;
 
-/** The final levels must be strictly harder than each other, so the last one is the hardest. */
-const STRICT_TAIL_FROM = 191;
 /**
- * The finale is a designed staircase rather than a lucky draw: each of the last
- * ten levels aims a little higher so the campaign ends on its hardest board.
+ * The difficulty every level aims for, as (level, score) anchors with straight
+ * lines between them. Measured over all candidates, each level can reach a wide
+ * band around this curve, so the search can pick the layout that lands on it:
+ * level 20 can never be harder than level 50, and the whole campaign climbs in
+ * one smooth line instead of wandering with the luck of each draw.
+ *
+ * The opening, the last stretch of the first 200 levels and the last ten levels
+ * climb steeply and strictly (each level harder than the one before), so level 1
+ * is the easiest board and level 300 the hardest.
  */
-const TAIL_TARGETS = [220, 226, 232, 238, 244, 250, 256, 262, 268, 274];
-/**
- * The expansion ends on its own staircase: levels 291-299 each take the
- * smallest step above everything before them, which leaves the most headroom
- * for level 300 to take the hardest layout the search can find.
- */
-const EXPANSION_TAIL_FROM = 291;
-/** The first levels must be strictly harder than each other, so level 1 is the easiest. */
-const STRICT_OPENING_THROUGH = 3;
+const DIFFICULTY_CURVE: [number, number][] = [
+  [1, 5], [2, 6], [3, 7], [5, 11], [10, 17], [20, 26], [30, 38], [40, 50], [50, 60],
+  [75, 86], [100, 112], [125, 138], [150, 164], [175, 190], [190, 206], [200, 236],
+  [250, 284], [290, 322], [300, 352],
+];
+
+export function targetDifficulty(levelId: number): number {
+  for (let index = 1; index < DIFFICULTY_CURVE.length; index++) {
+    const [toId, toScore] = DIFFICULTY_CURVE[index];
+    if (levelId > toId) continue;
+    const [fromId, fromScore] = DIFFICULTY_CURVE[index - 1];
+    return fromScore + ((toScore - fromScore) * (levelId - fromId)) / (toId - fromId);
+  }
+  return DIFFICULTY_CURVE[DIFFICULTY_CURVE.length - 1][1];
+}
+
+/** Levels that must each be strictly harder than the one before. */
+function isStrictLevel(levelId: number): boolean {
+  return levelId <= 3 || (levelId >= 191 && levelId <= 200) || levelId >= 291;
+}
+
+/** How far from the curve a level may land. Strict stretches are tighter. */
+function baseWindow(levelId: number): number {
+  return isStrictLevel(levelId) ? 1 : 2;
+}
+
+/** Wider windows tried in turn when uniqueness leaves no layout on the curve. */
+const WINDOW_STEPS = [0, 2, 5, 10, 20];
 /** From this level on a layout must branch instead of being a forced corridor. */
 const NON_CORRIDOR_FROM = 3;
 const MIN_BRANCHING_EDGES = 3;
 
 /** Upper bound on the variants searched for a single level. */
-const VARIANT_LIMIT = 96;
-/** The finale searches deeper, so the last board can be the hardest one. */
-const FINALE_VARIANT_LIMIT = 600;
+const VARIANT_LIMIT = 192;
 /** Candidates kept per search before picking the best fit for the curve. */
 const OPTION_LIMIT = 24;
 /** How many times a single level may grow to clear the difficulty floor. */
@@ -324,9 +346,8 @@ const levelCache = new Map<number, GeneratedLevel>();
 /** Node sets already used, grouped by grid size, as bitmasks. */
 const usedMasks = new Map<number, Mask[]>();
 const familyUsage = new Map<LayoutFamily, number>();
+/** Difficulty of the previous level (not the running maximum). */
 let lastDifficulty = 0;
-/** Deterministic part of the score, used for the monotonic curve. */
-let lastStructural = 0;
 let lastNodes = 0;
 let lastFamily: LayoutFamily | null = null;
 
@@ -535,26 +556,10 @@ interface Candidate {
   extraNodes: number;
 }
 
-/**
- * Difficulty the next level has to reach. Node count is the steady spine of the
- * campaign; branch density is intentionally allowed to breathe around it so the
- * search never has to reuse a layout just to satisfy a noisy score. The opening
- * and the closing stretch are strict, so the first level is the easiest and the
- * final ten climb one step at a time.
- */
-function difficultyFloor(levelId: number): number {
-  if (levelId === 1) return 0;
-  const strict = levelId <= STRICT_OPENING_THROUGH;
-  return strict ? lastStructural + 1 : lastNodes;
-}
-
-function tailTarget(levelId: number): number | null {
-  if (levelId >= STRICT_TAIL_FROM && levelId < STRICT_TAIL_FROM + TAIL_TARGETS.length) {
-    return TAIL_TARGETS[levelId - STRICT_TAIL_FROM];
-  }
-  if (levelId === MAX_LEVEL_ID) return Number.MAX_SAFE_INTEGER;
-  if (levelId >= EXPANSION_TAIL_FROM) return lastDifficulty + 1;
-  return null;
+/** True when a candidate's score fits this level's slot on the curve. */
+function onCurve(levelId: number, difficulty: number, window: number): boolean {
+  if (Math.abs(difficulty - targetDifficulty(levelId)) > window) return false;
+  return !isStrictLevel(levelId) || levelId === 1 || difficulty > lastDifficulty;
 }
 
 /**
@@ -564,16 +569,8 @@ function tailTarget(levelId: number): number | null {
 function meetsRules(levelId: number, level: GeneratedLevel): boolean {
   if (level.nodes.length < lastNodes) return false;
   if (level.family === lastFamily) return false;
-  if (structuralDifficulty(level) < difficultyFloor(levelId)) return false;
   if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) return false;
-
-  const target = tailTarget(levelId);
-  const difficulty = getLevelDifficulty(level);
-  if (target !== null) {
-    if ((levelId < MAX_LEVEL_ID && difficulty < target - 12) || difficulty <= lastDifficulty) return false;
-  } else if (structuralDifficulty(level) < difficultyFloor(levelId)) {
-    return false;
-  }
+  if (!onCurve(levelId, getLevelDifficulty(level), baseWindow(levelId) + 1)) return false;
 
   const distance = minLayoutDistance(level, usedMasks.get(level.gridSize));
   return distance > 0 && distance >= requiredDistance(level.nodes.length);
@@ -607,7 +604,7 @@ function familyAllowed(levelId: number, family: LayoutFamily): boolean {
  */
 function variantOrder(levelId: number): number[] {
   const target = LAYOUT_FAMILIES.indexOf(targetFamily(levelId));
-  const limit = levelId === MAX_LEVEL_ID ? FINALE_VARIANT_LIMIT : VARIANT_LIMIT;
+  const limit = VARIANT_LIMIT;
   const order: number[] = [];
   for (let sub = 0; sub < limit / FAMILY_COUNT; sub++) {
     order.push(target + sub * FAMILY_COUNT);
@@ -625,11 +622,10 @@ function collectOptions(
   extraNodes: number,
   stored: Mask[],
   furthest: { current: Candidate | null },
+  window: number,
   margin = 0,
 ): Candidate[] {
   const options: Candidate[] = [];
-  const floor = difficultyFloor(levelId);
-  const target = tailTarget(levelId);
   const needed = Math.max(1, requiredDistance(createLevelLength(levelId, extraNodes)) - margin);
 
   for (const variant of variantOrder(levelId)) {
@@ -657,15 +653,11 @@ function collectOptions(
       furthest.current = candidate;
     }
 
-    if (target !== null) {
-      if ((levelId < MAX_LEVEL_ID && difficulty < target - 12) || difficulty <= lastDifficulty) continue;
-    } else if (structural < floor) {
-      continue;
-    }
+    if (!onCurve(levelId, difficulty, window)) continue;
     if (distance < needed) continue;
 
     options.push(candidate);
-    if (options.length >= OPTION_LIMIT && levelId !== MAX_LEVEL_ID) break;
+    if (options.length >= OPTION_LIMIT) break;
   }
 
   return options;
@@ -678,21 +670,12 @@ function createLevelLength(levelId: number, extraNodes: number): number {
 }
 
 function selectBest(options: Candidate[], levelId: number): Candidate {
-  const target = tailTarget(levelId);
-  if (target !== null) {
-    // Land as close to this slot's target as possible, then prefer the clearer layout.
-    return options.sort((a, b) =>
-      Math.abs(a.difficulty - target) - Math.abs(b.difficulty - target)
-      || b.distance - a.distance,
-    )[0];
-  }
-
+  const target = targetDifficulty(levelId);
   const family = targetFamily(levelId);
   const score = (candidate: Candidate) =>
-    (candidate.structural - difficultyFloor(levelId)) * 2
-    + (familyUsage.get(candidate.level.family) ?? 0) * 6
-    + (candidate.level.family === family ? 0 : 40)
-    - candidate.traps * 0.35;
+    Math.abs(candidate.difficulty - target) * 3
+    + (familyUsage.get(candidate.level.family) ?? 0) * 16
+    + (candidate.level.family === family ? 0 : 40);
 
   return options.sort((a, b) =>
     score(a) - score(b)
@@ -702,25 +685,23 @@ function selectBest(options: Candidate[], levelId: number): Candidate {
 }
 
 /**
- * Full search for a level: tries the tier's variants, escalating by one node
- * when the layout cannot climb above the previous level.
+ * Full search for a level: the layout closest to the difficulty curve wins.
+ * When uniqueness leaves nothing inside the window, the window widens step by
+ * step and extra nodes are tried, so the campaign always stays complete.
  */
 function searchLevel(levelId: number): Candidate {
   const { gridSize } = getLevelShape(levelId);
   const stored = usedMasks.get(gridSize) ?? [];
   const furthest: { current: Candidate | null } = { current: null };
+  const base = baseWindow(levelId);
 
-  for (let extraNodes = 0; extraNodes <= EXTRA_NODE_LIMIT; extraNodes++) {
-    const options = collectOptions(levelId, extraNodes, stored, furthest);
-    if (options.length > 0) return selectBest(options, levelId);
-  }
-
-  // Last resort: keep the rules that matter most (difficulty, never an existing
-  // layout) and allow a slightly closer visual match. This keeps the campaign
-  // complete even when a tier is unusually cramped.
-  for (let extraNodes = 0; extraNodes <= EXTRA_NODE_LIMIT; extraNodes++) {
-    const options = collectOptions(levelId, extraNodes, stored, furthest, 2);
-    if (options.length > 0) return selectBest(options, levelId);
+  for (const margin of [0, 2]) {
+    for (const step of WINDOW_STEPS) {
+      for (let extraNodes = 0; extraNodes <= EXTRA_NODE_LIMIT; extraNodes++) {
+        const options = collectOptions(levelId, extraNodes, stored, furthest, base + step, margin);
+        if (options.length > 0) return selectBest(options, levelId);
+      }
+    }
   }
 
   if (!furthest.current || furthest.current.distance === 0) {
@@ -739,21 +720,21 @@ function searchLevel(levelId: number): Candidate {
  * seconds on a phone, so they are baked in and verified by the generator tests.
  */
 const VARIANT_TABLE: number[] = [
-  672, 520, 464, 312, 160, 200, 16, 136, 56, 32, 40, 544, 192, 232, 368, 120, 160, 584, 624, 184,
-  608, 48, 112, 176, 0, 232, 272, 120, 448, 584, 432, 88, 224, 168, 592, 512, 192, 40, 560, 24,
-  544, 584, 432, 376, 320, 456, 496, 88, 672, 40, 176, 120, 160, 608, 624, 664, 608, 344, 688, 248,
-  72, 424, 560, 120, 256, 152, 432, 88, 320, 40, 16, 240, 232, 120, 472, 696, 544, 392, 432, 664,
-  648, 520, 496, 632, 616, 72, 368, 696, 640, 104, 336, 152, 704, 344, 136, 632, 192, 424, 440, 408,
-  640, 184, 144, 472, 608, 376, 328, 536, 264, 712, 560, 24, 256, 144, 40, 664, 224, 744, 152, 136,
-  152, 40, 368, 600, 448, 56, 720, 568, 704, 160, 56, 136, 0, 232, 752, 152, 360, 680, 240, 88,
-  320, 56, 112, 432, 64, 232, 536, 336, 640, 104, 168, 344, 120, 152, 712, 568, 544, 512, 80, 376,
-  696, 536, 616, 760, 448, 416, 80, 520, 504, 328, 544, 472, 736, 184, 80, 632, 600, 264, 616, 664,
-  64, 128, 56, 88, 440, 136, 280, 56, 352, 704, 176, 120, 176, 32, 176, 664, 176, 88, 179, 668,
-  363, 27, 138, 666, 162, 521, 153, 353, 152, 40, 56, 184, 544, 424, 560, 728, 408, 64, 424, 184,
-  352, 512, 560, 536, 232, 448, 712, 280, 256, 416, 328, 536, 160, 328, 56, 760, 352, 232, 464, 344,
-  264, 128, 40, 184, 64, 320, 464, 56, 504, 424, 256, 376, 544, 320, 176, 440, 408, 160, 232, 472,
-  64, 328, 464, 632, 40, 536, 520, 376, 736, 424, 464, 184, 248, 136, 64, 664, 64, 728, 176, 616,
-  448, 424, 544, 376, 160, 464, 536, 80, 136, 248, 736, 560, 329, 657, 376, 413, 189, 45, 661, 45,
+  672, 520, 464, 312, 160, 200, 16, 136, 1088, 152, 1504, 328, 192, 144, 848, 120, 832, 456, 328, 832,
+  32, 1208, 1528, 504, 88, 1200, 88, 1176, 928, 232, 1008, 856, 1392, 800, 776, 208, 368, 712, 32, 528,
+  832, 1520, 216, 376, 400, 760, 32, 240, 560, 1384, 1424, 1024, 208, 712, 48, 513, 1289, 81, 720, 184,
+  624, 536, 704, 944, 760, 640, 1296, 760, 1280, 464, 232, 280, 256, 792, 520, 264, 424, 1520, 432, 928,
+  1089, 65, 809, 1416, 424, 1464, 376, 448, 144, 424, 1144, 752, 1296, 368, 928, 1384, 1080, 848, 832, 1432,
+  544, 40, 1392, 280, 808, 336, 80, 424, 1177, 929, 904, 816, 904, 568, 200, 512, 376, 216, 736, 272,
+  1120, 1040, 664, 1040, 1120, 96, 48, 568, 1344, 320, 272, 872, 816, 472, 1488, 256, 568, 1200, 1024, 1528,
+  1488, 232, 1232, 832, 712, 832, 1368, 352, 1040, 712, 608, 1232, 376, 352, 136, 472, 1192, 280, 1088, 1328,
+  1376, 1216, 848, 264, 1312, 1384, 664, 1232, 184, 514, 810, 732, 453, 828, 1436, 1467, 322, 522, 737, 281,
+  1176, 856, 1120, 520, 360, 520, 1041, 1216, 232, 633, 617, 161, 281, 1288, 928, 280, 944, 1048, 544, 696,
+  760, 424, 888, 952, 1176, 992, 928, 1017, 416, 1216, 328, 760, 1497, 65, 848, 376, 832, 952, 64, 280,
+  1120, 560, 136, 1016, 1000, 464, 1480, 1120, 1193, 1336, 1312, 953, 504, 1144, 328, 88, 352, 633, 616, 80,
+  696, 472, 1464, 1136, 1384, 24, 1312, 1176, 184, 448, 40, 1144, 1504, 664, 640, 464, 896, 344, 752, 64,
+  1000, 1040, 1048, 1040, 64, 368, 664, 1312, 1096, 944, 904, 848, 280, 808, 952, 1024, 760, 1520, 545, 825,
+  905, 561, 616, 1136, 1410, 1234, 282, 138, 1506, 1379, 274, 611, 755, 283, 754, 130, 642, 666, 1137, 41,
 ];
 
 /**
@@ -786,7 +767,6 @@ function resetGenerator() {
   usedMasks.clear();
   familyUsage.clear();
   lastDifficulty = 0;
-  lastStructural = 0;
   lastNodes = 0;
   lastFamily = null;
 }
@@ -796,8 +776,7 @@ function commitLevel(id: number, candidate: Candidate) {
   usedMasks.set(level.gridSize, [...(usedMasks.get(level.gridSize) ?? []), toMask(level, 0)]);
   levelCache.set(id, level);
   familyUsage.set(level.family, (familyUsage.get(level.family) ?? 0) + 1);
-  lastDifficulty = Math.max(lastDifficulty, getLevelDifficulty(level));
-  lastStructural = Math.max(lastStructural, structuralDifficulty(level));
+  lastDifficulty = getLevelDifficulty(level);
   lastNodes = Math.max(lastNodes, level.nodes.length);
   lastFamily = level.family;
 }

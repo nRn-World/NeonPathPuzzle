@@ -1,3 +1,4 @@
+import { StarIcon } from "@/components/icons/GameIcons";
 import { TOTAL_LEVELS } from "@/lib/progress";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,7 +9,7 @@ import { generateLevelCode } from "@/lib/levelCodes";
 import { formatDuration } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
 import { shareResult, type ShareOutcome } from "@/lib/shareCard";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
 interface WinModalProps {
   isOpen: boolean;
@@ -111,14 +112,14 @@ export function WinModal({
           : isCustom ? t("copyLevelLink") : t("shareClear");
 
   const title = isZen
-    ? t("practiceComplete").toUpperCase()
+    ? upper(t("practiceComplete"))
     : isCustom
-      ? t("circuitComplete").toUpperCase()
+      ? upper(t("circuitComplete"))
       : isWeekly
-        ? t("weeklyCleared").toUpperCase()
+        ? upper(t("weeklyCleared"))
         : isDaily
-          ? t("dailyCleared").toUpperCase()
-          : t("levelCleared").toUpperCase();
+          ? upper(t("dailyCleared"))
+          : upper(t("levelCleared"));
 
   const subtitle = isZen
     ? t("practiceNoRecords")
@@ -134,24 +135,22 @@ export function WinModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={isZen ? "Practice complete" : isCustom ? "Custom level complete" : "Level complete"}
+          aria-label={title}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 20 }}
-            className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl border border-primary/30 bg-card/95 p-7 shadow-[0_0_50px_rgba(0,243,255,0.15)]"
+            className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background/95 p-7 shadow-[0_0_60px_rgba(0,0,0,0.5)]"
           >
-            <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-primary/20 blur-[60px]" />
-            <div className="pointer-events-none absolute -bottom-20 -left-20 h-40 w-40 rounded-full bg-secondary/20 blur-[60px]" />
 
             <div className="relative z-10 space-y-5 text-center">
               <div>
                 <motion.h2
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="neon-text bg-gradient-to-r from-primary to-secondary bg-clip-text pb-1 font-orbitron text-3xl font-bold text-transparent"
+                  className="pb-1 font-orbitron text-3xl font-black tracking-wide text-white"
                 >
                   {title}
                 </motion.h2>
@@ -167,12 +166,9 @@ export function WinModal({
                       animate={{ scale: 1, rotate: 0 }}
                       transition={{ delay: 0.15 + index * 0.12, type: "spring", stiffness: 260 }}
                     >
-                      <Star
-                        className={`h-10 w-10 ${
-                          index < stars
-                            ? "fill-primary text-primary drop-shadow-[0_0_10px_rgba(0,243,255,0.6)]"
-                            : "text-white/15"
-                        }`}
+                      <StarIcon
+                        filled={index < stars}
+                        className={`h-11 w-11 ${index < stars ? "text-primary" : "text-white/15"}`}
                       />
                     </motion.div>
                   ))}
@@ -181,10 +177,10 @@ export function WinModal({
 
               {!isZen ? (
                 <>
-                  <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-background/40 p-3">
-                    <Stat label={t("time").toUpperCase()} value={formatDuration(timeMs)} highlight={isNewBest} />
-                    <Stat label={t("best").toUpperCase()} value={bestTimeMs !== null ? formatDuration(bestTimeMs) : "—"} />
-                    <Stat label={t("score").toUpperCase()} value={score.toLocaleString()} highlight={isNewBestScore} />
+                  <div className="grid grid-cols-3 gap-2 rounded-none border border-white/10 bg-background/40 p-3">
+                    <Stat label={upper(t("time"))} value={formatDuration(timeMs)} highlight={isNewBest} />
+                    <Stat label={upper(t("best"))} value={bestTimeMs !== null ? formatDuration(bestTimeMs) : "—"} />
+                    <Stat label={upper(t("score"))} value={score.toLocaleString()} highlight={isNewBestScore} />
                   </div>
 
                   {bestScore !== null && bestScore > 0 && !isDaily && !isWeekly && (
@@ -194,7 +190,7 @@ export function WinModal({
                   )}
 
                   {(isDaily || isWeekly || (!isCustom && starReasons.length > 0)) && (
-                    <div className={`-mt-1 space-y-1 rounded-lg border p-3 text-left font-exo text-xs ${
+                    <div className={`-mt-1 space-y-1 rounded-none border p-3 text-left font-exo text-xs ${
                       isFlawless
                         ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
                         : "border-amber-400/25 bg-amber-400/5 text-amber-200"
@@ -225,7 +221,7 @@ export function WinModal({
                   )}
                 </>
               ) : (
-                <div className="rounded-xl border border-white/10 bg-background/40 p-3 font-exo text-xs text-muted-foreground">
+                <div className="rounded-none border border-white/10 bg-background/40 p-3 font-exo text-xs text-muted-foreground">
                   {t("practiceNeverChanges")}
                 </div>
               )}
@@ -237,7 +233,7 @@ export function WinModal({
               )}
 
               {!isDaily && !isWeekly && !isZen && !isCustom && levelId >= 10 && (
-                <div className="space-y-2 rounded-lg border border-secondary/30 bg-secondary/10 p-3">
+                <div className="space-y-2 rounded-none border border-secondary/30 bg-secondary/10 p-3">
                   <p className="font-exo text-xs text-muted-foreground">
                     {t("permanentCode", { level: levelId })}
                   </p>
