@@ -197,3 +197,11 @@ canvas {
 .reduce-motion .crash-scanlines {
   animation: none;
 }
+
+/* Title screen: a flat dot grid with one soft vignette instead of glow orbs. */
+.menu-grid {
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    radial-gradient(ellipse 70% 55% at 75% 35%, hsl(var(--primary) / 0.07), transparent 70%);
+  background-size: 28px 28px, 100% 100%;
+}

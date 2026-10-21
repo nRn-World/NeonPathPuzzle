@@ -21,7 +21,7 @@ export function ThemeSelector() {
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 border-primary/40 text-primary hover:bg-primary/10"
+        className="h-9 gap-1.5 rounded-none border-white/15 px-3 font-mono text-[11px] uppercase tracking-wider text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"
       >
         <Palette className="w-4 h-4" />
         <span>{t("theme")}</span>
