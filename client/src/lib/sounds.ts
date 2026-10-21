@@ -29,7 +29,7 @@ function getEngine(): SynthEngine | null {
   if (engine) return engine;
   const ctx = getAudioContext();
   if (!ctx) return null;
-  engine = createSynth(ctx, { volume: 0.5 });
+  engine = createSynth(ctx, { volume: useSettingsStore.getState().soundVolume });
   return engine;
 }
 
@@ -105,4 +105,14 @@ export function playDeadEndSound() {
 export function playCrashSound() {
   if (audioAllowed()) getEngine()?.playCrash();
   nativeHaptic(() => Haptics.notification({ type: NotificationType.Error }));
+}
+
+/** Keeps the live synth in step with the volume setting. */
+useSettingsStore.subscribe((state, previous) => {
+  if (state.soundVolume !== previous.soundVolume) engine?.setVolume(state.soundVolume);
+});
+
+/** A short blip at the new volume, so the slider can be judged by ear. */
+export function previewVolume() {
+  if (audioAllowed()) getEngine()?.playStep(0.5);
 }

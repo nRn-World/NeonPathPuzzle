@@ -38,7 +38,7 @@ export function WeeklyCard({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/weekly">
       <div
-        className={`group relative cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-amber-400 bg-white/[0.03] transition-all hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(255,215,0,0.15)] ${
+        className={`group relative h-full cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-amber-400 bg-white/[0.03] transition-all hover:border-amber-400/60 hover:shadow-[0_0_25px_rgba(255,215,0,0.15)] ${
           compact ? "p-4" : "p-5"
         }`}
       >

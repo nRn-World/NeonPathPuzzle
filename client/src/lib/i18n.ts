@@ -132,6 +132,7 @@ const en = {
   restartsLeft: "Restart level · {count} restarts left",
   restartFinal: "Last attempt — restarting crashes the system",
   crashesStat: "System crashes",
+  volume: "Volume",
   chooseTheme: "Choose theme",
   themeLocked: "Complete {count} levels to unlock",
   achievementsTitle: "Achievements",
@@ -412,6 +413,7 @@ const sv: Record<TranslationKey, string> = {
   restartsLeft: "Starta om nivån · {count} omstarter kvar",
   restartFinal: "Sista försöket — omstart kraschar systemet",
   crashesStat: "Systemkrascher",
+  volume: "Volym",
   chooseTheme: "Välj tema",
   themeLocked: "Klara {count} nivåer för att låsa upp",
   achievementsTitle: "Prestationer",
@@ -573,7 +575,7 @@ const sv: Record<TranslationKey, string> = {
   levelSavedDesc: "Hittar du under Sparade banor nedan.",
 };
 
-const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
+export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
 
 /**
  * English is the default on every device, whatever the browser language is.

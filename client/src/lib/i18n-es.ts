@@ -117,6 +117,7 @@ export const es: Record<TranslationKey, string> = {
   restartsLeft: "Reiniciar nivel · {count} reinicios restantes",
   restartFinal: "Último intento — reiniciar colapsa el sistema",
   crashesStat: "Colapsos del sistema",
+  volume: "Volumen",
   chooseTheme: "Elegir tema",
   themeLocked: "Supera {count} niveles para desbloquear",
   achievementsTitle: "Logros",

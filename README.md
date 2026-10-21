@@ -37,8 +37,8 @@
       <img src="screenshots/level-complete.png" alt="Level Complete" width="100%">
     </td>
     <td width="50%">
-      <h3 align="center">🎨 Themes</h3>
-      <img src="screenshots/themes.png" alt="Themes" width="100%">
+      <h3 align="center">📱 Mobile</h3>
+      <img src="screenshots/mobile.png" alt="Mobile" width="100%">
     </td>
   </tr>
 </table>

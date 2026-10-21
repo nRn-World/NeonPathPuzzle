@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { previewVolume } from "@/lib/sounds";
 import { useSettingsStore } from "@/lib/settings";
 import { useToast } from "@/hooks/use-toast";
 import { useUserId } from "@/hooks/use-game";
@@ -30,10 +32,12 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
   const hintTokens = useHintTokenStore(state => state.tokens);
   const {
     soundEnabled,
+    soundVolume,
     hapticsEnabled,
     reducedMotion,
     showGhost,
     setSoundEnabled,
+    setSoundVolume,
     setHapticsEnabled,
     setReducedMotion,
     setShowGhost,
@@ -118,6 +122,22 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             checked={soundEnabled}
             onChange={setSoundEnabled}
           />
+          <div className={`space-y-2 rounded-lg border border-white/10 p-3 transition-opacity ${soundEnabled ? "" : "opacity-40"}`}>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">{t("volume")}</Label>
+              <span className="font-mono text-xs text-muted-foreground">{Math.round(soundVolume * 100)}%</span>
+            </div>
+            <Slider
+              value={[Math.round(soundVolume * 100)]}
+              min={0}
+              max={100}
+              step={5}
+              disabled={!soundEnabled}
+              aria-label={t("volume")}
+              onValueChange={([value]) => setSoundVolume(value / 100)}
+              onValueCommit={() => previewVolume()}
+            />
+          </div>
           <SettingRow
             label={t("haptics")}
             description={t("hapticsDesc")}

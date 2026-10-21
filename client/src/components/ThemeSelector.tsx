@@ -1,13 +1,17 @@
-import { content } from "@/lib/contentText";
 import { useState } from "react";
+import { Check, Lock, Palette } from "lucide-react";
+import { content } from "@/lib/contentText";
 import { useTheme } from "@/hooks/use-theme";
 import { useUserProgress, useUserId } from "@/hooks/use-game";
 import { themes, isThemeUnlocked } from "@/lib/themes";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Check, Lock, Palette } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useI18n } from "@/lib/i18n";
 
+/**
+ * Theme picker. A popover keeps itself inside the screen (it flips upward near
+ * the bottom edge and scrolls when it is taller than the space it has).
+ */
 export function ThemeSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const { currentTheme, setTheme } = useTheme();
@@ -17,84 +21,70 @@ export function ThemeSelector() {
   const completedCount = progress?.completedCount ?? 0;
 
   return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        className="h-9 gap-1.5 rounded-none border-white/15 px-3 font-mono text-[11px] uppercase tracking-wider text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"
-      >
-        <Palette className="w-4 h-4" />
-        <span>{t("theme")}</span>
-      </Button>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 gap-1.5 rounded-none border-white/15 px-3 font-mono text-[11px] uppercase tracking-wider text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"
+        >
+          <Palette className="h-4 w-4" />
+          <span>{t("theme")}</span>
+        </Button>
+      </PopoverTrigger>
 
-      {isOpen && (
-        <>
-          <button
-            aria-label="Close theme selector"
-            className="fixed inset-0 z-40 cursor-default"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute top-full mt-2 right-0 z-50">
-            <Card className="w-[22rem] max-w-[calc(100vw-2rem)] bg-background/95 backdrop-blur-md border-border shadow-2xl">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-3">{t("chooseTheme")}</h3>
-                <div className="space-y-2">
-                  {themes.map((theme) => {
-                    const isActive = currentTheme === theme.id;
-                    const unlocked = isThemeUnlocked(theme.id, completedCount);
-                    return (
-                      <button
-                        key={theme.id}
-                        disabled={!unlocked}
-                        onClick={() => {
-                          if (!unlocked) return;
-                          setTheme(theme.id);
-                          setIsOpen(false);
-                        }}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
-                          isActive
-                            ? "border-primary bg-primary/10"
-                            : unlocked
-                              ? "border-border hover:border-primary/50 hover:bg-accent"
-                              : "border-white/5 opacity-55 cursor-not-allowed"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="font-medium">{content.theme(theme).name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {unlocked
-                                ? content.theme(theme).description
-                                : t("themeLocked", { count: theme.unlockAtLevels })}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="flex gap-1">
-                              {theme.colors.neon.slice(0, 3).map((color, index) => (
-                                <div
-                                  key={index}
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: color }}
-                                />
-                              ))}
-                            </div>
-                            {isActive
-                              ? <Check className="w-4 h-4 text-primary" />
-                              : !unlocked
-                                ? <Lock className="w-4 h-4 text-muted-foreground" />
-                                : null}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+      <PopoverContent
+        align="start"
+        collisionPadding={12}
+        className="max-h-[var(--radix-popover-content-available-height)] w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-none border-white/15 bg-background/95 p-4 backdrop-blur-md"
+      >
+        <h3 className="mb-3 font-orbitron text-sm font-bold uppercase tracking-wider">{t("chooseTheme")}</h3>
+        <div className="space-y-2">
+          {themes.map(theme => {
+            const isActive = currentTheme === theme.id;
+            const unlocked = isThemeUnlocked(theme.id, completedCount);
+            const text = content.theme(theme);
+            return (
+              <button
+                key={theme.id}
+                disabled={!unlocked}
+                onClick={() => {
+                  setTheme(theme.id);
+                  setIsOpen(false);
+                }}
+                className={`w-full border p-3 text-left transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary/10"
+                    : unlocked
+                      ? "border-white/10 hover:border-primary/60 hover:bg-white/5"
+                      : "cursor-not-allowed border-white/5 opacity-55"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium">{text.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {unlocked ? text.description : t("themeLocked", { count: theme.unlockAtLevels })}
+                    </div>
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <div className="flex gap-1">
+                      {theme.colors.neon.slice(0, 3).map((color, index) => (
+                        <div key={index} className="h-3 w-3" style={{ backgroundColor: color }} />
+                      ))}
+                    </div>
+                    {isActive
+                      ? <Check className="h-4 w-4 text-primary" />
+                      : !unlocked
+                        ? <Lock className="h-4 w-4 text-muted-foreground" />
+                        : null}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-    </div>
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
