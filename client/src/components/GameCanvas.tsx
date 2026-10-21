@@ -62,6 +62,8 @@ const pointKey = (point: Point) => `${point.x},${point.y}`;
 const SYNC_COLOR = "#00e5a0";
 /** Cells around the head that stay lit on blackout boards. */
 const BLACKOUT_RADIUS = 2.6;
+/** How long a hint takes to draw itself. */
+const HINT_DRAW_MS = 650;
 
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
@@ -97,6 +99,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const wonRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
   const lastFrameRef = useRef(0);
+  /** When the current hint started drawing; null while no hint is shown. */
+  const hintStartRef = useRef<number | null>(null);
   /** Glow shadows are the costly part of a frame; they switch off on slow devices. */
   const lowQualityRef = useRef(false);
   const slowFramesRef = useRef(0);
@@ -569,20 +573,34 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
-    // Hint
+    // Hint: the solution draws itself forward so the direction is obvious.
     if (showHint && hintPath && hintPath.length > 1) {
+      if (hintStartRef.current === null) hintStartRef.current = time;
+      const reveal = reducedMotion
+        ? 1
+        : Math.min(1, (time - hintStartRef.current) / HINT_DRAW_MS);
+      const reached = reveal * (hintPath.length - 1);
+      const whole = Math.floor(reached);
+      const part = reached - whole;
+      const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
+
       context.save();
-      context.globalAlpha = 0.55;
+      context.globalAlpha = 0.6;
       context.strokeStyle = colors.secondary;
       context.lineWidth = Math.min(6, Math.max(2, cell * 0.06));
+      context.lineCap = "round";
       context.setLineDash([cell * 0.18, cell * 0.12]);
       context.beginPath();
-      hintPath.forEach((point, index) => {
-        const x = point.x * cell + cell / 2;
-        const y = point.y * cell + cell / 2;
+      hintPath.slice(0, whole + 1).forEach((point, index) => {
+        const [x, y] = center(point);
         if (index === 0) context.moveTo(x, y);
         else context.lineTo(x, y);
       });
+      if (whole < hintPath.length - 1) {
+        const [fromX, fromY] = center(hintPath[whole]);
+        const [toX, toY] = center(hintPath[whole + 1]);
+        context.lineTo(fromX + (toX - fromX) * part, fromY + (toY - fromY) * part);
+      }
       context.stroke();
       context.setLineDash([]);
       context.font = `${Math.max(9, cell * 0.14)}px 'Exo 2', Arial, sans-serif`;
@@ -590,10 +608,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.textBaseline = "middle";
       context.fillStyle = colors.secondary;
       hintPath.forEach((point, index) => {
-        if (index === 0) return;
-        context.fillText(String(index), point.x * cell + cell / 2, point.y * cell + cell / 2);
+        if (index === 0 || index > whole) return;
+        const [x, y] = center(point);
+        context.fillText(String(index), x, y);
       });
       context.restore();
+    } else {
+      hintStartRef.current = null;
     }
 
     // Win celebration rings
