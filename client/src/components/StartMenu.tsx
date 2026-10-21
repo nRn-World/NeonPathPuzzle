@@ -404,44 +404,38 @@ export function StartMenu() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {selectedLevelMessage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-            onClick={() => setSelectedLevelMessage(null)}
+      {/* Plain DOM and a CSS-only entrance: nothing here depends on the main thread
+          or on JS animation, so the popup cannot hitch while the page is busy. */}
+      {selectedLevelMessage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setSelectedLevelMessage(null)}
+        >
+          <div
+            onClick={event => event.stopPropagation()}
+            className="level-popup relative w-full max-w-md overflow-hidden rounded-none border border-white/10 bg-background p-8"
           >
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.85, opacity: 0 }}
-              onClick={event => event.stopPropagation()}
-              className="relative w-full max-w-md transform-gpu overflow-hidden rounded-none border border-white/10 bg-background p-8 will-change-transform"
-            >
-              <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
-              <div className="relative z-10 space-y-6 text-center">
-                <Heart className="mx-auto h-12 w-12 animate-pulse fill-primary text-primary" />
-                <div>
-                  <h3 className="mb-2 font-orbitron text-2xl font-bold text-secondary">
-                    {upper(t("level"))} {selectedLevelMessage.id}
-                  </h3>
-                  <p className="neon-text font-exo text-lg leading-relaxed text-primary">
-                    “{selectedLevelMessage.message}”
-                  </p>
-                </div>
-                <Button
-                  onClick={() => setSelectedLevelMessage(null)}
-                  className="w-full bg-primary font-bold text-black hover:bg-primary/90"
-                >
-                  {upper(t("close"))}
-                </Button>
+            <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
+            <div className="relative z-10 space-y-6 text-center">
+              <Heart className="mx-auto h-12 w-12 fill-primary text-primary" />
+              <div>
+                <h3 className="mb-2 font-orbitron text-2xl font-bold text-secondary">
+                  {upper(t("level"))} {selectedLevelMessage.id}
+                </h3>
+                <p className="font-exo text-lg leading-relaxed text-primary">
+                  “{selectedLevelMessage.message}”
+                </p>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <Button
+                onClick={() => setSelectedLevelMessage(null)}
+                className="w-full bg-primary font-bold text-black hover:bg-primary/90"
+              >
+                {upper(t("close"))}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {tutorialOpen && <TutorialOverlay onDone={finishTutorial} />}
@@ -539,17 +533,9 @@ const CompletedSection = memo(function CompletedSection({
             >
               {levelId}
               {isCompleted && (
-                <span className="mt-0.5 flex gap-0.5">
-                  {Array.from({ length: 3 }).map((_, starIndex) => (
-                    <Star
-                      key={starIndex}
-                      className={`h-1.5 w-1.5 ${
-                        starIndex < Math.max(level?.stars ?? 0, 1)
-                          ? "fill-black text-black"
-                          : "text-black/20"
-                      }`}
-                    />
-                  ))}
+                <span className="mt-0.5 text-[7px] leading-none tracking-tighter" aria-hidden>
+                  {"★".repeat(Math.max(level?.stars ?? 0, 1))}
+                  <span className="opacity-25">{"★".repeat(3 - Math.max(level?.stars ?? 0, 1))}</span>
                 </span>
               )}
             </button>
