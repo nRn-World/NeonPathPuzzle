@@ -92,7 +92,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const [path, setPath] = useState<Point[]>([level.start]);
   const pathRef = useRef<Point[]>([level.start]);
   const [isDragging, setIsDragging] = useState(false);
-  const [cellSize, setCellSize] = useState(0);
 
   const metricsRef = useRef<Metrics>({ cellSize: 0, dpr: 1, size: 0 });
   const lastPointerRef = useRef<Point | null>(null);
@@ -174,14 +173,18 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     // Crisp on retina, but cap at 2x to keep large grids cheap to fill.
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(size * dpr);
-    canvas.height = Math.round(size * dpr);
+    // Assigning the same size still clears the canvas and reallocates its
+    // buffer, so the mount-time observer callback must not repeat the work.
+    const pixelSize = Math.round(size * dpr);
+    if (canvas.width !== pixelSize || canvas.height !== pixelSize) {
+      canvas.width = pixelSize;
+      canvas.height = pixelSize;
+    }
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
 
     const cell = size / level.gridSize;
     metricsRef.current = { cellSize: cell, dpr, size };
-    setCellSize(cell);
   }, [level.gridSize]);
 
   useEffect(() => {

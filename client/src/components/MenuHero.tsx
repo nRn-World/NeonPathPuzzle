@@ -161,7 +161,7 @@ function HeroBoard() {
 interface MenuHeroProps {
   hasProgress: boolean;
   continueLevel: number;
-  runCount: number;
+  solvedCount: number;
   totalLevels: number;
   totalStars: number;
   maxStars: number;
@@ -175,7 +175,7 @@ interface MenuHeroProps {
 export function MenuHero({
   hasProgress,
   continueLevel,
-  runCount,
+  solvedCount,
   totalLevels,
   totalStars,
   maxStars,
@@ -187,7 +187,7 @@ export function MenuHero({
   const { t } = useI18n();
   const rank = getBrainRank(totalStars);
   const segments = 30;
-  const filled = Math.round((runCount / totalLevels) * segments);
+  const filled = Math.round((solvedCount / totalLevels) * segments);
 
   return (
     <section className="relative mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-8 py-2 md:py-6 md:grid-cols-[1.05fr_0.95fr] md:gap-12">
@@ -256,7 +256,7 @@ export function MenuHero({
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={totalLevels}
-            aria-valuenow={runCount}
+            aria-valuenow={solvedCount}
             aria-label={t("levelsSolved")}
           >
             {Array.from({ length: segments }, (_, index) => (
@@ -267,7 +267,7 @@ export function MenuHero({
             ))}
           </div>
           <div className="mt-2 flex items-center justify-between font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            <span>{runCount}/{totalLevels} {t("levelsSolved")}</span>
+            <span>{solvedCount}/{totalLevels} {t("levelsSolved")}</span>
             <span className="flex items-center gap-3">
               <span className="flex items-center gap-1 text-primary" title={t("brainRank")}>
                 <Brain className="h-3 w-3" />

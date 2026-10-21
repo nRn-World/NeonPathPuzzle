@@ -35,7 +35,8 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     setDaily(getProgress(userId).daily);
-  }, [userId]);
+    // A menu left open across midnight must show the new day's strip.
+  }, [userId, dateKey]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setRemainingMs(getTimeUntilNextDaily()), 1000);

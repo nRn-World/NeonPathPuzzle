@@ -118,7 +118,7 @@ export function ChapterBoard({
               <span className="font-orbitron font-bold">{stars}</span>
               <span className="text-xs text-muted-foreground">/ {chapterLevels.length * 3}</span>
             </span>
-            <span className="font-exo text-muted-foreground">{completed}/{chapterLevels.length} solved</span>
+            <span className="font-exo text-muted-foreground">{completed}/{chapterLevels.length} {t("levelsSolved")}</span>
           </div>
         </div>
 

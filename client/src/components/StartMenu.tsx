@@ -63,6 +63,15 @@ export function StartMenu() {
 
   const completedLevels = levels?.filter(level => level.isCompleted) ?? [];
   const completedCount = summary?.completedCount ?? completedLevels.length;
+  // The list is a record of every clear, not just the current run: after a crash
+  // the run is empty while the stars still belong to these levels.
+  const completedHistory = summary
+    ? summary.completedLevels.map(id => ({
+      id,
+      isCompleted: true,
+      stars: summary.records[String(id)]?.stars ?? 1,
+    }))
+    : completedLevels.map(level => ({ id: level.id, isCompleted: true, stars: level.stars }));
   const totalStars = summary?.totalStars ?? 0;
   const bestStreak = summary?.bestStreak ?? 0;
   const continueLevel = summary?.continueLevel ?? 1;
@@ -128,7 +137,7 @@ export function StartMenu() {
                 <MenuHero
                   hasProgress={hasProgress}
                   continueLevel={continueLevel}
-                  runCount={runCount}
+                  solvedCount={completedCount}
                   totalLevels={TOTAL_LEVELS}
                   totalStars={totalStars}
                   maxStars={maxStars}
@@ -357,14 +366,14 @@ export function StartMenu() {
                     title={t("levelsRange", { from: 1, to: 100 })}
                     from={1}
                     to={100}
-                    levels={levels ?? []}
+                    levels={completedHistory}
                     onLevelClick={handleLevelClick}
                   />
                   <CompletedSection
                     title={t("levelsRange", { from: 101, to: 200 })}
                     from={101}
                     to={200}
-                    levels={levels ?? []}
+                    levels={completedHistory}
                     unlocked={completedCount >= 100}
                     onLevelClick={handleLevelClick}
                   />
@@ -372,7 +381,7 @@ export function StartMenu() {
                     title={t("levelsRange", { from: 201, to: 300 })}
                     from={201}
                     to={TOTAL_LEVELS}
-                    levels={levels ?? []}
+                    levels={completedHistory}
                     unlocked={completedCount >= 100}
                     onLevelClick={handleLevelClick}
                   />

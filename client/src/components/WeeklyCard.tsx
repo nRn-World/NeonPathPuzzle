@@ -31,9 +31,11 @@ export function WeeklyCard({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     setResult(getWeeklyResult(getWeekKey()));
+    setRemainingMs(getTimeUntilNextWeekly());
     const interval = window.setInterval(() => setRemainingMs(getTimeUntilNextWeekly()), 1000);
     return () => window.clearInterval(interval);
-  }, []);
+    // A menu left open across Monday midnight must pick up the new challenge.
+  }, [challenge.weekKey]);
 
   return (
     <Link href="/weekly">

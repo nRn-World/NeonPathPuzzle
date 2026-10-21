@@ -1,4 +1,4 @@
-import { generateLevel, type GeneratedLevel } from "./shared/level-generator";
+import { generateLevel, MAX_LEVEL_ID, type GeneratedLevel } from "./shared/level-generator";
 
 const signature = (level: GeneratedLevel) =>
   `${level.gridSize}|${level.nodes.map(node => `${node.x},${node.y}`).join(";")}`;
@@ -31,7 +31,7 @@ const duplicates: Array<[number, number]> = [];
 const errors: Array<{ level: number; error: string }> = [];
 let slowest = { level: 0, milliseconds: 0 };
 
-for (let id = 1; id <= 200; id++) {
+for (let id = 1; id <= MAX_LEVEL_ID; id++) {
   try {
     const startedAt = performance.now();
     const level = generateLevel(id);
@@ -48,7 +48,7 @@ for (let id = 1; id <= 200; id++) {
   }
 }
 
-console.log(`Generated and validated ${200 - new Set(errors.map(error => error.level)).size}/200 levels.`);
+console.log(`Generated and validated ${MAX_LEVEL_ID - new Set(errors.map(error => error.level)).size}/${MAX_LEVEL_ID} levels.`);
 console.log(`Slowest level: ${slowest.level} (${slowest.milliseconds.toFixed(1)}ms).`);
 console.log(duplicates.length ? `Duplicate pairs: ${JSON.stringify(duplicates)}` : "All node layouts are unique.");
 if (errors.length) console.error("Validation errors:", errors);
