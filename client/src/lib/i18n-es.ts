@@ -117,6 +117,8 @@ export const es: Record<TranslationKey, string> = {
   restartsLeft: "Reiniciar nivel · {count} reinicios restantes",
   restartFinal: "Último intento — reiniciar colapsa el sistema",
   crashesStat: "Colapsos del sistema",
+  chapterComplete: "Capítulo completado",
+  nextChapterLabel: "Siguiente capítulo",
   noPowerUps: "No hay potenciadores disponibles",
   noPowerUpsDesc: "¡Supera niveles para ganar potenciadores!",
   activeEffects: "Efectos activos",
