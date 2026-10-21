@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -99,9 +99,9 @@ export function StartMenu() {
     setLocation(`/play/${continueLevel}`);
   };
 
-  const handleLevelClick = (levelId: number) => {
+  const handleLevelClick = useCallback((levelId: number) => {
     setSelectedLevelMessage({ id: levelId, message: getLevelMessage(levelId) });
-  };
+  }, []);
 
   const handleCodeSubmit = () => {
     setCodeError("");
@@ -410,7 +410,7 @@ export function StartMenu() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
             onClick={() => setSelectedLevelMessage(null)}
           >
             <motion.div
@@ -500,7 +500,7 @@ function InfoBlock({
   );
 }
 
-function CompletedSection({
+const CompletedSection = memo(function CompletedSection({
   title,
   from,
   to,
@@ -558,4 +558,4 @@ function CompletedSection({
       </div>
     </div>
   );
-}
+});
