@@ -857,23 +857,36 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     if (!start || (target.x === start.x && target.y === start.y)) return;
 
     // Fill every cell between pointer samples so fast swipes never skip a node.
+    // A sample that lands diagonally (a fast corner cut) can be reached by two
+    // L-shaped routes, so each step tries both axes and takes the one the rules
+    // allow, preferring the axis with more distance left. Stepping back onto the
+    // previous node is an undo, so it is only the last resort.
     const cursor = { ...start };
     let lastReached = { ...start };
-    while (cursor.x !== target.x || cursor.y !== target.y) {
-      if (cursor.x !== target.x) {
-        cursor.x += Math.sign(target.x - cursor.x);
-      } else {
-        cursor.y += Math.sign(target.y - cursor.y);
-      }
+    let guard = level.gridSize * level.gridSize;
+    while ((cursor.x !== target.x || cursor.y !== target.y) && guard-- > 0) {
+      const dx = target.x - cursor.x;
+      const dy = target.y - cursor.y;
+      const current = pathRef.current;
+      const previous = current[current.length - 2];
+      const isBack = (point: Point) => Boolean(previous && previous.x === point.x && previous.y === point.y);
+      const steps: { point: Point; remaining: number }[] = [];
+      if (dx !== 0) steps.push({ point: { x: cursor.x + Math.sign(dx), y: cursor.y }, remaining: Math.abs(dx) });
+      if (dy !== 0) steps.push({ point: { x: cursor.x, y: cursor.y + Math.sign(dy) }, remaining: Math.abs(dy) });
+      steps.sort((first, second) =>
+        Number(isBack(first.point)) - Number(isBack(second.point)) || second.remaining - first.remaining);
 
-      if (tryMove({ x: cursor.x, y: cursor.y })) {
-        // A portal hop moves the head to the twin pad, not to the cell under the
-        // pointer. Continue the drag from the real head or the swipe stalls.
-        lastReached = pathRef.current[pathRef.current.length - 1] ?? { ...cursor };
-      } else {
-        lastReached = pathRef.current[pathRef.current.length - 1] ?? lastReached;
+      const moved = steps.find(step => tryMove(step.point));
+      const head = pathRef.current[pathRef.current.length - 1];
+      if (!moved || !head) {
+        // The real head, not the pointer cell: a portal hop or a refused move
+        // leaves the line somewhere else.
+        lastReached = head ?? lastReached;
         break;
       }
+      cursor.x = head.x;
+      cursor.y = head.y;
+      lastReached = { ...head };
     }
 
     lastPointerRef.current = lastReached;
