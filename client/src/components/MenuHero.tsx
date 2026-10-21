@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, Flame, Play, Star } from "lucide-react";
+import type { Point } from "@shared/schema";
 import { HERO_BOARD } from "@/lib/heroBoard";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
@@ -15,11 +16,20 @@ const FADE_MS = 900;
  * The title art: the game's own board drawing its own solution, over and over.
  * No glow stack and no particles — just the mechanic the game is about.
  */
-function HeroBoard() {
+export function AnimatedBoard({
+  board,
+  speed = DRAW_SPEED,
+  className = "aspect-square w-full",
+}: {
+  board: { gridSize: number; solution: Point[] };
+  /** Nodes drawn per second. */
+  speed?: number;
+  className?: string;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { getThemeColors } = useTheme();
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
-  const level = HERO_BOARD;
+  const level = board;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -30,7 +40,7 @@ function HeroBoard() {
     let size = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const nodeCount = level.solution.length;
-    const drawMs = (nodeCount / DRAW_SPEED) * 1000;
+    const drawMs = (nodeCount / speed) * 1000;
     const cycle = drawMs + HOLD_MS + FADE_MS;
 
     const resize = () => {
@@ -138,9 +148,13 @@ function HeroBoard() {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [getThemeColors, level, reducedMotion]);
+  }, [getThemeColors, level, reducedMotion, speed]);
 
-  return <canvas ref={canvasRef} aria-hidden className="aspect-square w-full" />;
+  return <canvas ref={canvasRef} aria-hidden className={className} />;
+}
+
+function HeroBoard() {
+  return <AnimatedBoard board={HERO_BOARD} />;
 }
 
 interface MenuHeroProps {

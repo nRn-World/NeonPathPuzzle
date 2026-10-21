@@ -45,7 +45,7 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/daily">
       <div
-        className={`group relative cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-secondary bg-white/[0.03] transition-all hover:border-secondary/60 hover:shadow-[0_0_25px_rgba(138,43,226,0.2)] ${
+        className={`group relative h-full cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-secondary bg-white/[0.03] transition-all hover:border-secondary/60 hover:shadow-[0_0_25px_rgba(138,43,226,0.2)] ${
           compact ? "p-4" : "p-5"
         }`}
       >

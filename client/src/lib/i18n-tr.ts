@@ -117,6 +117,7 @@ export const tr: Record<TranslationKey, string> = {
   restartsLeft: "Seviyeyi yeniden başlat · {count} yeniden başlatma kaldı",
   restartFinal: "Son deneme — yeniden başlatmak sistemi çökertir",
   crashesStat: "Sistem çökmeleri",
+  volume: "Ses düzeyi",
   chooseTheme: "Tema seç",
   themeLocked: "Kilidi açmak için {count} seviye tamamla",
   achievementsTitle: "Başarımlar",

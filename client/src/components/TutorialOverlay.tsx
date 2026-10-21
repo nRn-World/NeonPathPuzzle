@@ -2,6 +2,14 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Hand, ShieldAlert, Sparkles, Star, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnimatedBoard } from "@/components/MenuHero";
+
+/** A tiny board for the first step: the line visits every node once. */
+const DEMO_BOARD = {
+  gridSize: 4,
+  solution: [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [2, 1], [1, 1], [0, 1], [0, 2], [1, 2], [2, 2], [3, 2], [3, 3], [2, 3]]
+    .map(([x, y]) => ({ x, y })),
+};
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
 const steps: { icon: typeof Hand; title: TranslationKey; body: TranslationKey }[] = [
@@ -51,9 +59,15 @@ export function TutorialOverlay({ onDone }: { onDone: () => void }) {
             </button>
           </div>
 
-          <div className="flex h-16 w-16 items-center justify-center rounded-none border border-primary/30 bg-primary/10">
-            <Icon className="h-8 w-8 text-primary" />
-          </div>
+          {stepIndex === 0 ? (
+            <div className="w-40 border border-white/10 bg-white/[0.02] p-2">
+              <AnimatedBoard board={DEMO_BOARD} speed={4} />
+            </div>
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-none border border-primary/30 bg-primary/10">
+              <Icon className="h-8 w-8 text-primary" />
+            </div>
+          )}
 
           <div className="space-y-2">
             <h2 className="font-orbitron text-2xl font-bold text-foreground">{t(step.title)}</h2>

@@ -53,9 +53,10 @@ interface HeaderProps {
   onRestart: () => void;
 }
 
-const iconButton = "h-8 w-8 flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&_svg]:!size-5 md:[&_svg]:!size-[22px]";
-/** Small solid counter pinned to a button corner. */
-const badge = "pointer-events-none absolute -right-1.5 -top-1.5 min-w-[15px] bg-primary px-1 text-center font-mono text-[9px] font-bold leading-[15px] text-background";
+const iconButton = "h-8 w-[30px] flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&_svg]:!size-[18px] md:[&_svg]:!size-[22px]";
+/** A button with an icon and a number beside it, so counts are always readable. */
+const countButton = "h-8 flex-shrink-0 gap-0.5 rounded-none px-1.5 md:h-9 md:gap-1.5 md:px-2.5 [&_svg]:!size-[18px] md:[&_svg]:!size-[22px]";
+const count = "font-mono text-sm font-black leading-none tabular-nums md:text-base";
 
 export function Header({
   levelId,
@@ -91,7 +92,7 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-10 flex min-h-14 w-full flex-shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-background/80 px-2 py-2 backdrop-blur-md md:min-h-16 md:px-6 md:py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
+      <div className="flex min-w-[5.5rem] flex-1 items-center gap-2 overflow-hidden md:gap-3">
         <Link
           href="/"
           aria-label={t("backToMenu")}
@@ -100,7 +101,7 @@ export function Header({
           <BackIcon className="h-5 w-5" />
         </Link>
         <div className="min-w-0">
-          <h2 className="flex items-center gap-1.5 truncate font-orbitron text-xs font-bold md:text-lg">
+          <h2 className="flex items-center gap-1.5 whitespace-nowrap font-orbitron text-xs font-bold md:text-lg">
             {title ? (
               <span className="truncate text-primary neon-text">{title}</span>
             ) : isDaily ? (
@@ -111,7 +112,7 @@ export function Header({
             {isBoss && (
               <span className="flex flex-shrink-0 items-center gap-0.5 rounded border border-amber-400/50 bg-amber-400/10 px-1 py-0.5 font-exo text-[8px] font-bold uppercase tracking-wide text-amber-300">
                 <Crown className="h-2.5 w-2.5" />
-                {t("boss")}
+                <span className="hidden sm:inline">{t("boss")}</span>
               </span>
             )}
           </h2>
@@ -121,10 +122,10 @@ export function Header({
         </div>
       </div>
 
-      <div className="ml-auto flex min-w-0 flex-shrink-0 items-center gap-0.5 overflow-x-auto md:gap-1.5">
+      <div className="ml-auto flex flex-shrink-0 items-center gap-1 md:gap-1.5">
         {!hideTimer && (
           <div
-            className={`flex h-8 items-center gap-1 rounded-none border px-1.5 font-mono text-[10px] md:h-9 md:gap-1.5 md:px-2 md:text-xs ${
+            className={`flex h-8 flex-shrink-0 items-center gap-1 rounded-none border px-1.5 font-mono text-[10px] md:h-9 md:gap-1.5 md:px-2 md:text-xs ${
               isFrozen
                 ? "border-sky-400/50 bg-sky-400/10 text-sky-300"
                 : overPar
@@ -137,10 +138,10 @@ export function Header({
                 ? t("levelTimerPar", { time: formatDuration(parTimeMs) })
                 : t("levelTimer")}
           >
-            <TimerIcon className="h-3.5 w-3.5" />
+            <TimerIcon className="hidden h-3.5 w-3.5 sm:block" />
             {formatDuration(timeMs)}
             {parTimeMs !== undefined && (
-              <span className="text-muted-foreground/50">/{formatDuration(parTimeMs)}</span>
+              <span className="hidden text-muted-foreground/50 sm:inline">/{formatDuration(parTimeMs)}</span>
             )}
           </div>
         )}
@@ -159,93 +160,69 @@ export function Header({
           </div>
         )}
 
-        <div className="relative">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onUndo}
-            disabled={!canUndo || undoDisabled || undoRemaining <= 0}
-            aria-label={undoDisabled
-              ? t("undoOffMode")
-              : undoRemaining <= 0
-                ? t("undoLimitReached")
-                : t("undoHint")}
-            title={undoDisabled
-              ? t("undoOffWeek")
-              : undoRemaining <= 0
-                ? t("undoLimitReached")
-                : `${t("undoHint")} · ${t("undoRemaining", { count: undoRemaining })}`}
-            className={`${iconButton} border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary disabled:opacity-30`}
-          >
-            <UndoIcon className="" />
-          </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onUndo}
+          disabled={!canUndo || undoDisabled || undoRemaining <= 0}
+          aria-label={undoDisabled
+            ? t("undoOffMode")
+            : undoRemaining <= 0
+              ? t("undoLimitReached")
+              : `${t("undoHint")} · ${t("undoRemaining", { count: undoRemaining })}`}
+          title={undoDisabled
+            ? t("undoOffWeek")
+            : undoRemaining <= 0
+              ? t("undoLimitReached")
+              : `${t("undoHint")} · ${t("undoRemaining", { count: undoRemaining })}`}
+          className={`${countButton} border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40`}
+        >
+          <UndoIcon />
           {!undoDisabled && (
-            <span
-              className={`${badge} ${undoRemaining > 0 ? "" : "!bg-amber-400"}`}
-              title={t("undoRemaining", { count: undoRemaining })}
-            >
-              {undoRemaining}
-            </span>
+            <span className={`${count} ${undoRemaining > 0 ? "" : "text-amber-400"}`}>{undoRemaining}</span>
           )}
-        </div>
+        </Button>
 
-        <div className="relative">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRestart}
-            aria-label={restartsLeft === undefined
-              ? t("restartLevel")
-              : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
-            title={restartsLeft === undefined
-              ? t("restartLevel")
-              : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
-            className={`${iconButton} ${restartsLeft === 0
-              ? "border-red-500/60 text-red-300 hover:bg-red-500/10"
-              : "border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"}`}
-          >
-            <RestartIcon className="" />
-          </Button>
-          {restartsLeft !== undefined && (
-            <span
-              className={`${badge} ${restartsLeft > 0 ? "!bg-white" : "!bg-red-500 !text-white"}`}
-            >
-              {restartsLeft}
-            </span>
-          )}
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRestart}
+          aria-label={restartsLeft === undefined
+            ? t("restartLevel")
+            : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
+          title={restartsLeft === undefined
+            ? t("restartLevel")
+            : restartsLeft > 0 ? t("restartsLeft", { count: restartsLeft }) : t("restartFinal")}
+          className={`${countButton} ${restartsLeft === 0
+            ? "border-red-500/60 text-red-300 hover:bg-red-500/10"
+            : "border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"}`}
+        >
+          <RestartIcon />
+          {restartsLeft !== undefined && <span className={count}>{restartsLeft}</span>}
+        </Button>
 
-        <div className="relative">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onHint}
-            disabled={hintLocked}
-            aria-label={t("hintReveal")}
-            title={hintDisabled
-              ? t("hintsOffMode")
-              : usesTokens && hintTokens <= 0
-                ? t("hintTokenEmpty")
-                : usesTokens
-                  ? t("hintCost", { label: t("hintReveal") })
-                  : t("hintReveal")}
-            className={`${iconButton} border-white/15 transition-colors ${
-              hintLocked
-                ? "cursor-not-allowed text-muted-foreground opacity-40"
-                : "text-amber-300 hover:border-amber-300 hover:bg-amber-300/10"
-            }`}
-          >
-            <HintIcon className={isHintLoading ? "animate-pulse" : ""} />
-          </Button>
-          {usesTokens && !hintDisabled && (
-            <span
-              className={`${badge} !bg-amber-300`}
-              title={t("hintTokenCount", { count: hintTokens })}
-            >
-              {hintTokens}
-            </span>
-          )}
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onHint}
+          disabled={hintLocked}
+          aria-label={t("hintReveal")}
+          title={hintDisabled
+            ? t("hintsOffMode")
+            : usesTokens && hintTokens <= 0
+              ? t("hintTokenEmpty")
+              : usesTokens
+                ? t("hintCost", { label: t("hintReveal") })
+                : t("hintReveal")}
+          className={`${countButton} border-white/15 transition-colors ${
+            hintLocked
+              ? "cursor-not-allowed text-muted-foreground opacity-40"
+              : "text-amber-300 hover:border-amber-300 hover:bg-amber-300/10"
+          }`}
+        >
+          <HintIcon className={isHintLoading ? "animate-pulse" : ""} />
+          {usesTokens && !hintDisabled && <span className={count}>{hintTokens}</span>}
+        </Button>
 
         <Dialog open={showPowerUps} onOpenChange={setShowPowerUps}>
           <DialogTrigger asChild>

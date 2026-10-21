@@ -27,6 +27,8 @@ export interface SynthEngine {
   playUndo: () => void;
   playWin: () => void;
   playClick: () => void;
+  /** Master volume, 0..1; takes effect immediately. */
+  setVolume: (volume: number) => void;
   /** Two low warning blips: the line has no move left. */
   playAlert: () => void;
   /** A collapsing sawtooth fall and a sub thud: the run has crashed. */
@@ -111,6 +113,9 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
       });
       // A warm low root under the final note lets the chime land.
       playVoice(ctx, master, { frequency: 261.63, type: "sine", duration: 1.3, peak: 0.09, attack: 0.02, delay: 0.34 });
+    },
+    setVolume: volume => {
+      master.gain.setTargetAtTime(Math.min(1, Math.max(0, volume)), ctx.currentTime, 0.02);
     },
     playClick: () => {
       playVoice(ctx, master, { frequency: 1200, type: "triangle", duration: 0.045, peak: 0.05 });

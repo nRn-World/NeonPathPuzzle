@@ -3,10 +3,13 @@ import { persist } from "zustand/middleware";
 
 interface SettingsState {
   soundEnabled: boolean;
+  /** Effect volume, 0..1. */
+  soundVolume: number;
   hapticsEnabled: boolean;
   reducedMotion: boolean;
   showGhost: boolean;
   setSoundEnabled: (enabled: boolean) => void;
+  setSoundVolume: (volume: number) => void;
   setHapticsEnabled: (enabled: boolean) => void;
   setReducedMotion: (enabled: boolean) => void;
   setShowGhost: (enabled: boolean) => void;
@@ -26,10 +29,12 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     set => ({
       soundEnabled: true,
+      soundVolume: 0.6,
       hapticsEnabled: true,
       reducedMotion: prefersReducedMotion(),
       showGhost: true,
       setSoundEnabled: enabled => set({ soundEnabled: enabled }),
+      setSoundVolume: volume => set({ soundVolume: Math.min(1, Math.max(0, volume)) }),
       setHapticsEnabled: enabled => set({ hapticsEnabled: enabled }),
       setReducedMotion: enabled => set({ reducedMotion: enabled }),
       setShowGhost: enabled => set({ showGhost: enabled }),
