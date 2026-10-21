@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -53,7 +53,7 @@ export function StartMenu() {
   const [activeTab, setActiveTab] = useState("levels");
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState("");
-  const [selectedLevelMessage, setSelectedLevelMessage] = useState<{ id: number; message: string } | null>(null);
+  const popupRef = useRef<LevelPopupHandle>(null);
   const [, setLocation] = useLocation();
   const { t } = useI18n();
   const userId = useUserId();
@@ -99,8 +99,9 @@ export function StartMenu() {
     setLocation(`/play/${continueLevel}`);
   };
 
+  // The popup owns its own state, so a tile click re-renders nothing but the popup.
   const handleLevelClick = useCallback((levelId: number) => {
-    setSelectedLevelMessage({ id: levelId, message: getLevelMessage(levelId) });
+    popupRef.current?.show(levelId, getLevelMessage(levelId));
   }, []);
 
   const handleCodeSubmit = () => {
@@ -404,38 +405,7 @@ export function StartMenu() {
         </div>
       </div>
 
-      {/* Plain DOM and a CSS-only entrance: nothing here depends on the main thread
-          or on JS animation, so the popup cannot hitch while the page is busy. */}
-      {selectedLevelMessage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setSelectedLevelMessage(null)}
-        >
-          <div
-            onClick={event => event.stopPropagation()}
-            className="level-popup relative w-full max-w-md overflow-hidden rounded-none border border-white/10 bg-background p-8"
-          >
-            <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
-            <div className="relative z-10 space-y-6 text-center">
-              <Heart className="mx-auto h-12 w-12 fill-primary text-primary" />
-              <div>
-                <h3 className="mb-2 font-orbitron text-2xl font-bold text-secondary">
-                  {upper(t("level"))} {selectedLevelMessage.id}
-                </h3>
-                <p className="font-exo text-lg leading-relaxed text-primary">
-                  “{selectedLevelMessage.message}”
-                </p>
-              </div>
-              <Button
-                onClick={() => setSelectedLevelMessage(null)}
-                className="w-full bg-primary font-bold text-black hover:bg-primary/90"
-              >
-                {upper(t("close"))}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LevelPopup ref={popupRef} />
 
       <AnimatePresence>
         {tutorialOpen && <TutorialOverlay onDone={finishTutorial} />}
@@ -525,9 +495,9 @@ const CompletedSection = memo(function CompletedSection({
               key={levelId}
               onClick={() => isCompleted && onLevelClick(levelId)}
               disabled={!isCompleted}
-              className={`relative flex aspect-square flex-col items-center justify-center rounded-none font-orbitron text-xs font-bold transition-all ${
+              className={`relative flex aspect-square flex-col items-center justify-center rounded-none font-orbitron text-xs font-bold ${
                 isCompleted
-                  ? "bg-primary text-background hover:brightness-110"
+                  ? "bg-primary text-background hover:bg-primary/80"
                   : "bg-white/5 text-white/20"
               }`}
             >
@@ -541,6 +511,64 @@ const CompletedSection = memo(function CompletedSection({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+});
+
+export interface LevelPopupHandle {
+  show: (levelId: number, message: string) => void;
+}
+
+/**
+ * The quote popup for a cleared level. It is always in the page and starts
+ * invisible; showing it only flips opacity, which the browser does on the GPU
+ * without re-painting the 300 tiles behind it. Its state lives here, so opening
+ * it does not re-render the menu at all.
+ */
+const LevelPopup = forwardRef<LevelPopupHandle>(function LevelPopup(_props, ref) {
+  const { t } = useI18n();
+  const [content, setContent] = useState<{ id: number; message: string } | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    show: (id, message) => {
+      setContent({ id, message });
+      setOpen(true);
+    },
+  }), []);
+
+  return (
+    <div
+      aria-hidden={!open}
+      className={`level-popup-layer fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 ${open ? "is-open" : ""}`}
+      onClick={() => setOpen(false)}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={event => event.stopPropagation()}
+        className="relative w-full max-w-md overflow-hidden rounded-none border border-white/10 bg-background p-8"
+      >
+        <div className="absolute left-0 top-0 h-[3px] w-full bg-primary" />
+        <div className="relative z-10 space-y-6 text-center">
+          <Heart className="mx-auto h-12 w-12 fill-primary text-primary" />
+          <div>
+            <h3 className="mb-2 font-orbitron text-2xl font-bold text-secondary">
+              {upper(t("level"))} {content?.id}
+            </h3>
+            <p className="font-exo text-lg leading-relaxed text-primary">
+              {content ? `“${content.message}”` : ""}
+            </p>
+          </div>
+          <Button
+            onClick={() => setOpen(false)}
+            tabIndex={open ? 0 : -1}
+            className="w-full bg-primary font-bold text-black hover:bg-primary/90"
+          >
+            {upper(t("close"))}
+          </Button>
+        </div>
       </div>
     </div>
   );
