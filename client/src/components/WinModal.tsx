@@ -8,7 +8,7 @@ import { generateLevelCode } from "@/lib/levelCodes";
 import { formatDuration } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
 import { shareResult, type ShareOutcome } from "@/lib/shareCard";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
 interface WinModalProps {
   isOpen: boolean;
@@ -111,14 +111,14 @@ export function WinModal({
           : isCustom ? t("copyLevelLink") : t("shareClear");
 
   const title = isZen
-    ? t("practiceComplete").toUpperCase()
+    ? upper(t("practiceComplete"))
     : isCustom
-      ? t("circuitComplete").toUpperCase()
+      ? upper(t("circuitComplete"))
       : isWeekly
-        ? t("weeklyCleared").toUpperCase()
+        ? upper(t("weeklyCleared"))
         : isDaily
-          ? t("dailyCleared").toUpperCase()
-          : t("levelCleared").toUpperCase();
+          ? upper(t("dailyCleared"))
+          : upper(t("levelCleared"));
 
   const subtitle = isZen
     ? t("practiceNoRecords")
@@ -182,9 +182,9 @@ export function WinModal({
               {!isZen ? (
                 <>
                   <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-background/40 p-3">
-                    <Stat label={t("time").toUpperCase()} value={formatDuration(timeMs)} highlight={isNewBest} />
-                    <Stat label={t("best").toUpperCase()} value={bestTimeMs !== null ? formatDuration(bestTimeMs) : "—"} />
-                    <Stat label={t("score").toUpperCase()} value={score.toLocaleString()} highlight={isNewBestScore} />
+                    <Stat label={upper(t("time"))} value={formatDuration(timeMs)} highlight={isNewBest} />
+                    <Stat label={upper(t("best"))} value={bestTimeMs !== null ? formatDuration(bestTimeMs) : "—"} />
+                    <Stat label={upper(t("score"))} value={score.toLocaleString()} highlight={isNewBestScore} />
                   </div>
 
                   {bestScore !== null && bestScore > 0 && !isDaily && !isWeekly && (

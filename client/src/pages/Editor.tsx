@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 import type { Point } from "@shared/schema";
 import {
   deleteCustomLevel,
@@ -98,7 +98,7 @@ export default function Editor() {
               {t("menu")}
             </Link>
             <h1 className="bg-gradient-to-br from-primary via-white to-secondary bg-clip-text font-orbitron text-3xl font-bold text-transparent md:text-4xl">
-              {t("editorTitle").toUpperCase()}
+              {upper(t("editorTitle"))}
             </h1>
             <p className="font-exo text-sm text-muted-foreground">
               {t("editorSubtitle")}

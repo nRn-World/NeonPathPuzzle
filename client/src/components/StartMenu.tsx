@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
 import { MenuHero } from "@/components/MenuHero";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -40,7 +41,7 @@ const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
   ["howProgressTitle", "howProgressBody"],
 ];
 import { playClickSound } from "@/lib/sounds";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
 type MenuScreen = "main" | "info" | "completed";
 
@@ -142,6 +143,7 @@ export function StartMenu() {
                         label={t("completed")}
                         onClick={() => handleButtonClick(() => setScreen("completed"))}
                       />
+                      <LanguageSwitch />
                       <ThemeSelector />
                       <SettingsDialog triggerClassName="h-9 w-9 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary" />
                       <Button asChild variant="outline" size="sm" className="h-9 rounded-none border-white/15 font-mono text-[11px] uppercase tracking-wider">
@@ -250,7 +252,7 @@ export function StartMenu() {
                         disabled={codeInput.length !== 4}
                         className="h-full w-full bg-secondary font-bold text-black hover:bg-secondary/90 disabled:opacity-30"
                       >
-                        {t("go").toUpperCase()}
+                        {upper(t("go"))}
                       </Button>
                     </div>
                     {codeError && <p className="mt-2 font-exo text-sm text-destructive">{codeError}</p>}
@@ -267,7 +269,7 @@ export function StartMenu() {
                     </p>
                     <div className="mt-2 flex items-center justify-center gap-3">
                       <a href="#/privacy" className="text-xs text-primary/70 transition-colors hover:text-primary">
-                        Privacy Policy
+                        {t("privacyPolicy")}
                       </a>
                       <a
                         href="mailto:bynrnworld@gmail.com"
@@ -305,7 +307,7 @@ export function StartMenu() {
 
                   <div className="space-y-5 rounded-lg border border-primary/20 bg-muted/20 p-5 font-exo md:p-6">
                     {HOW_TO_PLAY.map(([title, body], index) => (
-                      <InfoBlock key={title} title={t(title).toUpperCase()} tone={index % 2 === 0 ? "primary" : "secondary"}>
+                      <InfoBlock key={title} title={upper(t(title))} tone={index % 2 === 0 ? "primary" : "secondary"}>
                         {t(body)}
                       </InfoBlock>
                     ))}
@@ -344,14 +346,14 @@ export function StartMenu() {
                   </div>
 
                   <CompletedSection
-                    title="LEVELS 1–100"
+                    title={t("levelsRange", { from: 1, to: 100 })}
                     from={1}
                     to={100}
                     levels={levels ?? []}
                     onLevelClick={handleLevelClick}
                   />
                   <CompletedSection
-                    title="LEVELS 101–200"
+                    title={t("levelsRange", { from: 101, to: 200 })}
                     from={101}
                     to={200}
                     levels={levels ?? []}
@@ -359,7 +361,7 @@ export function StartMenu() {
                     onLevelClick={handleLevelClick}
                   />
                   <CompletedSection
-                    title="LEVELS 201–300"
+                    title={t("levelsRange", { from: 201, to: 300 })}
                     from={201}
                     to={TOTAL_LEVELS}
                     levels={levels ?? []}

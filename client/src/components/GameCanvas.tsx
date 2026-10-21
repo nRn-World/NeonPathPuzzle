@@ -241,7 +241,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     plate.addColorStop(0.5, "rgba(255,255,255,0.025)");
     plate.addColorStop(1, `${colors.secondary}16`);
     context.beginPath();
-    context.roundRect(1, 1, boardSize - 2, boardSize - 2, cell * 0.18);
+    context.roundRect(1, 1, boardSize - 2, boardSize - 2, Math.min(cell * 0.18, 8));
     context.fillStyle = plate;
     context.fill();
     context.strokeStyle = `${colors.primary}33`;

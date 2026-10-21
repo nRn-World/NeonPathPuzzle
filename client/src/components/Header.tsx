@@ -3,9 +3,9 @@ import { Link } from "wouter";
 import { Crown } from "lucide-react";
 import {
   BackIcon,
-  BadgeIcon,
+  TrophyIcon,
   HintIcon,
-  KeysIcon,
+  HelpIcon,
   PowerIcon,
   RestartIcon,
   StarIcon,
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { formatDuration } from "@/lib/scoring";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
 interface HeaderProps {
   levelId: number;
@@ -53,7 +53,7 @@ interface HeaderProps {
   onRestart: () => void;
 }
 
-const iconButton = "h-8 w-8 flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&_svg]:!size-[18px] md:[&_svg]:!size-5";
+const iconButton = "h-8 w-8 flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&_svg]:!size-5 md:[&_svg]:!size-[22px]";
 /** Small solid counter pinned to a button corner. */
 const badge = "pointer-events-none absolute -right-1.5 -top-1.5 min-w-[15px] bg-primary px-1 text-center font-mono text-[9px] font-bold leading-[15px] text-background";
 
@@ -94,7 +94,7 @@ export function Header({
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
         <Link
           href="/"
-          aria-label="Back to menu"
+          aria-label={t("backToMenu")}
           className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-primary"
         >
           <BackIcon className="h-5 w-5" />
@@ -104,9 +104,9 @@ export function Header({
             {title ? (
               <span className="truncate text-primary neon-text">{title}</span>
             ) : isDaily ? (
-              <span className="text-secondary neon-text">{t("dailyChallenge").toUpperCase()}</span>
+              <span className="text-secondary neon-text">{upper(t("dailyChallenge"))}</span>
             ) : (
-              <>{t("level").toUpperCase()} <span className="text-primary neon-text">{levelId}</span></>
+              <>{upper(t("level"))} <span className="text-primary neon-text">{levelId}</span></>
             )}
             {isBoss && (
               <span className="flex flex-shrink-0 items-center gap-0.5 rounded border border-amber-400/50 bg-amber-400/10 px-1 py-0.5 font-exo text-[8px] font-bold uppercase tracking-wide text-amber-300">
@@ -116,7 +116,7 @@ export function Header({
             )}
           </h2>
           <div className="truncate font-exo text-[10px] text-muted-foreground md:text-xs">
-            {subtitle ?? (isDaily ? t("samePuzzleEveryone").toUpperCase() : t("oneLineMaster").toUpperCase())}
+            {subtitle ?? (isDaily ? upper(t("samePuzzleEveryone")) : upper(t("oneLineMaster")))}
           </div>
         </div>
       </div>
@@ -132,10 +132,10 @@ export function Header({
                   : "border-white/15 text-foreground/70"
             }`}
             title={isFrozen
-              ? "Timer frozen"
+              ? t("timerFrozen")
               : parTimeMs
-                ? `Level timer · par ${formatDuration(parTimeMs)}`
-                : "Level timer"}
+                ? t("levelTimerPar", { time: formatDuration(parTimeMs) })
+                : t("levelTimer")}
           >
             <TimerIcon className="h-3.5 w-3.5" />
             {formatDuration(timeMs)}
@@ -146,7 +146,7 @@ export function Header({
         )}
 
         {!hideStars && (
-          <div className="hidden items-center gap-0.5 px-1 sm:flex" title={`${stars} of 3 stars available`}>
+          <div className="hidden items-center gap-0.5 px-1 sm:flex" title={t("starsAvailable", { stars })}>
             {Array.from({ length: 3 }).map((_, index) => (
               <StarIcon
                 key={index}
@@ -166,12 +166,12 @@ export function Header({
             onClick={onUndo}
             disabled={!canUndo || undoDisabled || undoRemaining <= 0}
             aria-label={undoDisabled
-              ? "Undo disabled in this mode"
+              ? t("undoOffMode")
               : undoRemaining <= 0
                 ? t("undoLimitReached")
                 : t("undoHint")}
             title={undoDisabled
-              ? "Undo is disabled this week"
+              ? t("undoOffWeek")
               : undoRemaining <= 0
                 ? t("undoLimitReached")
                 : `${t("undoHint")} · ${t("undoRemaining", { count: undoRemaining })}`}
@@ -223,24 +223,24 @@ export function Header({
             disabled={hintLocked}
             aria-label={t("hintReveal")}
             title={hintDisabled
-              ? "Hints are disabled in this mode"
+              ? t("hintsOffMode")
               : usesTokens && hintTokens <= 0
                 ? t("hintTokenEmpty")
                 : usesTokens
-                  ? `${t("hintReveal")} (1 token)`
+                  ? t("hintCost", { label: t("hintReveal") })
                   : t("hintReveal")}
             className={`${iconButton} border-white/15 transition-colors ${
               hintLocked
                 ? "cursor-not-allowed text-muted-foreground opacity-40"
-                : "text-accent hover:border-accent hover:bg-accent/10"
+                : "text-amber-300 hover:border-amber-300 hover:bg-amber-300/10"
             }`}
           >
             <HintIcon className={isHintLoading ? "animate-pulse" : ""} />
           </Button>
           {usesTokens && !hintDisabled && (
             <span
-              className={`${badge} !bg-accent !text-white`}
-              title={`${hintTokens} hint tokens`}
+              className={`${badge} !bg-amber-300`}
+              title={t("hintTokenCount", { count: hintTokens })}
             >
               {hintTokens}
             </span>
@@ -252,8 +252,8 @@ export function Header({
             <Button
               variant="outline"
               size="sm"
-              aria-label="Power-ups"
-              className={`${iconButton} border-white/15 text-amber-300 hover:border-amber-300 hover:bg-amber-300/10`}
+              aria-label={t("powerUps")}
+              className={`${iconButton} border-white/15 text-primary hover:border-primary hover:bg-primary/10`}
             >
               <PowerIcon className="" />
             </Button>
@@ -262,7 +262,7 @@ export function Header({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <PowerIcon className="h-5 w-5 text-amber-300" />
-                Power-ups
+                {t("powerUps")}
               </DialogTitle>
               <DialogDescription className="sr-only">
                 Use a power-up from your inventory.
@@ -277,16 +277,16 @@ export function Header({
             <Button
               variant="outline"
               size="sm"
-              aria-label="Achievements"
+              aria-label={t("achievements")}
               className={`${iconButton} hidden border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary sm:inline-flex`}
             >
-              <BadgeIcon className="" />
+              <TrophyIcon className="" />
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <BadgeIcon className="h-5 w-5 text-primary" />
+                <TrophyIcon className="h-5 w-5 text-primary" />
                 Achievements
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -302,17 +302,17 @@ export function Header({
             <Button
               variant="outline"
               size="sm"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts"
+              aria-label={t("keyboardShortcuts")}
+              title={t("keyboardShortcuts")}
               className={`${iconButton} hidden border-white/15 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary sm:inline-flex`}
             >
-              <KeysIcon className="" />
+              <HelpIcon className="" />
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <KeysIcon className="h-5 w-5 text-primary" />
+                <HelpIcon className="h-5 w-5 text-primary" />
                 {t("shortcutsTitle")}
               </DialogTitle>
               <DialogDescription className="sr-only">

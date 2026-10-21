@@ -158,10 +158,12 @@ test("winning plays an ascending arpeggio", () => {
 
   synth.playWin();
 
-  const frequencies = fake.oscillators.map(oscillator => oscillator.frequency.events[0].value);
-  assert.equal(frequencies.length, 4);
+  const frequencies = fake.oscillators
+    .filter(oscillator => oscillator.type === "triangle")
+    .map(oscillator => oscillator.frequency.events[0].value);
+  assert.equal(frequencies.length, 5);
   assert.deepEqual(frequencies, [...frequencies].sort((a, b) => a - b));
-  assert.equal(new Set(frequencies).size, 4);
+  assert.equal(new Set(frequencies).size, 5);
 });
 
 test("dispose releases the master bus", () => {

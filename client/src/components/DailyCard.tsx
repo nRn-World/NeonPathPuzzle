@@ -14,7 +14,7 @@ import {
 } from "@/lib/daily";
 import { useUserId } from "@/hooks/use-game";
 import { formatDuration } from "@/lib/scoring";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, upper } from "@/lib/i18n";
 
 function weekdayLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split("-").map(Number);
@@ -45,18 +45,17 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/daily">
       <div
-        className={`group relative cursor-pointer overflow-hidden rounded-xl border border-secondary/30 bg-gradient-to-br from-secondary/15 to-primary/5 transition-all hover:border-secondary/60 hover:shadow-[0_0_25px_rgba(138,43,226,0.2)] ${
+        className={`group relative cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-secondary bg-white/[0.03] transition-all hover:border-secondary/60 hover:shadow-[0_0_25px_rgba(138,43,226,0.2)] ${
           compact ? "p-4" : "p-5"
         }`}
       >
-        <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-secondary/20 blur-2xl" />
         <div className="relative flex items-center gap-4">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/40 bg-secondary/10">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none border border-secondary/40 bg-secondary/10">
             {completed ? <Check className="h-5 w-5 text-secondary" /> : <CalendarDays className="h-5 w-5 text-secondary" />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-orbitron text-sm font-bold text-secondary">{t("dailyChallenge").toUpperCase()}</h3>
+              <h3 className="font-orbitron text-sm font-bold text-secondary">{upper(t("dailyChallenge"))}</h3>
               {activeStreak > 0 && (
                 <span className="flex items-center gap-1 text-xs text-orange-300">
                   <Flame className="h-3 w-3" />
@@ -85,7 +84,7 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
                 ))}
               </div>
             )}
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-secondary/40 bg-secondary/10 text-secondary transition-transform group-hover:scale-110">
+            <span className="flex h-8 w-8 items-center justify-center rounded-none border border-secondary/40 bg-secondary/10 text-secondary transition-transform group-hover:scale-110">
               <Play className="h-3.5 w-3.5 fill-current" />
             </span>
           </div>
@@ -110,14 +109,14 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
                     ? `${key} · ${result.stars}/3 stars · ${formatDuration(result.timeMs)}`
                     : `${key} · not played`
                 }
-                className={`flex flex-1 flex-col items-center gap-1 rounded-md border px-1 py-1 ${
+                className={`flex flex-1 flex-col items-center gap-1 rounded-none border px-1 py-1 ${
                   isToday ? "border-secondary/50 bg-secondary/10" : "border-transparent"
                 }`}
               >
                 <span className={`font-exo text-[9px] uppercase ${isToday ? "text-secondary" : "text-muted-foreground/70"}`}>
                   {isToday ? t("today") : weekdayLabel(key)}
                 </span>
-                <span className={`h-1 w-full rounded-full ${strength}`} />
+                <span className={`h-1 w-full rounded-none ${strength}`} />
               </div>
             );
           })}
