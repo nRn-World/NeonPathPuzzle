@@ -206,12 +206,22 @@ canvas {
   background-size: 28px 28px, 100% 100%;
 }
 
-/* Level popup on the Completed screen: compositor-only entrance, no JS animation. */
-.level-popup {
-  animation: level-popup-in 140ms ease-out both;
+/* Level popup on the Completed screen: always mounted, shown by opacity only (GPU,
+   no repaint of the page underneath). */
+.level-popup-layer {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  will-change: opacity;
+  transition: opacity 120ms ease-out, visibility 0s linear 120ms;
 }
-@keyframes level-popup-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.97); }
-  to { opacity: 1; transform: none; }
+.level-popup-layer.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 120ms ease-out;
 }
-.reduce-motion .level-popup { animation: none; }
+.reduce-motion .level-popup-layer,
+.reduce-motion .level-popup-layer.is-open {
+  transition: none;
+}
