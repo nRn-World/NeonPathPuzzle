@@ -1,3 +1,5 @@
+import { chapters, getChapterForLevel } from "@/lib/chapters";
+import { content } from "@/lib/contentText";
 import { StarIcon } from "@/components/icons/GameIcons";
 import { TOTAL_LEVELS } from "@/lib/progress";
 import { useState } from "react";
@@ -111,6 +113,12 @@ export function WinModal({
           ? t("couldNotShare")
           : isCustom ? t("copyLevelLink") : t("shareClear");
 
+  // Finishing the last level of a chapter gets its own moment.
+  const chapter = getChapterForLevel(levelId);
+  const chapterEnd = !isZen && !isCustom && !isDaily && !isWeekly && levelId === chapter.to
+    ? { chapter, next: chapters.find(item => item.id === chapter.id + 1) }
+    : null;
+
   const title = isZen
     ? upper(t("practiceComplete"))
     : isCustom
@@ -156,6 +164,28 @@ export function WinModal({
                 </motion.h2>
                 <p className="font-exo text-sm text-muted-foreground">{subtitle}</p>
               </div>
+
+              {chapterEnd && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="border border-primary/40 bg-primary/10 px-3 py-2 text-left"
+                  style={{ borderLeftColor: chapterEnd.chapter.accent, borderLeftWidth: 3 }}
+                >
+                  <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                    {t("chapterComplete")}
+                  </div>
+                  <div className="font-orbitron text-sm font-bold">{content.chapter(chapterEnd.chapter).name}</div>
+                  {chapterEnd.next && (
+                    <div className="mt-1 font-exo text-xs text-muted-foreground">
+                      {t("nextChapterLabel")}: <span className="text-foreground">{content.chapter(chapterEnd.next).name}</span>
+                      {" · "}
+                      {content.chapter(chapterEnd.next).tagline}
+                    </div>
+                  )}
+                </motion.div>
+              )}
 
               {showStars && (
                 <div className="flex justify-center gap-2">

@@ -154,6 +154,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     resetPath();
   }, [resetPath]);
 
+  // Arrow keys work straight away: the board takes focus when a level opens.
+  useEffect(() => {
+    containerRef.current?.focus({ preventScroll: true });
+  }, []);
+
   const updateMetrics = useCallback(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;

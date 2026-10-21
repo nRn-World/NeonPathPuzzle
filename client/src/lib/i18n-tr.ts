@@ -117,6 +117,8 @@ export const tr: Record<TranslationKey, string> = {
   restartsLeft: "Seviyeyi yeniden başlat · {count} yeniden başlatma kaldı",
   restartFinal: "Son deneme — yeniden başlatmak sistemi çökertir",
   crashesStat: "Sistem çökmeleri",
+  chapterComplete: "Bölüm tamamlandı",
+  nextChapterLabel: "Sonraki bölüm",
   noPowerUps: "Kullanılabilir güçlendirici yok",
   noPowerUpsDesc: "Güçlendirici kazanmak için seviyeleri tamamla!",
   activeEffects: "Etkin efektler",
