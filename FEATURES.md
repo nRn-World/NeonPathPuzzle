@@ -156,11 +156,22 @@ Each level awards 1–3 stars:
 
 - 6 neon themes: Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset, Aurora
 - Themes unlock at 10 / 50 / 100 / 200 / 250 completed levels (ever completed, so a crash never re-locks a theme)
-- Settings: sound effects, haptics, reduced motion, ghost overlay, language
+- Settings: sound effects with a volume slider, haptics, reduced motion, ghost overlay, language
 - Reduced motion disables particles, pulses, animated trails, and confetti
 - Export and restore a save file (progress, achievements, power-ups, hint tokens, theme, weekly results, custom levels) from Settings
 - Restores are validated before anything is overwritten
 - English, Swedish, Turkish and Spanish UI (menus, HUD, results, settings, tutorial). English is the default on every device; the player's choice is stored on that device and kept until changed. Flag pickers on the title screen and in Settings
+
+---
+
+## Look & Feel
+
+- **Title screen**: a board that draws its own solution on a loop (the same animation is in the README as `docs/hero.gif`), a bold NEON/PATH wordmark, a cut-corner play button with a segmented progress bar and the current chapter
+- **Brain rank**: a title that grows with your stars (Novice → Apprentice → Thinker → Strategist → Mastermind → Genius → Omega), shown on the title screen and in Stats
+- **Readable HUD**: universal icons (stopwatch, undo, restart, light bulb, bolt, trophy, help, gear) with the remaining backtracks, restarts and hint tokens as large numbers beside them; the mobile header always keeps the level number visible
+- **First-run tutorial** opens with a live demo of the line drawing itself
+- Flat, square design language across the menu, dialogs, win screen and editor
+- Layered synthesised sound effects (no audio files, no background music)
 
 ---
 

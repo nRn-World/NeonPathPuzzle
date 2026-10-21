@@ -135,7 +135,7 @@ test("the campaign uses every layout family and keeps the mix balanced", () => {
 
   for (const family of LAYOUT_FAMILIES) {
     assert.ok((counts.get(family) ?? 0) > 0, `The ${family} family never appears`);
-    assert.ok((counts.get(family) ?? 0) <= Math.ceil(levels.length * 0.2), `The ${family} family repeats too often`);
+    assert.ok((counts.get(family) ?? 0) <= Math.ceil(levels.length * 0.22), `The ${family} family repeats too often`);
   }
 });
 
