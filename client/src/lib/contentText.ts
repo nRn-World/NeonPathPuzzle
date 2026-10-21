@@ -60,7 +60,7 @@ const sv: Pack = {
     sunset: { name: "Neon Sunset", description: "Varm orange och violett solnedgång" },
     aurora: { name: "Aurora", description: "Polargrönt, violett och korallljus" },
   },
-  words: { progress: "Framsteg", levelsRange: "Nivå {from}–{to}", rarity: { bronze: "brons", silver: "silver", gold: "guld", platinum: "platina", diamond: "diamant" } },
+  words: { progress: "Framsteg", levelsRange: "Nivå {from}–{to}", rarity: { bronze: "brons", silver: "silver", gold: "guld", platinum: "platina", diamond: "diamant", common: "vanlig", rare: "sällsynt", epic: "episk", legendary: "legendarisk" } },
 };
 
 const tr: Pack = {
@@ -105,7 +105,7 @@ const tr: Pack = {
     sunset: { name: "Neon Sunset", description: "Sıcak turuncu ve mor gün batımı" },
     aurora: { name: "Aurora", description: "Kutup yeşili, mor ve mercan ışığı" },
   },
-  words: { progress: "İlerleme", levelsRange: "Seviye {from}–{to}", rarity: { bronze: "bronz", silver: "gümüş", gold: "altın", platinum: "platin", diamond: "elmas" } },
+  words: { progress: "İlerleme", levelsRange: "Seviye {from}–{to}", rarity: { bronze: "bronz", silver: "gümüş", gold: "altın", platinum: "platin", diamond: "elmas", common: "yaygın", rare: "nadir", epic: "destansı", legendary: "efsanevi" } },
 };
 
 const es: Pack = {
@@ -150,7 +150,7 @@ const es: Pack = {
     sunset: { name: "Neon Sunset", description: "Atardecer cálido naranja y violeta" },
     aurora: { name: "Aurora", description: "Luz polar verde, violeta y coral" },
   },
-  words: { progress: "Progreso", levelsRange: "Niveles {from}–{to}", rarity: { bronze: "bronce", silver: "plata", gold: "oro", platinum: "platino", diamond: "diamante" } },
+  words: { progress: "Progreso", levelsRange: "Niveles {from}–{to}", rarity: { bronze: "bronce", silver: "plata", gold: "oro", platinum: "platino", diamond: "diamante", common: "común", rare: "raro", epic: "épico", legendary: "legendario" } },
 };
 
 const packs: Partial<Record<Language, Pack>> = { sv, tr, es };

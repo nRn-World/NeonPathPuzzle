@@ -29,8 +29,8 @@ export function PowerUpInventory() {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>No power-ups available</p>
-        <p className="text-sm">Complete levels to earn power-ups!</p>
+        <p>{t("noPowerUps")}</p>
+        <p className="text-sm">{t("noPowerUpsDesc")}</p>
       </div>
     );
   }
@@ -40,7 +40,7 @@ export function PowerUpInventory() {
       {/* Active Effects */}
       {visibleEffects.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-green-400 mb-2">Active Effects</h3>
+          <h3 className="text-sm font-semibold text-green-400 mb-2">{t("activeEffects")}</h3>
           <div className="grid grid-cols-2 gap-2">
             {visibleEffects.map((effect, idx) => {
               const powerUp = powerUps.find(pu => pu.effect.type === effect.type);
@@ -52,7 +52,7 @@ export function PowerUpInventory() {
                     <span className="text-lg">{powerUp.icon}</span>
                     <div className="flex-1">
                       <div className="text-xs font-medium">{content.powerUp(powerUp).name}</div>
-                      <div className="text-xs text-green-400">Active</div>
+                      <div className="text-xs text-green-400">{t("activeLabel")}</div>
                     </div>
                   </div>
                 </div>
@@ -82,7 +82,7 @@ export function PowerUpInventory() {
                           className="text-xs"
                           style={{ borderColor: getRarityColor(powerUp.rarity), color: getRarityColor(powerUp.rarity) }}
                         >
-                          {powerUp.rarity}
+                          {content.rarity(powerUp.rarity)}
                         </Badge>
                       </div>
                     </div>
@@ -96,7 +96,7 @@ export function PowerUpInventory() {
                       onClick={() => usePowerUp(powerUp.id)}
                     >
                       <Zap className="w-3 h-3 mr-1" />
-                      {isActive ? 'Active' : 'Use'}
+                      {isActive ? t("activeLabel") : t("useLabel")}
                     </Button>
                   </CardContent>
                 </Card>

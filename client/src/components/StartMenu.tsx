@@ -302,11 +302,11 @@ export function StartMenu() {
                 <div className="space-y-6 rounded-none border border-primary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-primary md:text-4xl">
-                      HOW TO PLAY
+                      {upper(t("howToPlay"))}
                     </h2>
                     <button
                       onClick={() => handleButtonClick(() => setScreen("main"))}
-                      aria-label="Close"
+                      aria-label={t("close")}
                       className="p-2 text-primary transition-colors hover:text-secondary"
                     >
                       <X className="h-6 w-6" />
@@ -325,7 +325,7 @@ export function StartMenu() {
                     onClick={() => handleButtonClick(() => setScreen("main"))}
                     className="w-full rounded-none bg-primary py-6 font-orbitron text-sm font-bold uppercase tracking-wider text-background hover:bg-primary/90"
                   >
-                    BACK TO MENU
+                    {upper(t("backToMenu"))}
                   </Button>
                 </div>
               </motion.div>
@@ -342,11 +342,11 @@ export function StartMenu() {
                 <div className="space-y-6 rounded-none border border-secondary/20 bg-black/50 p-6 backdrop-blur-xl md:p-8">
                   <div className="flex items-center justify-between">
                     <h2 className="neon-text font-orbitron text-3xl font-bold text-secondary md:text-4xl">
-                      COMPLETED LEVELS
+                      {upper(t("completed"))}
                     </h2>
                     <button
                       onClick={() => handleButtonClick(() => setScreen("main"))}
-                      aria-label="Close"
+                      aria-label={t("close")}
                       className="p-2 text-secondary transition-colors hover:text-primary"
                     >
                       <X className="h-6 w-6" />
@@ -378,15 +378,15 @@ export function StartMenu() {
                   />
 
                   <p className="text-center font-exo text-sm text-muted-foreground">
-                    Progress: <span className="text-primary">{completedCount}</span> / {TOTAL_LEVELS} levels ·{" "}
-                    <span className="text-secondary">{totalStars}</span> stars
+                    {t("heroScroll")}: <span className="text-primary">{completedCount}</span> / {TOTAL_LEVELS} {t("levels")} ·{" "}
+                    <span className="text-secondary">{totalStars}</span> {t("stars")}
                   </p>
 
                   <Button
                     onClick={() => handleButtonClick(() => setScreen("main"))}
                     className="w-full rounded-none bg-primary py-6 font-orbitron text-sm font-bold uppercase tracking-wider text-background hover:bg-primary/90"
                   >
-                    BACK TO MENU
+                    {upper(t("backToMenu"))}
                   </Button>
                 </div>
               </motion.div>
@@ -416,7 +416,7 @@ export function StartMenu() {
                 <Heart className="mx-auto h-12 w-12 animate-pulse fill-primary text-primary" />
                 <div>
                   <h3 className="mb-2 font-orbitron text-2xl font-bold text-secondary">
-                    LEVEL {selectedLevelMessage.id}
+                    {upper(t("level"))} {selectedLevelMessage.id}
                   </h3>
                   <p className="neon-text font-exo text-lg leading-relaxed text-primary">
                     “{selectedLevelMessage.message}”
@@ -426,7 +426,7 @@ export function StartMenu() {
                   onClick={() => setSelectedLevelMessage(null)}
                   className="w-full bg-primary font-bold text-black hover:bg-primary/90"
                 >
-                  CLOSE
+                  {upper(t("close"))}
                 </Button>
               </div>
             </motion.div>
