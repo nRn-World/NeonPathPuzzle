@@ -59,10 +59,13 @@ export function d1Store(db: D1): Store {
       return results;
     },
     async rankRating(playerId) {
-      const mine = await db.prepare("SELECT rating FROM ratings WHERE player_id = ?1").bind(playerId).first<{ rating: number }>();
+      const mine = await db
+        .prepare("SELECT rating, wins, losses FROM ratings WHERE player_id = ?1")
+        .bind(playerId)
+        .first<{ rating: number; wins: number; losses: number }>();
       if (!mine) return null;
       const ahead = await db.prepare("SELECT COUNT(*) AS n FROM ratings WHERE rating > ?1").bind(mine.rating).first<{ n: number }>();
-      return { rank: (ahead?.n ?? 0) + 1, value: mine.rating };
+      return { rank: (ahead?.n ?? 0) + 1, value: mine.rating, wins: mine.wins, losses: mine.losses };
     },
     async rank(board, playerId, order) {
       const mine = await db

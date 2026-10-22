@@ -121,7 +121,7 @@ export interface BoardEntry {
 export interface BoardResult {
   board: string;
   entries: BoardEntry[];
-  you: { rank: number; value: number } | null;
+  you: { rank: number; value: number; wins?: number; losses?: number } | null;
 }
 
 async function post(body: Record<string, unknown>): Promise<void> {

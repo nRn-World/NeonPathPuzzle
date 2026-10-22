@@ -236,3 +236,13 @@ test("a bot's win shows its line as help, and the final round shows no help", ()
   }
   assert.equal("opponentPath" in duel.last(duel.humans[1].id, "roundResult")!, false, "a decided match has no help round");
 });
+
+test("the other player is told when their opponent drops and comes back", () => {
+  const { clock, match, humans, last } = setup(false);
+  const [a, b] = humans;
+  clock.advance(COUNTDOWN_MS + 1000);
+  match.detach(a.id);
+  assert.equal(last(b.id, "opponentAway")?.graceMs, RECONNECT_MS);
+  match.attach(a.id, () => undefined);
+  assert.equal(last(b.id, "opponentBack")?.type, "opponentBack");
+});

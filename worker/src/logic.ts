@@ -14,7 +14,7 @@ export interface Store {
   getRating(playerId: string): Promise<{ rating: number; wins: number; losses: number } | null>;
   saveMatch(player: { id: string; name: string; rating: number; outcome: "win" | "loss" | "draw" }, now: number): Promise<void>;
   topRatings(limit: number): Promise<{ playerId: string; name: string; value: number }[]>;
-  rankRating(playerId: string): Promise<{ rank: number; value: number } | null>;
+  rankRating(playerId: string): Promise<{ rank: number; value: number; wins: number; losses: number } | null>;
 }
 
 export interface Reply {

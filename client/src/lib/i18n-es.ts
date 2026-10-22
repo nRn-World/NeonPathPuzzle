@@ -356,4 +356,7 @@ export const es: Record<TranslationKey, string> = {
   openLevel: "Abrir nivel",
   copyLevelCode: "Copiar código de nivel",
   activeDay: "{count} día activo",
+  duelRecord: "{wins} V · {losses} D",
+  duelOpponentAway: "El rival perdió la conexión. Tiene {s} s para volver o ganas tú.",
+  duelGo: "¡YA!",
 };

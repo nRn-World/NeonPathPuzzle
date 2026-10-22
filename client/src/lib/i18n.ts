@@ -371,6 +371,9 @@ const en = {
   openLevel: "Open level",
   copyLevelCode: "Copy level code",
   activeDay: "{count} active day",
+  duelRecord: "{wins} W · {losses} L",
+  duelOpponentAway: "Opponent lost connection. They have {s} s to come back, or you win.",
+  duelGo: "GO!",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -731,6 +734,9 @@ const sv: Record<TranslationKey, string> = {
   openLevel: "Öppna nivå",
   copyLevelCode: "Kopiera nivåkod",
   activeDay: "{count} aktiv dag",
+  duelRecord: "{wins} V · {losses} F",
+  duelOpponentAway: "Motståndaren tappade anslutningen. Den har {s} s på sig att komma tillbaka, annars vinner du.",
+  duelGo: "KÖR!",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
