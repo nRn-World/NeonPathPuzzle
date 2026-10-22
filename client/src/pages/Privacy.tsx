@@ -21,14 +21,20 @@ export default function Privacy() {
         </div>
 
         <div className="space-y-5 font-exo leading-relaxed text-muted-foreground">
-          <p className="text-sm">Last updated: 23 July 2026</p>
+          <p className="text-sm">Last updated: 22 October 2026</p>
           <p>
-            Neon Path Puzzle does not collect, transmit, sell, or share personal data.
+            Neon Path Puzzle does not collect personal data by default and never sells or shares it. The only data that can leave your device is the optional online ranking described below.
           </p>
           <div>
             <h2 className="mb-2 text-lg font-bold text-foreground">Data stored on your device</h2>
             <p>
               Level progress, settings, achievements, and your anonymous local player identifier are stored only on your device. Removing the app or clearing its storage may delete this data.
+            </p>
+          </div>
+          <div>
+            <h2 className="mb-2 text-lg font-bold text-foreground">Optional online ranking</h2>
+            <p>
+              Online rankings stay off until you choose a public name in the Ranking tab. After that the game sends your public name, a random player identifier created on your device, your total star count, and the time and line of your daily and weekly challenge runs (the line is only used to check the result is real). No real name, e-mail address, location, device identifier or advertising identifier is sent. You can stop at any time by not saving a name, and you can ask for your entries to be deleted by e-mail.
             </p>
           </div>
           <div>

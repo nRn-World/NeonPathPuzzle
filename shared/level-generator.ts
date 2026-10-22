@@ -89,9 +89,14 @@ const DIFFICULTY_TIERS: DifficultyTier[] = [
   // blackout), so the boards only grow a little and stay readable on a phone.
   { from: 201, to: 240, gridSize: 12, startNodes: 93, endNodes: 106 },
   { from: 241, to: 300, gridSize: 13, startNodes: 107, endNodes: 122 },
+  // The Rift: a bonus sector after the campaign with its own rules (levels 301-330).
+  { from: 301, to: 330, gridSize: 13, startNodes: 123, endNodes: 130 },
 ];
 
+/** The campaign: crash rule, level codes and the 300-level achievement all stop here. */
 export const MAX_LEVEL_ID = 300;
+/** The Rift bonus sector extends the generator to here; it is outside the campaign run. */
+export const GENERATOR_MAX_LEVEL_ID = 330;
 
 /**
  * The difficulty every level aims for, as (level, score) anchors with straight
@@ -107,7 +112,7 @@ export const MAX_LEVEL_ID = 300;
 const DIFFICULTY_CURVE: [number, number][] = [
   [1, 5], [2, 6], [3, 7], [5, 11], [10, 17], [20, 26], [30, 38], [40, 50], [50, 60],
   [75, 86], [100, 112], [125, 138], [150, 164], [175, 190], [190, 206], [200, 236],
-  [250, 284], [290, 322], [300, 352],
+  [250, 284], [290, 322], [300, 352], [330, 390],
 ];
 
 export function targetDifficulty(levelId: number): number {
@@ -567,7 +572,35 @@ function onCurve(levelId: number, difficulty: number, window: number): boolean {
  * Every hard rule a finished layout has to satisfy, checked in one place so the
  * search, the baked table and the repair tooling can never disagree.
  */
+/** Rift levels are separated by a smaller margin than the campaign: the grid is already crowded. */
+const RIFT_MAX_SEPARATION = 12;
+
+/**
+ * The Rift (301+) leans on its new rules for difficulty, so it skips the
+ * campaign's difficulty curve and strictly-rising node count. It still needs a
+ * branching layout, a different silhouette from the previous level and a board
+ * no earlier level on the grid looks like.
+ */
+function meetsRiftRules(level: GeneratedLevel): boolean {
+  if (level.family === lastFamily) return false;
+  if (countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) return false;
+  const distance = minLayoutDistance(level, usedMasks.get(level.gridSize));
+  return distance >= Math.min(RIFT_MAX_SEPARATION, requiredDistance(level.nodes.length));
+}
+
+function searchRiftLevel(levelId: number): Candidate {
+  for (let extraNodes = 0; extraNodes <= EXTRA_NODE_LIMIT; extraNodes++) {
+    for (const variant of variantOrder(levelId)) {
+      const level = createCandidate(levelId, variant, extraNodes);
+      if (!meetsRiftRules(level)) continue;
+      return { level, difficulty: 0, structural: 0, traps: 0, distance: 0, variant, extraNodes };
+    }
+  }
+  throw new Error(`Could not create a layout for Rift level ${levelId}`);
+}
+
 function meetsRules(levelId: number, level: GeneratedLevel): boolean {
+  if (levelId > MAX_LEVEL_ID) return meetsRiftRules(level);
   if (level.nodes.length < lastNodes) return false;
   if (level.family === lastFamily) return false;
   if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) return false;
@@ -691,6 +724,7 @@ function selectBest(options: Candidate[], levelId: number): Candidate {
  * step and extra nodes are tried, so the campaign always stays complete.
  */
 function searchLevel(levelId: number): Candidate {
+  if (levelId > MAX_LEVEL_ID) return searchRiftLevel(levelId);
   const { gridSize } = getLevelShape(levelId);
   const stored = usedMasks.get(gridSize) ?? [];
   const furthest: { current: Candidate | null } = { current: null };
@@ -736,6 +770,8 @@ const VARIANT_TABLE: number[] = [
   696, 472, 1464, 1136, 1384, 24, 1528, 1176, 184, 448, 40, 1144, 1504, 1528, 640, 464, 425, 362, 1025, 1338,
   258, 426, 1329, 185, 731, 331, 546, 1018, 1219, 379, 546, 474, 1314, 1290, 257, 715, 1051, 1027, 475, 523,
   68, 716, 827, 1339, 451, 861, 140, 380, 1508, 1148, 260, 1292, 1029, 477, 180, 1124, 189, 909, 1045, 925,
+  64, 32, 80, 152, 24, 32, 40, 88, 64, 416, 80, 56, 984, 40, 56, 88, 64, 40, 80, 56,
+  40, 56, 40, 88, 64, 88, 272, 56, 40, 56,
 ];
 
 /**
@@ -793,7 +829,7 @@ function generateThrough(targetLevelId: number) {
  * levels that no longer satisfy them, so a rule change can patch the table
  * instead of paying for a full offline rebuild.
  */
-export function repairVariantTable(table: number[], through = MAX_LEVEL_ID): number[] {
+export function repairVariantTable(table: number[], through = GENERATOR_MAX_LEVEL_ID): number[] {
   const repaired = [...table];
   resetGenerator();
 
@@ -823,8 +859,8 @@ export function repairVariantTable(table: number[], through = MAX_LEVEL_ID): num
 const directCache = new Map<number, GeneratedLevel>();
 
 export function generateLevel(levelId: number): GeneratedLevel {
-  if (!Number.isInteger(levelId) || levelId < 1 || levelId > MAX_LEVEL_ID) {
-    throw new RangeError(`Level id must be an integer from 1 to ${MAX_LEVEL_ID}. Received: ${levelId}`);
+  if (!Number.isInteger(levelId) || levelId < 1 || levelId > GENERATOR_MAX_LEVEL_ID) {
+    throw new RangeError(`Level id must be an integer from 1 to ${GENERATOR_MAX_LEVEL_ID}. Received: ${levelId}`);
   }
   // A baked level is exactly createCandidate(id, variant, extra), so opening
   // level 300 on a phone does not have to build the 299 levels before it.

@@ -16,6 +16,9 @@ export const BACKUP_STORE_KEYS = [
   "neon-path-language",
   "neon_path_weekly_v1",
   "neon_path_custom_levels_v1",
+  "neon_path_rift_v1",
+  "neon_path_season_v1",
+  "neon_path_chapters_seen",
 ] as const;
 
 export interface BackupFile {

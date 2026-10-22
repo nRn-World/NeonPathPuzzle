@@ -1,5 +1,9 @@
 import { content } from "@/lib/contentText";
-import { getChapterForLevel } from "@/lib/chapters";
+import { chapters, getChapterForLevel } from "@/lib/chapters";
+import { getActiveSeason, recordSeasonClear } from "@/lib/seasons";
+import { isRiftLevel, RIFT_LAST_LEVEL } from "@/lib/rift";
+import { readRiftProgress, saveRiftResult } from "@/lib/riftProgress";
+import { submitDaily, submitStars, submitWeekly } from "@/lib/leaderboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,16 +31,18 @@ import { calculateScore, calculateStars, getParTimeMs, type StarCount } from "@/
 import { getDailyLevelId, getDateKey } from "@/lib/daily";
 import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKeys } from "@/lib/weekly";
 import { useI18n, upper } from "@/lib/i18n";
-import { customLevelToResponse, decodeCustomLevel } from "@/lib/customLevels";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
 import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
 import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
+import { ChapterIntro } from "@/components/ChapterIntro";
+import { hasSeenChapterIntro, markChapterIntroSeen } from "@/lib/story";
 import { hasSeenIntro, markIntroSeen, MechanicIntro, MECHANIC_INTROS } from "@/components/MechanicIntro";
 import {
   crashRun,
   getAttemptsUsed,
   getLevelRecord,
   getProgress,
+  getTotalStars,
   isFrontierLevel,
   markLevelPlayed,
   MAX_ATTEMPTS,
@@ -45,19 +51,18 @@ import {
   TOTAL_LEVELS,
 } from "@/lib/progress";
 
-export type GameMode = "level" | "daily" | "weekly" | "zen" | "custom";
+export type GameMode = "level" | "daily" | "weekly" | "zen" | "rift";
 type PauseReason = "manual" | "system";
 
 interface GameProps {
   mode?: GameMode;
-  customCode?: string;
   [key: string]: unknown;
 }
 
-export default function Game({ mode = "level", customCode }: GameProps) {
+export default function Game({ mode = "level" }: GameProps) {
   const [, playParams] = useRoute("/play/:id");
   const [, zenParams] = useRoute("/zen/:id");
-  const [, customParams] = useRoute("/custom/:code");
+  const [, riftParams] = useRoute("/rift/:id");
   const [, setLocation] = useLocation();
 
   // Pinned for the session: a timer tick past local midnight must not swap the
@@ -65,20 +70,13 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const dailyKey = useMemo(() => getDateKey(), []);
   const dailyLevelId = useMemo(() => getDailyLevelId(dailyKey), [dailyKey]);
   const weeklyChallenge = useMemo(() => getWeeklyChallenge(), []);
-  const activeCustomCode = customCode ?? customParams?.code;
-  const customResult = useMemo(
-    () => (mode === "custom" && activeCustomCode ? decodeCustomLevel(activeCustomCode) : null),
-    [mode, activeCustomCode],
-  );
 
-  const parsedId = mode === "zen" ? Number(zenParams?.id) : Number(playParams?.id);
+  const parsedId = mode === "zen" ? Number(zenParams?.id) : mode === "rift" ? Number(riftParams?.id) : Number(playParams?.id);
   const levelId = mode === "daily"
     ? dailyLevelId
     : mode === "weekly"
       ? weeklyChallenge.levelId
-      : mode === "custom"
-        ? 0
-        : parsedId;
+      : parsedId;
 
   const userId = useUserId();
   const { activeEffects, hasActiveEffect, getEffectValue, consumeEffectUse } = usePowerUps();
@@ -93,13 +91,13 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const addTokens = useHintTokenStore(state => state.addTokens);
 
   const isZen = mode === "zen";
+  const isRift = mode === "rift";
   const isDaily = mode === "daily";
   const isWeekly = mode === "weekly";
-  const isCustom = mode === "custom";
-  const isScored = !isZen && !isCustom;
+  const isScored = !isZen;
   const allowLocked = isDaily || isWeekly;
 
-  const levelQuery = useLevel(isCustom ? 1 : levelId, userId, allowLocked);
+  const levelQuery = useLevel(levelId, userId, allowLocked);
   const updateProgressMutation = useUpdateProgress();
   const queryClient = useQueryClient();
 
@@ -110,20 +108,13 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const noUndo = weeklyModifier === "no-undo";
 
   const generated = useMemo(
-    () => (!isCustom && Number.isInteger(levelId) && levelId >= 1 && levelId <= TOTAL_LEVELS
+    () => (Number.isInteger(levelId) && levelId >= 1 && (levelId <= TOTAL_LEVELS || (isRift && isRiftLevel(levelId)))
       ? generateLevel(levelId)
       : null),
-    [isCustom, levelId],
+    [levelId],
   );
 
   const variant = useMemo(() => {
-    if (isCustom) {
-      if (!customResult) return null;
-      if (!customResult.ok) return null;
-      const level = customLevelToResponse(customResult.level.data);
-      return { level, solution: level.nodes, mechanics: EMPTY_MECHANICS };
-    }
-
     const raw = levelQuery.data;
     if (!raw || !generated) return null;
     const source = mirrored
@@ -134,7 +125,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       solution: source.solution,
       mechanics: getLevelMechanics(source.level, source.solution),
     };
-  }, [customResult, generated, isCustom, levelQuery.data, mirrored]);
+  }, [generated, levelQuery.data, mirrored]);
 
   const level = variant?.level;
   const mechanics = variant?.mechanics ?? EMPTY_MECHANICS;
@@ -182,6 +173,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   const [confirmCrash, setConfirmCrash] = useState(false);
   const [crash, setCrash] = useState<{ levelId: number; lost: number } | null>(null);
   const [introLevel, setIntroLevel] = useState<number | null>(null);
+  const [chapterIntro, setChapterIntro] = useState<number | null>(null);
   const limited = mode === "level" && frontier;
   const attemptNumber = attemptStarted ? attemptsUsed : Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
 
@@ -275,20 +267,17 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     setCrash(null);
     if (!userId) return;
 
-    if (isCustom) {
-      setBestTimeMs(null);
-      setBestScore(null);
-      setGhostPath(null);
-      return;
-    }
-
     const progress = getProgress(userId);
     const record = getLevelRecord(progress, levelId);
     const dailyRecord = isDaily ? progress.daily.results[dailyKey] : null;
     const weeklyRecord = isWeekly ? getWeeklyResult(weeklyChallenge.weekKey) : null;
 
     setBestTimeMs(
-      isDaily ? dailyRecord?.timeMs ?? null : isWeekly ? weeklyRecord?.timeMs ?? null : record?.bestTimeMs ?? null,
+      isDaily
+        ? dailyRecord?.timeMs ?? null
+        : isWeekly
+          ? weeklyRecord?.timeMs ?? null
+          : isRift ? readRiftProgress()[String(levelId)]?.bestTimeMs ?? null : record?.bestTimeMs ?? null,
     );
     setBestScore(isDaily || isWeekly ? null : record?.bestScore ?? null);
 
@@ -303,7 +292,9 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       return;
     }
 
-    setIntroLevel(mode === "level" && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
+    setIntroLevel((mode === "level" || isRift) && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
+    const openingChapter = mode === "level" ? chapters.find(item => item.from === levelId) : undefined;
+    setChapterIntro(openingChapter && !hasSeenChapterIntro(openingChapter.id) ? openingChapter.id : null);
 
     if (mode === "level") {
       markLevelPlayed(userId, levelId);
@@ -312,8 +303,8 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   }, [
     crashNow,
     dailyKey,
-    isCustom,
     isDaily,
+    isRift,
     isWeekly,
     levelId,
     mode,
@@ -326,7 +317,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   // Kept apart from the reset effect: a background refetch of the level must not
   // wipe the line, but the saved ghost still needs to follow the current record.
   useEffect(() => {
-    if (isCustom || isDaily || isWeekly || !level || !generated || !userId) {
+    if (isDaily || isWeekly || !level || !generated || !userId) {
       setGhostPath(null);
       return;
     }
@@ -335,7 +326,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     setGhostPath(
       savedGhost && isValidPlayerPath(savedGhost, level, ghostMechanics) ? savedGhost : null,
     );
-  }, [generated, isCustom, isDaily, isWeekly, level, levelId, userId]);
+  }, [generated, isDaily, isWeekly, level, levelId, userId]);
 
   useEffect(() => {
     if (!timerRunning || hasWon || !isScored) return;
@@ -436,7 +427,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     return true;
   }, [hasActiveEffect, hasWon]);
 
-  const canOfferHint = !isCustom && !noHints;
+  const canOfferHint = !noHints;
 
   const handleHint = useCallback(() => {
     if (!canOfferHint || showHint || hintUsedThisLevel || !hintPath?.length) return;
@@ -481,14 +472,15 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     setFinalTimeMs(runTime);
 
     const progressBefore = getProgress(userId);
-    const recordBefore = isCustom ? null : getLevelRecord(progressBefore, levelId);
+    const riftBefore = isRift ? readRiftProgress()[String(levelId)] : undefined;
+    const recordBefore = isRift ? null : getLevelRecord(progressBefore, levelId);
     const dailyRecordBefore = isDaily ? progressBefore.daily.results[dailyKey] : undefined;
     const weeklyRecordBefore = isWeekly ? getWeeklyResult(weeklyChallenge.weekKey) : null;
     const previousBest = isDaily
       ? dailyRecordBefore?.timeMs ?? null
       : isWeekly
         ? weeklyRecordBefore?.timeMs ?? null
-        : recordBefore?.bestTimeMs ?? null;
+        : isRift ? riftBefore?.bestTimeMs ?? null : recordBefore?.bestTimeMs ?? null;
 
     const finalStars = isScored
       ? calculateStars({
@@ -539,6 +531,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         stars: finalStars,
       });
       setDailyStreak(daily.streak);
+      void submitDaily(dailyKey, runTime, completedPath);
       if (!dailyRecordBefore) addTokens(1);
       void queryClient.invalidateQueries({ queryKey: [api.progress.get.path, userId] });
     } else if (isWeekly) {
@@ -550,8 +543,11 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         stars: finalStars,
         completedAt: Date.now(),
       });
+      void submitWeekly(weeklyChallenge.weekKey, runTime, completedPath);
       if (!weeklyRecordBefore) addTokens(1);
       void queryClient.invalidateQueries({ queryKey: [api.progress.get.path, userId] });
+    } else if (isRift) {
+      saveRiftResult(levelId, finalStars, runTime);
     } else if (mode === "level") {
       updateProgressMutation.mutate({
         userId,
@@ -565,6 +561,14 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         score: finalScore,
         path: completedPath,
       });
+
+      void submitStars(getTotalStars(getProgress(userId)) + Math.max(0, finalStars - (recordBefore?.stars ?? 0)));
+
+      const season = getActiveSeason();
+      if (season && recordSeasonClear(season, levelId)) {
+        addTokens(season.season.rewardTokens);
+        toast({ title: t("seasonCompleteTitle"), description: t("seasonCompleteDesc", { tokens: season.season.rewardTokens }) });
+      }
 
       const wasCompleted = recordBefore?.completed ?? level.isCompleted;
       if (!wasCompleted) {
@@ -596,7 +600,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       }
     }
 
-    // Score Boost only covers campaign levels; practice, custom, daily and weekly
+    // Score Boost only covers campaign levels; practice, daily and weekly
     // runs never store a score, so consuming a charge there would waste it.
     if (mode === "level" && hasActiveEffect("score_multiplier")) {
       consumeEffectUse("score_multiplier");
@@ -625,7 +629,6 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     hintPaidWithTokens,
     hintUsedThisLevel,
     incrementProgress,
-    isCustom,
     isDaily,
     isScored,
     isWeekly,
@@ -645,7 +648,9 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   ]);
 
   const handleNext = () => {
-    if (mode === "level") {
+    if (isRift) {
+      setLocation(levelId < RIFT_LAST_LEVEL ? `/rift/${levelId + 1}` : "/");
+    } else if (mode === "level") {
       setLocation(levelId < TOTAL_LEVELS ? `/play/${levelId + 1}` : "/");
     } else {
       setLocation("/");
@@ -677,7 +682,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       if (target && (target.isContentEditable
         || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
-      if (crash || confirmCrash || introLevel !== null) return;
+      if (crash || confirmCrash || introLevel !== null || chapterIntro !== null) return;
 
       if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         if (!isScored) return;
@@ -704,7 +709,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmCrash, crash, introLevel, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
+  }, [chapterIntro, confirmCrash, crash, introLevel, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
 
   const crashModal = (
     <CrashModal
@@ -726,20 +731,10 @@ export default function Game({ mode = "level", customCode }: GameProps) {
     return <div className="h-screen w-screen bg-background">{crashModal}</div>;
   }
 
-  if (levelQuery.isLoading && !isCustom) {
+  if (levelQuery.isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (isCustom && customResult && !customResult.ok) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background px-6 text-center">
-        <h2 className="text-2xl font-bold text-destructive">{t("customUnavailable")}</h2>
-        <p className="max-w-sm text-muted-foreground">{customResult.error}</p>
-        <Button onClick={() => setLocation("/editor")}>{t("openEditor")}</Button>
       </div>
     );
   }
@@ -766,7 +761,9 @@ export default function Game({ mode = "level", customCode }: GameProps) {
   });
 
   // The chapter gives every level a place in the campaign.
-  const chapterName = mode === "level" ? upper(content.chapter(getChapterForLevel(levelId)).name) : undefined;
+  const chapterName = mode === "level"
+    ? upper(content.chapter(getChapterForLevel(levelId)).name)
+    : isRift ? upper(t("riftName")) : undefined;
 
   const modeTitle = isDaily
     ? undefined
@@ -774,16 +771,12 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       ? upper(t("weeklyChallenge"))
       : isZen
         ? `ZEN · ${upper(t("level"))} ${levelId}`
-        : isCustom
-          ? customResult?.ok ? customResult.level.data.name : "CUSTOM CIRCUIT"
-          : undefined;
+        : undefined;
   const modeSubtitle = isWeekly
     ? t(weeklyModifierKeys[weeklyChallenge.modifier].label)
     : isZen
       ? t("practiceNoRecords")
-      : isCustom
-        ? upper(t("customCircuit"))
-        : undefined;
+      : undefined;
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
@@ -798,7 +791,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         parTimeMs={parTimeMs}
         isBoss={mechanics.isBoss}
         hideTimer={isZen}
-        hideStars={isZen || isCustom}
+        hideStars={isZen}
         hintTokens={isZen ? -1 : hintTokens}
         hintDisabled={!canOfferHint}
         onHint={handleHint}
@@ -826,12 +819,15 @@ export default function Game({ mode = "level", customCode }: GameProps) {
       </div>
 
       {(mechanics.oneWays.length > 0 || mechanics.pairs.length > 0 || mechanics.portals.length > 0
-        || mechanics.syncNodes.length > 0 || mechanics.blackout) && (
+        || mechanics.syncNodes.length > 0 || mechanics.phaseNodes.length > 0 || mechanics.flipArrows.length > 0
+        || mechanics.blackout) && (
         <div className="flex items-center gap-x-3 gap-y-0.5 overflow-x-auto whitespace-nowrap border-b border-white/5 bg-background/40 px-2 py-1 font-exo text-[10px] text-muted-foreground sm:flex-wrap sm:justify-center sm:whitespace-normal">
           {mechanics.oneWays.length > 0 && <span>{t("symbolOneWay")}</span>}
           {mechanics.pairs.length > 0 && <span>{t("symbolPairs")}</span>}
           {mechanics.portals.length > 0 && <span>{t("symbolPortals")}</span>}
           {mechanics.syncNodes.length > 0 && <span className="text-emerald-300/90">{t("symbolSync")}</span>}
+          {mechanics.phaseNodes.length > 0 && <span className="text-orange-300/90">{t("symbolPhase")}</span>}
+          {mechanics.flipArrows.length > 0 && <span className="text-fuchsia-300/90">{t("symbolFlip")}</span>}
           {mechanics.blackout && <span className="text-indigo-300/90">{t("symbolBlackout")}</span>}
         </div>
       )}
@@ -845,7 +841,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
               ref={canvasRef}
               level={level}
               mechanics={mechanics}
-              ghostPath={!isDaily && !isWeekly && !isCustom && !mechanics.blackout ? ghostPath : null}
+              ghostPath={!isDaily && !isWeekly && !mechanics.blackout ? ghostPath : null}
               showGhost={showGhost}
               disableUndo={noUndo || backtracks >= MAX_BACKTRACKS}
               gridLabel={t("gridLabel", { size: level.gridSize })}
@@ -857,7 +853,7 @@ export default function Game({ mode = "level", customCode }: GameProps) {
               onPathChange={handlePathChange}
               onStuckChange={setStuck}
               reducedMotion={reducedMotion}
-              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null}
+              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null || chapterIntro !== null}
             />
           </div>
         </div>
@@ -897,8 +893,15 @@ export default function Game({ mode = "level", customCode }: GameProps) {
           onUndo={() => canvasRef.current?.undo()}
           onRestart={() => (limited && attemptNumber >= MAX_ATTEMPTS ? crashNow() : resetTransientState())}
         />
+        <ChapterIntro
+          chapterId={chapterIntro}
+          onClose={() => {
+            if (chapterIntro !== null) markChapterIntroSeen(chapterIntro);
+            setChapterIntro(null);
+          }}
+        />
         <MechanicIntro
-          levelId={introLevel}
+          levelId={chapterIntro === null ? introLevel : null}
           onClose={() => {
             if (introLevel !== null) markIntroSeen(introLevel);
             setIntroLevel(null);
@@ -926,9 +929,6 @@ export default function Game({ mode = "level", customCode }: GameProps) {
         isDaily={isDaily}
         isWeekly={isWeekly}
         isZen={isZen}
-        isCustom={isCustom}
-        customName={customResult?.ok ? customResult.level.data.name : undefined}
-        customCode={isCustom ? activeCustomCode : undefined}
         dailyStreak={dailyStreak}
         starReasons={starReasons}
         flawless={flawlessRun}

@@ -13,10 +13,9 @@ import Home from "@/pages/Home";
 import Game from "@/pages/Game";
 import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
-import Editor from "@/pages/Editor";
 import Privacy from "@/pages/Privacy";
 import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
-import { applyMotionPreference, useSettingsStore } from "@/lib/settings";
+import { applyMotionPreference, applyTextPreference, useSettingsStore } from "@/lib/settings";
 import { useEffect } from "react";
 import { useLanguageStore } from "@/lib/i18n";
 
@@ -24,12 +23,12 @@ function LevelGame() {
   return <Game />;
 }
 
-function ZenGame() {
-  return <Game mode="zen" />;
+function RiftGame() {
+  return <Game mode="rift" />;
 }
 
-function CustomGame() {
-  return <Game mode="custom" />;
+function ZenGame() {
+  return <Game mode="zen" />;
 }
 
 function AppRouter() {
@@ -41,8 +40,7 @@ function AppRouter() {
         <Route path="/daily" component={Daily} />
         <Route path="/weekly" component={Weekly} />
         <Route path="/zen/:id" component={ZenGame} />
-        <Route path="/custom/:code" component={CustomGame} />
-        <Route path="/editor" component={Editor} />
+        <Route path="/rift/:id" component={RiftGame} />
         <Route path="/privacy" component={Privacy} />
         <Route component={NotFound} />
       </Switch>
@@ -52,6 +50,11 @@ function AppRouter() {
 
 function App() {
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
+  const largeText = useSettingsStore(state => state.largeText);
+
+  useEffect(() => {
+    applyTextPreference(largeText);
+  }, [largeText]);
 
   useEffect(() => {
     applyMotionPreference(reducedMotion);

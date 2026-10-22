@@ -3,6 +3,8 @@ import { api } from "@shared/routes";
 import { v4 as uuidv4 } from "uuid";
 import { useState } from "react";
 import { generateLevel } from "@shared/level-generator";
+import { isRiftLevel, isRiftUnlocked } from "@/lib/rift";
+import { readRiftProgress } from "@/lib/riftProgress";
 import { getCodeUnlockedThrough } from "@/lib/sessionLevelUnlock";
 import { getActiveStreak } from "@/lib/daily";
 import {
@@ -94,9 +96,27 @@ export function useLevel(id: number, userId?: string, allowLocked = false) {
   return useQuery({
     queryKey: [api.levels.get.path, id, userId, codeUnlockedThrough, allowLocked],
     queryFn: async () => {
-      if (!Number.isInteger(id) || id < 1 || id > TOTAL_LEVELS) throw new Error("Invalid level");
+      if (!Number.isInteger(id) || id < 1 || (id > TOTAL_LEVELS && !isRiftLevel(id))) throw new Error("Invalid level");
       if (!userId) throw new Error("Missing player id");
       const progress = getProgress(userId);
+      if (isRiftLevel(id)) {
+        if (!isRiftUnlocked(progress.completed.length)) throw new Error("Level is locked");
+        const level = generateLevel(id);
+        const record = readRiftProgress()[String(id)];
+        return {
+          id: level.id,
+          gridSize: level.gridSize,
+          start: level.start,
+          nodes: level.nodes,
+          isLocked: false,
+          isCompleted: Boolean(record),
+          stars: record?.stars ?? 0,
+          bestTimeMs: record?.bestTimeMs ?? null,
+          bestMoves: null,
+          bestScore: null,
+          bestPath: null,
+        };
+      }
       const completed = new Set(progress.completed);
       if (!allowLocked && isLevelLocked(id, new Set(progress.runCompleted), codeUnlockedThrough)) {
         throw new Error("Level is locked");
@@ -117,7 +137,7 @@ export function useLevel(id: number, userId?: string, allowLocked = false) {
         bestPath: record?.bestPath ?? null,
       };
     },
-    enabled: !!userId && Number.isInteger(id) && id >= 1 && id <= TOTAL_LEVELS,
+    enabled: !!userId && Number.isInteger(id) && id >= 1 && (id <= TOTAL_LEVELS || isRiftLevel(id)),
   });
 }
 

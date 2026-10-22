@@ -36,11 +36,15 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
     hapticsEnabled,
     reducedMotion,
     showGhost,
+    colorBlind,
+    largeText,
     setSoundEnabled,
     setSoundVolume,
     setHapticsEnabled,
     setReducedMotion,
     setShowGhost,
+    setColorBlind,
+    setLargeText,
   } = useSettingsStore();
 
   const handleExport = () => {
@@ -155,6 +159,18 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             description={t("ghostDesc")}
             checked={showGhost}
             onChange={setShowGhost}
+          />
+          <SettingRow
+            label={t("colorBlindMode")}
+            description={t("colorBlindModeDesc")}
+            checked={colorBlind}
+            onChange={setColorBlind}
+          />
+          <SettingRow
+            label={t("largeText")}
+            description={t("largeTextDesc")}
+            checked={largeText}
+            onChange={setLargeText}
           />
 
           <div className="flex items-center justify-between gap-4 rounded-lg border border-secondary/25 bg-secondary/5 p-3">

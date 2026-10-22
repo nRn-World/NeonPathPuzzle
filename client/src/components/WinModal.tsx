@@ -5,8 +5,9 @@ import { TOTAL_LEVELS } from "@/lib/progress";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Home, Link2, Play, RotateCcw, Share2, Star } from "lucide-react";
+import { Check, Copy, Home, Play, RotateCcw, Share2, Star } from "lucide-react";
 import { Link } from "wouter";
+import { RIFT_LAST_LEVEL } from "@/lib/rift";
 import { generateLevelCode } from "@/lib/levelCodes";
 import { formatDuration } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
@@ -26,9 +27,6 @@ interface WinModalProps {
   isDaily?: boolean;
   isWeekly?: boolean;
   isZen?: boolean;
-  isCustom?: boolean;
-  customName?: string;
-  customCode?: string;
   dailyStreak?: number;
   starReasons?: string[];
   flawless?: boolean;
@@ -50,9 +48,6 @@ export function WinModal({
   isDaily = false,
   isWeekly = false,
   isZen = false,
-  isCustom = false,
-  customName,
-  customCode,
   dailyStreak = 0,
   starReasons = [],
   flawless = false,
@@ -64,7 +59,7 @@ export function WinModal({
   const [shareState, setShareState] = useState<ShareOutcome | null>(null);
   const { t } = useI18n();
   const levelCode = generateLevelCode(levelId);
-  const showStars = !isZen && !isCustom;
+  const showStars = !isZen;
   const isFlawless = flawless;
   const lostStars = flawless ? [] : starReasons;
   const canShare = !isZen;
@@ -80,18 +75,6 @@ export function WinModal({
   };
 
   const handleShare = async () => {
-    if (isCustom && customCode) {
-      try {
-        const link = `${window.location.origin}${window.location.pathname}#/custom/${customCode}`;
-        await navigator.clipboard.writeText(link);
-        setShareState("copied");
-      } catch {
-        setShareState("failed");
-      }
-      window.setTimeout(() => setShareState(null), 2500);
-      return;
-    }
-
     const outcome = await shareResult({
       dateKey: isDaily ? getDateKey() : undefined,
       levelId,
@@ -108,34 +91,30 @@ export function WinModal({
     : shareState === "downloaded"
       ? t("savedImage")
       : shareState === "copied"
-        ? isCustom ? t("linkCopied") : t("copiedText")
+        ? t("copiedText")
         : shareState === "failed"
           ? t("couldNotShare")
-          : isCustom ? t("copyLevelLink") : t("shareClear");
+          : t("shareClear");
 
   // Finishing the last level of a chapter gets its own moment.
   const chapter = getChapterForLevel(levelId);
-  const chapterEnd = !isZen && !isCustom && !isDaily && !isWeekly && levelId === chapter.to
+  const chapterEnd = !isZen && !isDaily && !isWeekly && levelId === chapter.to
     ? { chapter, next: chapters.find(item => item.id === chapter.id + 1) }
     : null;
 
   const title = isZen
     ? upper(t("practiceComplete"))
-    : isCustom
-      ? upper(t("circuitComplete"))
-      : isWeekly
-        ? upper(t("weeklyCleared"))
-        : isDaily
-          ? upper(t("dailyCleared"))
-          : upper(t("levelCleared"));
+    : isWeekly
+      ? upper(t("weeklyCleared"))
+      : isDaily
+        ? upper(t("dailyCleared"))
+        : upper(t("levelCleared"));
 
   const subtitle = isZen
     ? t("practiceNoRecords")
-    : isCustom
-      ? customName ?? t("customCircuit")
-      : isNewBest
-        ? t("newBest")
-        : t("wellPlayed");
+    : isNewBest
+      ? t("newBest")
+      : t("wellPlayed");
 
   return (
     <AnimatePresence>
@@ -219,7 +198,7 @@ export function WinModal({
                     </p>
                   )}
 
-                  {(isDaily || isWeekly || (!isCustom && starReasons.length > 0)) && (
+                  {(isDaily || isWeekly || starReasons.length > 0) && (
                     <div className={`-mt-1 space-y-1 rounded-none border p-3 text-left font-exo text-xs ${
                       isFlawless
                         ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
@@ -262,7 +241,7 @@ export function WinModal({
                 </p>
               )}
 
-              {!isDaily && !isWeekly && !isZen && !isCustom && levelId >= 10 && (
+              {!isDaily && !isWeekly && !isZen && levelId >= 10 && levelId <= TOTAL_LEVELS && (
                 <div className="space-y-2 rounded-none border border-secondary/30 bg-secondary/10 p-3">
                   <p className="font-exo text-xs text-muted-foreground">
                     {t("permanentCode", { level: levelId })}
@@ -291,9 +270,9 @@ export function WinModal({
                   className="h-12 w-full bg-primary text-lg font-bold text-background shadow-[0_0_20px_rgba(0,243,255,0.4)] hover:bg-primary/90"
                 >
                   <Play className="mr-2 h-5 w-5" />
-                  {isZen || isCustom || isDaily || isWeekly
+                  {isZen || isDaily || isWeekly
                     ? t("backToMenu")
-                    : levelId < TOTAL_LEVELS ? t("nextLevel") : t("finish")}
+                    : levelId < TOTAL_LEVELS || (levelId > TOTAL_LEVELS && levelId < RIFT_LAST_LEVEL) ? t("nextLevel") : t("finish")}
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -323,7 +302,7 @@ export function WinModal({
                         : "border-white/10 text-muted-foreground hover:bg-white/5"
                     }
                   >
-                    {isCustom ? <Link2 className="mr-2 h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />}
+                    <Share2 className="mr-2 h-4 w-4" />
                     {shareLabel}
                   </Button>
                 )}

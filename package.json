@@ -1,6 +1,6 @@
 {
   "name": "neon-path-puzzle",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -10,9 +10,10 @@
     "check": "tsc",
     "test:level-codes": "tsx --test client/src/lib/levelCodes.test.ts",
     "test:levels": "tsx --test shared/level-generator.test.ts shared/mechanics.test.ts",
-    "test:progress": "tsx --test client/src/lib/scoring.test.ts client/src/lib/daily.test.ts client/src/lib/progress.test.ts client/src/lib/backup.test.ts client/src/lib/weekly.test.ts client/src/lib/customLevels.test.ts client/src/lib/runClock.test.ts client/src/lib/undoPath.test.ts client/src/lib/i18n.test.ts client/src/lib/rank.test.ts",
+    "test:progress": "tsx --test client/src/lib/scoring.test.ts client/src/lib/daily.test.ts client/src/lib/progress.test.ts client/src/lib/backup.test.ts client/src/lib/weekly.test.ts client/src/lib/runClock.test.ts client/src/lib/undoPath.test.ts client/src/lib/i18n.test.ts client/src/lib/rank.test.ts client/src/lib/stats.test.ts client/src/lib/seasons.test.ts client/src/lib/riftProgress.test.ts client/src/lib/leaderboard.test.ts",
     "test:audio": "tsx --test client/src/lib/synth.test.ts",
-    "test": "npm run test:level-codes && npm run test:levels && npm run test:progress && npm run test:audio",
+    "test:worker": "tsx --test worker/src/logic.test.ts",
+    "test": "npm run test:level-codes && npm run test:levels && npm run test:progress && npm run test:audio && npm run test:worker",
     "db:push": "drizzle-kit push",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",

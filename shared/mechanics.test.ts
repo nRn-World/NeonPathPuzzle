@@ -187,3 +187,42 @@ test("a line with no legal forward move is stuck, a finished one is not", () => 
   assert.equal(rules.isStuck(stuck), true);
   assert.equal(rules.isStuck([level.start]), false);
 });
+
+test("every Rift level (301-330) is solvable through the real move rules", () => {
+  for (let levelId = 301; levelId <= 330; levelId++) {
+    const level = generateLevel(levelId);
+    const mechanics = getLevelMechanics(level, level.solution);
+    const rules = createMoveRules(level, mechanics);
+    let path = [level.solution[0]];
+    for (const point of level.solution.slice(1)) {
+      const next = rules.step(path, point);
+      assert.ok(next, `Rift level ${levelId}: solution step to ${key(point)} is rejected`);
+      path = next;
+      assert.ok(!rules.isStuck(path), `Rift level ${levelId}: solution walks into a dead end`);
+    }
+    assert.ok(rules.isComplete(path), `Rift level ${levelId}: solution does not finish the board`);
+    assert.ok(mechanics.phaseNodes.length >= 3, `Rift level ${levelId}: phase nodes missing`);
+    assert.equal(mechanics.flipArrows.length > 0, levelId >= 316, `Rift level ${levelId}: flip arrows only from 316`);
+    assert.equal(mechanics.blackout, levelId >= 316);
+  }
+});
+
+test("a phase node rejects the wrong parity and a flip arrow reverses with it", () => {
+  const level = generateLevel(320);
+  const mechanics = getLevelMechanics(level, level.solution);
+  const phase = mechanics.phaseNodes[0];
+  const step = level.solution.findIndex(point => key(point) === key(phase.point));
+  const before = level.solution.slice(0, step);
+  const rules = createMoveRules(level, { ...EMPTY_MECHANICS, phaseNodes: [phase] });
+  assert.ok(rules.step(before, phase.point), "the right parity enters");
+  const wrong = createMoveRules(level, { ...EMPTY_MECHANICS, phaseNodes: [{ ...phase, parity: (1 - phase.parity) as 0 | 1 }] });
+  assert.equal(wrong.step(before, phase.point), null, "the other parity is refused");
+
+  const flip = mechanics.flipArrows[0];
+  const at = level.solution.findIndex(point => key(point) === key(flip.point));
+  const head = level.solution.slice(0, at + 1);
+  const next = level.solution[at + 1];
+  assert.ok(createMoveRules(level, { ...EMPTY_MECHANICS, flipArrows: [flip] }).step(head, next), "the marked way is open");
+  const reversed = createMoveRules(level, { ...EMPTY_MECHANICS, flipArrows: [{ ...flip, parity: (1 - flip.parity) as 0 | 1 }] });
+  assert.equal(reversed.step(head, next), null, "the marked way closes on the other parity");
+});

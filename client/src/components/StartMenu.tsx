@@ -2,10 +2,11 @@ import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, 
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Crown,
   Heart,
   HelpCircle,
   Lock,
-  PenLine,
+  Map as MapIcon,
   Star,
   Trophy,
   X,
@@ -16,16 +17,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
 import { MenuHero } from "@/components/MenuHero";
+import { ProfilePanel } from "@/components/ProfilePanel";
+import { WorldMap } from "@/components/WorldMap";
+import { countRiftCleared, readRiftProgress } from "@/lib/riftProgress";
 import { content } from "@/lib/contentText";
 import { getChapterForLevel } from "@/lib/chapters";
-import { getBrainRank } from "@/lib/rank";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
+import { SeasonCard } from "@/components/SeasonCard";
+import { RankingPanel } from "@/components/RankingPanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
-import { formatDuration } from "@/lib/scoring";
 import { getLevelFromCode } from "@/lib/levelCodes";
 import { getLevelMessage } from "@/lib/levelMessages";
 import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
@@ -46,7 +50,7 @@ const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
 import { playClickSound } from "@/lib/sounds";
 import { useI18n, upper } from "@/lib/i18n";
 
-type MenuScreen = "main" | "info" | "completed";
+type MenuScreen = "main" | "info" | "completed" | "map";
 
 export function StartMenu() {
   const [screen, setScreen] = useState<MenuScreen>("main");
@@ -75,16 +79,8 @@ export function StartMenu() {
   const totalStars = summary?.totalStars ?? 0;
   const bestStreak = summary?.bestStreak ?? 0;
   const continueLevel = summary?.continueLevel ?? 1;
-  const runCount = summary?.runCount ?? completedCount;
   const maxStars = TOTAL_LEVELS * 3;
   const hasProgress = completedCount > 0;
-  const recordValues = Object.values(summary?.records ?? {});
-  const threeStarClears = recordValues.filter(record => record.stars === 3).length;
-  const bestTime = recordValues.reduce<number | null>((best, record) => {
-    if (record.bestTimeMs === null) return best;
-    return best === null ? record.bestTimeMs : Math.min(best, record.bestTimeMs);
-  }, null);
-  const totalScore = recordValues.reduce((total, record) => total + (record.bestScore ?? 0), 0);
 
   useEffect(() => {
     if (screen === "completed") void refetch();
@@ -153,6 +149,11 @@ export function StartMenu() {
                         onClick={() => handleButtonClick(() => setScreen("info"))}
                       />
                       <MenuButton
+                        icon={<MapIcon className="h-4 w-4" />}
+                        label={t("worldMapButton")}
+                        onClick={() => handleButtonClick(() => setScreen("map"))}
+                      />
+                      <MenuButton
                         icon={<Trophy className="h-4 w-4" />}
                         label={t("completed")}
                         onClick={() => handleButtonClick(() => setScreen("completed"))}
@@ -160,12 +161,6 @@ export function StartMenu() {
                       <LanguageSwitch />
                       <ThemeSelector />
                       <SettingsDialog triggerClassName="h-9 w-9 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary" />
-                      <Button asChild variant="outline" size="sm" className="h-9 rounded-none border-white/15 font-mono text-[11px] uppercase tracking-wider">
-                        <Link href="/editor">
-                          <PenLine className="mr-1.5 h-3.5 w-3.5" />
-                          {t("editor")}
-                        </Link>
-                      </Button>
                     </>
                   )}
                 />
@@ -181,6 +176,7 @@ export function StartMenu() {
                     transition={{ delay: 0.5 }}
                     className="grid gap-3 text-left md:grid-cols-2"
                   >
+                    <SeasonCard />
                     <DailyCard compact />
                     <WeeklyCard compact />
                   </motion.div>
@@ -192,7 +188,7 @@ export function StartMenu() {
                     className="text-left"
                   >
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
+                      <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="levels" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
                           <Star className="h-3.5 w-3.5" />
                           {t("chaptersTab")}
@@ -205,6 +201,10 @@ export function StartMenu() {
                           <Zap className="h-3.5 w-3.5" />
                           {t("statsTab")}
                         </TabsTrigger>
+                        <TabsTrigger value="ranking" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
+                          <Crown className="h-3.5 w-3.5" />
+                          {t("rankingTab")}
+                        </TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="levels" className="mt-4">
@@ -216,28 +216,16 @@ export function StartMenu() {
                       </TabsContent>
 
                       <TabsContent value="stats" className="mt-4">
-                        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-                          <StatCard label={t("levelsSolvedStat")} value={`${completedCount}/${TOTAL_LEVELS}`} />
-                          <StatCard label={t("starsEarnedStat")} value={`${totalStars}/${maxStars}`} />
-                          <StatCard label={t("threeStarClears")} value={String(threeStarClears)} />
-                          <StatCard
-                            label={t("bestTimeStat")}
-                            value={bestTime !== null ? formatDuration(bestTime) : "—"}
-                          />
-                          <StatCard label={t("dailyStreak")} value={String(summary?.dailyStreak ?? 0)} />
-                          <StatCard label={t("bestStreakStat")} value={String(bestStreak)} />
-                          <StatCard
-                            label={t("completion")}
-                            value={`${Math.round((completedCount / TOTAL_LEVELS) * 100)}%`}
-                          />
-                          <StatCard label={t("totalScore")} value={totalScore.toLocaleString()} />
-                          <StatCard
-                            label={t("brainRank")}
-                            value={upper(t(getBrainRank(totalStars).key))}
-                          />
-                          <StatCard label={t("runStat")} value={`${runCount}/${TOTAL_LEVELS}`} />
-                          <StatCard label={t("crashesStat")} value={String(summary?.crashes ?? 0)} />
-                        </div>
+                        <ProfilePanel
+                          progress={getProgress(userId)}
+                          crashes={summary?.crashes ?? 0}
+                          dailyStreak={summary?.dailyStreak ?? 0}
+                          bestStreak={bestStreak}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="ranking" className="mt-4">
+                        <RankingPanel />
                       </TabsContent>
                     </Tabs>
                   </motion.div>
@@ -341,6 +329,38 @@ export function StartMenu() {
               </motion.div>
             )}
 
+            {screen === "map" && (
+              <motion.div
+                key="map"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="w-full max-w-2xl"
+              >
+                <div className="space-y-6 rounded-none border border-primary/20 bg-[#0a0f1e]/95 p-6 md:p-8">
+                  <div className="flex items-center justify-between">
+                    <h2 className="neon-text font-orbitron text-3xl font-bold text-primary md:text-4xl">
+                      {upper(t("worldMap"))}
+                    </h2>
+                    <button
+                      onClick={() => handleButtonClick(() => setScreen("main"))}
+                      aria-label={t("close")}
+                      className="p-2 text-primary transition-colors hover:text-secondary"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <WorldMap
+                    continueLevel={continueLevel}
+                    completedLevels={summary?.completedLevels ?? []}
+                    records={summary?.records ?? {}}
+                    riftCleared={countRiftCleared(readRiftProgress())}
+                    onPlay={levelId => handleButtonClick(() => setLocation(`${levelId > TOTAL_LEVELS ? "/rift" : "/play"}/${levelId}`))}
+                  />
+                </div>
+              </motion.div>
+            )}
+
             {screen === "completed" && (
               <motion.div
                 key="completed"
@@ -433,15 +453,6 @@ function MenuButton({
       {icon}
       {label}
     </Button>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-none border border-white/10 bg-black/30 p-4">
-      <div className="font-orbitron text-xl font-bold text-primary">{value}</div>
-      <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
-    </div>
   );
 }
 

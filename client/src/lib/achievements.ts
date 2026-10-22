@@ -60,7 +60,7 @@ export const achievements: Achievement[] = [
   },
   {
     id: "theme_explorer", name: "Theme Explorer", description: "Try all available themes", icon: "🎨",
-    requirement: { type: "theme_collector", value: themes.length },
+    requirement: { type: "theme_collector", value: themes.filter(theme => !theme.seasonId).length },
     reward: { type: "theme_unlock", value: "matrix", description: "Unlock Matrix theme" }, rarity: "gold",
   },
   {

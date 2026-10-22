@@ -10,8 +10,10 @@ import React, {
 import { type LevelResponse, type Point } from "@shared/schema";
 import { createMoveRules, EMPTY_MECHANICS, type LevelMechanics } from "@shared/mechanics";
 import { motion } from "framer-motion";
-import { playMoveSound, playBacktrackSound, playWinSound } from "@/lib/sounds";
+import { playMoveSound, playBacktrackSound, playMilestoneHaptic, playWinSound } from "@/lib/sounds";
 import { useTheme } from "@/hooks/use-theme";
+import { useSettingsStore } from "@/lib/settings";
+import { useI18n } from "@/lib/i18n";
 import { undoLastStep } from "@/lib/undoPath";
 
 export const MAX_BACKTRACKS = 3;
@@ -60,6 +62,48 @@ interface Metrics {
 const pointKey = (point: Point) => `${point.x},${point.y}`;
 
 const SYNC_COLOR = "#00e5a0";
+const PHASE_COLOR = "#ff9f43";
+const FLIP_COLOR = "#e056fd";
+
+/** One or two small dots: 1 = odd positions, 2 = even positions. */
+function drawParityDots(context: CanvasRenderingContext2D, x: number, y: number, parity: 0 | 1, radius: number, color: string) {
+  const count = parity === 0 ? 2 : 1;
+  context.fillStyle = color;
+  for (let index = 0; index < count; index++) {
+    context.beginPath();
+    context.arc(x + (index - (count - 1) / 2) * radius * 2.6, y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+}
+
+function drawArrow(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+  cell: number,
+  color: string,
+  dashed: boolean,
+) {
+  const length = cell * 0.24;
+  const tipX = x + dx * length;
+  const tipY = y + dy * length;
+  context.save();
+  context.strokeStyle = color;
+  context.lineWidth = Math.max(1.5, cell * 0.04);
+  context.lineCap = "round";
+  if (dashed) context.setLineDash([cell * 0.04, cell * 0.04]);
+  context.beginPath();
+  context.moveTo(x + dx * cell * 0.06, y + dy * cell * 0.06);
+  context.lineTo(tipX, tipY);
+  context.moveTo(tipX, tipY);
+  context.lineTo(tipX - dx * cell * 0.09 - dy * cell * 0.07, tipY - dy * cell * 0.09 + dx * cell * 0.07);
+  context.moveTo(tipX, tipY);
+  context.lineTo(tipX - dx * cell * 0.09 + dy * cell * 0.07, tipY - dy * cell * 0.09 - dx * cell * 0.07);
+  context.stroke();
+  context.restore();
+}
 /** Cells around the head that stay lit on blackout boards. */
 const BLACKOUT_RADIUS = 2.6;
 /** How long a hint takes to draw itself. */
@@ -88,6 +132,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { getThemeColors, currentTheme } = useTheme();
+  const { t } = useI18n();
+  const colorBlind = useSettingsStore(state => state.colorBlind);
 
   const [path, setPath] = useState<Point[]>([level.start]);
   const pathRef = useRef<Point[]>([level.start]);
@@ -122,6 +168,15 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     });
     return map;
   }, [mechanics.pairs]);
+
+  const phaseMap = useMemo(
+    () => new Map(mechanics.phaseNodes.map(node => [pointKey(node.point), node.parity])),
+    [mechanics.phaseNodes],
+  );
+  const flipMap = useMemo(
+    () => new Map(mechanics.flipArrows.map(rule => [pointKey(rule.point), rule])),
+    [mechanics.flipArrows],
+  );
 
   const rules = useMemo(() => createMoveRules(level, mechanics), [level, mechanics]);
   const syncMap = useMemo(
@@ -470,6 +525,40 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.textBaseline = "middle";
         context.fillText(label, badgeX, badgeY + 0.5);
       }
+
+      // Rift rule: a diamond that only opens on even (two dots) or odd (one dot) positions.
+      const phaseParity = phaseMap.get(pointKey(node));
+      if (phaseParity !== undefined) {
+        const open = !isVisited && (visitedNodes + 1) % 2 === phaseParity;
+        const radius = cell * (0.3 + (open && !reducedMotion ? Math.sin(time / 170) * 0.02 : 0));
+        context.beginPath();
+        context.moveTo(centerX, centerY - radius);
+        context.lineTo(centerX + radius, centerY);
+        context.lineTo(centerX, centerY + radius);
+        context.lineTo(centerX - radius, centerY);
+        context.closePath();
+        context.strokeStyle = PHASE_COLOR;
+        context.globalAlpha *= isVisited || open ? 1 : 0.45;
+        context.lineWidth = Math.max(1.5, cell * (open ? 0.05 : 0.035));
+        if (open) {
+          context.shadowColor = PHASE_COLOR;
+          context.shadowBlur = glow(12);
+        }
+        context.stroke();
+        context.shadowBlur = 0;
+        drawParityDots(context, centerX, centerY - cell * 0.4, phaseParity, Math.max(1.5, cell * 0.035), PHASE_COLOR);
+      }
+
+      // Rift rule: an arrow that reverses depending on the line's current position.
+      const flip = flipMap.get(pointKey(node));
+      if (flip) {
+        const isHeadHere = head !== undefined && head.x === node.x && head.y === node.y;
+        const activeSign = visitedNodes % 2 === flip.parity ? 1 : -1;
+        const sign = isHeadHere ? activeSign : 1;
+        drawArrow(context, centerX, centerY, flip.dx * sign, flip.dy * sign, cell, FLIP_COLOR, false);
+        drawArrow(context, centerX, centerY, -flip.dx * sign, -flip.dy * sign, cell, `${FLIP_COLOR}66`, true);
+        drawParityDots(context, centerX, centerY + cell * 0.4, flip.parity, Math.max(1.5, cell * 0.035), FLIP_COLOR);
+      }
       context.restore();
     });
 
@@ -689,6 +778,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     reducedMotion,
     getThemeColors,
     currentTheme,
+    colorBlind,
     mechanics.walls,
     mechanics.portals,
     ghostPath,
@@ -696,6 +786,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     oneWayMap,
     pairMap,
     syncMap,
+    phaseMap,
+    flipMap,
     nodeKeys,
     mechanics.blackout,
   ]);
@@ -796,7 +888,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Pitch climbs with the level's coverage, so the melody itself shows progress.
     const visited = new Set(next.map(pointKey));
     const covered = level.nodes.filter(node => visited.has(pointKey(node))).length;
-    playMoveSound(level.nodes.length > 0 ? covered / level.nodes.length : 0);
+    const coverage = level.nodes.length > 0 ? covered / level.nodes.length : 0;
+    playMoveSound(coverage);
+    const quarter = (value: number) => Math.floor(value * 4);
+    const before = level.nodes.length > 0
+      ? (covered - 1) / level.nodes.length
+      : 0;
+    if (coverage < 1 && quarter(coverage) > quarter(before)) playMilestoneHaptic();
 
     if (level.nodes.every(node => visited.has(pointKey(node)))) {
       wonRef.current = true;
@@ -925,6 +1023,45 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     tryMove({ x: head.x + direction.x, y: head.y + direction.y });
   }, [paused, tryMove, undoPath]);
 
+  // Gamepad: D-pad or left stick steers the head, B undoes. Repeats while held.
+  useEffect(() => {
+    if (paused || typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") return;
+    let frame = 0;
+    let heldKey: string | null = null;
+    let lastMoveAt = 0;
+    let undoHeld = false;
+
+    const poll = (time: number) => {
+      const pad = Array.from(navigator.getGamepads()).find(Boolean);
+      if (pad) {
+        const pressed = (index: number) => Boolean(pad.buttons[index]?.pressed);
+        const [axisX = 0, axisY = 0] = pad.axes;
+        let direction: Point | null = null;
+        if (pressed(12) || axisY < -0.6) direction = { x: 0, y: -1 };
+        else if (pressed(13) || axisY > 0.6) direction = { x: 0, y: 1 };
+        else if (pressed(14) || axisX < -0.6) direction = { x: -1, y: 0 };
+        else if (pressed(15) || axisX > 0.6) direction = { x: 1, y: 0 };
+
+        const directionKey = direction ? `${direction.x},${direction.y}` : null;
+        if (direction && (directionKey !== heldKey || time - lastMoveAt > 140)) {
+          const head = pathRef.current[pathRef.current.length - 1];
+          if (head) tryMove({ x: head.x + direction.x, y: head.y + direction.y });
+          lastMoveAt = time;
+        }
+        heldKey = directionKey;
+
+        const undo = pressed(1);
+        if (undo && !undoHeld) undoPath();
+        undoHeld = undo;
+      }
+      frame = requestAnimationFrame(poll);
+    };
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [paused, tryMove, undoPath]);
+
+  const visitedCount = countVisitedNodes(path);
+
   return (
     <div
       ref={containerRef}
@@ -940,6 +1077,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         overscrollBehavior: "contain",
       } as React.CSSProperties}
     >
+      <span className="sr-only" aria-live="polite" role="status">
+        {t("nodesVisitedLive", { count: visitedCount, total: level.nodes.length })}
+      </span>
       <motion.canvas
         ref={canvasRef}
         initial={reducedMotion ? false : { opacity: 0, scale: 0.94 }}
