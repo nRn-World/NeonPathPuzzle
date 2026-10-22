@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { useAchievements } from '@/hooks/use-achievements';
 import { useI18n } from '@/lib/i18n';
 import { achievements, getRarityColor, getRarityOrder } from '@/lib/achievements';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Lock, Check } from 'lucide-react';
+import { Trophy, Check } from 'lucide-react';
 
 export function AchievementsPanel() {
   const { unlockedAchievements, progress, isUnlocked } = useAchievements();

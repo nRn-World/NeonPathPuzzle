@@ -65,7 +65,6 @@
 - 🎨 **5 Unlockable Neon Themes** - Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset
 - ⚡ **4 Strategic Power-ups** - Time Freeze, Path Reveal, Undo Shield, Score Boost
 - 🏆 **Achievement System** - Unlock 10+ achievements as you progress
-- 🛠️ **Level editor** - Draw your own circuits and share them as links
 - 💾 **Level Code System** - Jump to any level with permanent 4-digit codes
 - ☁️ **Save backup** - Export and restore progress, achievements, power-ups, tokens and themes as JSON
 - ⚙️ **Settings & Accessibility** - Sound, haptics, reduced motion, ghost toggle, keyboard shortcuts, auto-pause

@@ -13,12 +13,14 @@ import Home from "@/pages/Home";
 import Game from "@/pages/Game";
 import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
-import Privacy from "@/pages/Privacy";
-import Duel from "@/pages/Duel";
 import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
 import { applyMotionPreference, applyTextPreference, useSettingsStore } from "@/lib/settings";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { useLanguageStore } from "@/lib/i18n";
+
+// Loaded on demand: neither page is needed to start playing.
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const Duel = lazy(() => import("@/pages/Duel"));
 
 function LevelGame() {
   return <Game />;
@@ -35,17 +37,19 @@ function ZenGame() {
 function AppRouter() {
   return (
     <Router hook={useHashLocation}>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/play/:id" component={LevelGame} />
-        <Route path="/daily" component={Daily} />
-        <Route path="/weekly" component={Weekly} />
-        <Route path="/zen/:id" component={ZenGame} />
-        <Route path="/rift/:id" component={RiftGame} />
-        <Route path="/duel" component={Duel} />
-        <Route path="/privacy" component={Privacy} />
-        <Route component={NotFound} />
-      </Switch>
+      <Suspense fallback={<div className="h-full w-full bg-background" />}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/play/:id" component={LevelGame} />
+          <Route path="/daily" component={Daily} />
+          <Route path="/weekly" component={Weekly} />
+          <Route path="/zen/:id" component={ZenGame} />
+          <Route path="/rift/:id" component={RiftGame} />
+          <Route path="/duel" component={Duel} />
+          <Route path="/privacy" component={Privacy} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
     </Router>
   );
 }

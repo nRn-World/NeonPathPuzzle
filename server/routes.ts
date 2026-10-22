@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { generateLevel, MAX_LEVEL_ID } from "@shared/level-generator";

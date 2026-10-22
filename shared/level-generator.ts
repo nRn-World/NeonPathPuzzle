@@ -261,7 +261,6 @@ function biasedPath(
     const dy = current.y - (previous ?? current).y;
     const sameDirection = candidate.x - current.x === dx && candidate.y - current.y === dy;
     const edge = Math.min(candidate.x, candidate.y, size - 1 - candidate.x, size - 1 - candidate.y);
-    const center = Math.abs(candidate.x - (size - 1) / 2) + Math.abs(candidate.y - (size - 1) / 2);
     const tie = random();
 
     switch (bias) {

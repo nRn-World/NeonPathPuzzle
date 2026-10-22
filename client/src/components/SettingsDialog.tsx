@@ -28,7 +28,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useUserId();
   const { toast } = useToast();
-  const { t, language, setLanguage } = useI18n();
+  const { t } = useI18n();
   const hintTokens = useHintTokenStore(state => state.tokens);
   const {
     soundEnabled,

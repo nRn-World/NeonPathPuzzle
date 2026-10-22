@@ -829,12 +829,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     return { x: gridX, y: gridY };
   }, [level.gridSize]);
 
-  const isAdjacent = (first: Point, second: Point) => {
-    const dx = Math.abs(first.x - second.x);
-    const dy = Math.abs(first.y - second.y);
-    return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-  };
-
   const notifyPathChange = (nextPath: Point[]) => {
     callbacksRef.current.onPathChange?.(countVisitedNodes(nextPath), nextPath.length);
     callbacksRef.current.onStuckChange?.(rules.isStuck(nextPath));
