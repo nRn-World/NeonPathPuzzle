@@ -298,4 +298,13 @@ export const tr: Record<TranslationKey, string> = {
   largeText: "Büyük yazı",
   largeTextDesc: "Arayüz yazısını yaklaşık %18 büyütür.",
   nodesVisitedLive: "{total} düğümden {count} tanesi bağlandı",
+  topRankReached: "En yüksek rütbeye ulaşıldı",
+  starsToNextRank: "Sonraki rütbeye {count} yıldız",
+  flawlessClears: "Kusursuz geçişler",
+  averageStars: "Ortalama yıldız",
+  timeOnSolved: "Çözülen seviyelerdeki süre",
+  activityTitle: "Etkinlik · son 12 hafta",
+  activeDays: "{count} aktif gün",
+  chaptersProgress: "Bölümler",
+  fastestClears: "En hızlı geçişler",
 };

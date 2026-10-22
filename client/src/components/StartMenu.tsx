@@ -15,16 +15,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
 import { MenuHero } from "@/components/MenuHero";
+import { ProfilePanel } from "@/components/ProfilePanel";
 import { content } from "@/lib/contentText";
 import { getChapterForLevel } from "@/lib/chapters";
-import { getBrainRank } from "@/lib/rank";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
-import { formatDuration } from "@/lib/scoring";
 import { getLevelFromCode } from "@/lib/levelCodes";
 import { getLevelMessage } from "@/lib/levelMessages";
 import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
@@ -74,16 +73,8 @@ export function StartMenu() {
   const totalStars = summary?.totalStars ?? 0;
   const bestStreak = summary?.bestStreak ?? 0;
   const continueLevel = summary?.continueLevel ?? 1;
-  const runCount = summary?.runCount ?? completedCount;
   const maxStars = TOTAL_LEVELS * 3;
   const hasProgress = completedCount > 0;
-  const recordValues = Object.values(summary?.records ?? {});
-  const threeStarClears = recordValues.filter(record => record.stars === 3).length;
-  const bestTime = recordValues.reduce<number | null>((best, record) => {
-    if (record.bestTimeMs === null) return best;
-    return best === null ? record.bestTimeMs : Math.min(best, record.bestTimeMs);
-  }, null);
-  const totalScore = recordValues.reduce((total, record) => total + (record.bestScore ?? 0), 0);
 
   useEffect(() => {
     if (screen === "completed") void refetch();
@@ -209,28 +200,12 @@ export function StartMenu() {
                       </TabsContent>
 
                       <TabsContent value="stats" className="mt-4">
-                        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-                          <StatCard label={t("levelsSolvedStat")} value={`${completedCount}/${TOTAL_LEVELS}`} />
-                          <StatCard label={t("starsEarnedStat")} value={`${totalStars}/${maxStars}`} />
-                          <StatCard label={t("threeStarClears")} value={String(threeStarClears)} />
-                          <StatCard
-                            label={t("bestTimeStat")}
-                            value={bestTime !== null ? formatDuration(bestTime) : "—"}
-                          />
-                          <StatCard label={t("dailyStreak")} value={String(summary?.dailyStreak ?? 0)} />
-                          <StatCard label={t("bestStreakStat")} value={String(bestStreak)} />
-                          <StatCard
-                            label={t("completion")}
-                            value={`${Math.round((completedCount / TOTAL_LEVELS) * 100)}%`}
-                          />
-                          <StatCard label={t("totalScore")} value={totalScore.toLocaleString()} />
-                          <StatCard
-                            label={t("brainRank")}
-                            value={upper(t(getBrainRank(totalStars).key))}
-                          />
-                          <StatCard label={t("runStat")} value={`${runCount}/${TOTAL_LEVELS}`} />
-                          <StatCard label={t("crashesStat")} value={String(summary?.crashes ?? 0)} />
-                        </div>
+                        <ProfilePanel
+                          progress={getProgress(userId)}
+                          crashes={summary?.crashes ?? 0}
+                          dailyStreak={summary?.dailyStreak ?? 0}
+                          bestStreak={bestStreak}
+                        />
                       </TabsContent>
                     </Tabs>
                   </motion.div>
@@ -426,15 +401,6 @@ function MenuButton({
       {icon}
       {label}
     </Button>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-none border border-white/10 bg-black/30 p-4">
-      <div className="font-orbitron text-xl font-bold text-primary">{value}</div>
-      <div className="mt-1 font-exo text-xs text-muted-foreground">{label}</div>
-    </div>
   );
 }
 

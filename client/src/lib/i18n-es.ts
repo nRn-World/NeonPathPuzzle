@@ -298,4 +298,13 @@ export const es: Record<TranslationKey, string> = {
   largeText: "Texto grande",
   largeTextDesc: "Aumenta el texto de la interfaz un 18 %.",
   nodesVisitedLive: "{count} de {total} nodos conectados",
+  topRankReached: "Rango máximo alcanzado",
+  starsToNextRank: "{count} estrellas para el siguiente rango",
+  flawlessClears: "Niveles perfectos",
+  averageStars: "Estrellas de media",
+  timeOnSolved: "Tiempo en niveles superados",
+  activityTitle: "Actividad · últimas 12 semanas",
+  activeDays: "{count} días activos",
+  chaptersProgress: "Capítulos",
+  fastestClears: "Niveles más rápidos",
 };

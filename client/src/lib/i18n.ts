@@ -313,6 +313,15 @@ const en = {
   largeText: "Large text",
   largeTextDesc: "Makes interface text about 18% larger.",
   nodesVisitedLive: "{count} of {total} nodes connected",
+  topRankReached: "Top rank reached",
+  starsToNextRank: "{count} stars to the next rank",
+  flawlessClears: "Flawless clears",
+  averageStars: "Average stars",
+  timeOnSolved: "Time on solved levels",
+  activityTitle: "Activity · last 12 weeks",
+  activeDays: "{count} active days",
+  chaptersProgress: "Chapters",
+  fastestClears: "Fastest clears",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -615,6 +624,15 @@ const sv: Record<TranslationKey, string> = {
   largeText: "Stor text",
   largeTextDesc: "Gör gränssnittets text cirka 18 % större.",
   nodesVisitedLive: "{count} av {total} noder anslutna",
+  topRankReached: "Högsta rang nådd",
+  starsToNextRank: "{count} stjärnor till nästa rang",
+  flawlessClears: "Felfria banor",
+  averageStars: "Snittstjärnor",
+  timeOnSolved: "Tid på klarade banor",
+  activityTitle: "Aktivitet · senaste 12 veckorna",
+  activeDays: "{count} aktiva dagar",
+  chaptersProgress: "Kapitel",
+  fastestClears: "Snabbaste banor",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
