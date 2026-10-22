@@ -10,7 +10,7 @@ import React, {
 import { type LevelResponse, type Point } from "@shared/schema";
 import { createMoveRules, EMPTY_MECHANICS, type LevelMechanics } from "@shared/mechanics";
 import { motion } from "framer-motion";
-import { playMoveSound, playBacktrackSound, playWinSound } from "@/lib/sounds";
+import { playMoveSound, playBacktrackSound, playMilestoneHaptic, playWinSound } from "@/lib/sounds";
 import { useTheme } from "@/hooks/use-theme";
 import { undoLastStep } from "@/lib/undoPath";
 
@@ -796,7 +796,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Pitch climbs with the level's coverage, so the melody itself shows progress.
     const visited = new Set(next.map(pointKey));
     const covered = level.nodes.filter(node => visited.has(pointKey(node))).length;
-    playMoveSound(level.nodes.length > 0 ? covered / level.nodes.length : 0);
+    const coverage = level.nodes.length > 0 ? covered / level.nodes.length : 0;
+    playMoveSound(coverage);
+    const quarter = (value: number) => Math.floor(value * 4);
+    const before = level.nodes.length > 0
+      ? (covered - 1) / level.nodes.length
+      : 0;
+    if (coverage < 1 && quarter(coverage) > quarter(before)) playMilestoneHaptic();
 
     if (level.nodes.every(node => visited.has(pointKey(node)))) {
       wonRef.current = true;
