@@ -7,6 +7,8 @@ import {
   getBackupCode,
   getPlayer,
   leaderboardEnabled,
+  MAX_NAME_CHANGES,
+  nameChangesLeft,
   rerollName,
   restoreFromBackupCode,
   setOnline,
@@ -74,11 +76,20 @@ export function RankingPanel() {
               <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{t("rankingYourName")}</div>
               <div className="font-orbitron text-lg font-bold text-primary">{player.name}</div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setPlayer(rerollName())} className="rounded-none border-white/15">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={nameChangesLeft(player) === 0}
+              onClick={() => setPlayer(rerollName())}
+              className="rounded-none border-white/15"
+            >
               <Shuffle className="mr-1.5 h-3.5 w-3.5" />
               {t("rankingNewName")}
             </Button>
           </div>
+          <p className="font-mono text-xs text-amber-300">
+            {t("nameChangesLeft", { left: nameChangesLeft(player), max: MAX_NAME_CHANGES })}
+          </p>
           <p className="font-exo text-[11px] text-muted-foreground">{t("rankingNameHint")}</p>
 
           <div className="space-y-2 border-t border-white/10 pt-3">
