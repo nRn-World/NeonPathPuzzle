@@ -29,7 +29,7 @@ export interface RoomEnv {
 }
 
 /** After this long in the queue a player is offered a bot, so the game works with few players online. */
-export const BOT_AFTER_MS = 18_000;
+export const BOT_AFTER_MS = 21_000;
 /** How far apart two waiting ratings may be at first, and how fast that widens. */
 const BASE_WINDOW = 150;
 const WINDOW_PER_SECOND = 20;

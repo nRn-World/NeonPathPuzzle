@@ -356,7 +356,7 @@ export const tr: Record<TranslationKey, string> = {
   duelRules: "Rastgele bir oyuncuyla aynı seviyelerde yarış. Üç seviye, her birini en hızlı çözen kazanır ve ikiyi ilk alan maçı kazanır. Kazan ve puan listesinde yüksel.",
   duelFind: "Maç bul",
   duelSearching: "Rakip aranıyor…",
-  duelBotHint: "Birkaç saniye içinde kimse bulunmazsa hemen oynayabilmen için bir antrenman botu katılır.",
+  duelBotHint: "Yaklaşık 20 saniye içinde kimse bulunmazsa hemen oynayabilmen için bir antrenman botu katılır.",
   duelCancel: "İptal",
   duelRound: "Tur {n}",
   duelYouWonRound: "Turu sen kazandın!",

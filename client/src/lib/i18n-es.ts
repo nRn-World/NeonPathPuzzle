@@ -356,7 +356,7 @@ export const es: Record<TranslationKey, string> = {
   duelRules: "Compite contra un jugador aleatorio en los mismos niveles. Tres niveles, gana cada uno la solución más rápida y quien gane dos se lleva la partida. Gana para subir en la clasificación.",
   duelFind: "Buscar partida",
   duelSearching: "Buscando rival…",
-  duelBotHint: "Si no aparece nadie en unos segundos, se une un bot de práctica para que juegues enseguida.",
+  duelBotHint: "Si no aparece nadie en unos 20 segundos, se une un bot de práctica para que juegues enseguida.",
   duelCancel: "Cancelar",
   duelRound: "Ronda {n}",
   duelYouWonRound: "¡Ganaste la ronda!",
