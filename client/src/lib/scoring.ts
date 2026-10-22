@@ -35,6 +35,12 @@ export function calculateScore(input: {
   return Math.round(base * multiplier);
 }
 
+/** A finished time with tenths ("0:07.4"): close races and quick boards need the extra digit. */
+export function formatResultTime(ms: number): string {
+  const tenths = Math.max(0, Math.floor(ms / 100));
+  return `${formatDuration(tenths * 100)}.${tenths % 10}`;
+}
+
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);

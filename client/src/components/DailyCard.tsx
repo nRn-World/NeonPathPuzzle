@@ -13,7 +13,7 @@ import {
   type DailyState,
 } from "@/lib/daily";
 import { useUserId } from "@/hooks/use-game";
-import { formatDuration } from "@/lib/scoring";
+import { formatResultTime } from "@/lib/scoring";
 import { useI18n, upper } from "@/lib/i18n";
 
 function weekdayLabel(dateKey: string): string {
@@ -56,7 +56,7 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-orbitron text-sm font-bold text-secondary">{upper(t("dailyChallenge"))}</h3>
+              <h3 className="font-orbitron text-[13px] font-bold leading-tight text-secondary sm:text-sm">{upper(t("dailyChallenge"))}</h3>
               {activeStreak > 0 && (
                 <span className="flex items-center gap-1 text-xs text-orange-300">
                   <Flame className="h-3 w-3" />
@@ -66,7 +66,7 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
             </div>
             <p className="font-exo text-xs text-muted-foreground">
               {completed && today
-                ? t("solvedIn", { time: formatDuration(today.timeMs), stars: today.stars })
+                ? t("solvedIn", { time: formatResultTime(today.timeMs), stars: today.stars })
                 : t("samePuzzle", { level: levelId })}
               <span className="mx-1.5 text-white/20">·</span>
               <span className="font-mono text-[10px] text-secondary/80">
@@ -107,8 +107,8 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
                 key={key}
                 title={
                   result
-                    ? `${key} · ${result.stars}/3 stars · ${formatDuration(result.timeMs)}`
-                    : `${key} · not played`
+                    ? `${key} · ${t("starsOutOfThree", { n: result.stars })} · ${formatResultTime(result.timeMs)}`
+                    : `${key} · ${t("notPlayed")}`
                 }
                 className={`flex flex-1 flex-col items-center gap-1 rounded-none border px-1 py-1 ${
                   isToday ? "border-secondary/50 bg-secondary/10" : "border-transparent"

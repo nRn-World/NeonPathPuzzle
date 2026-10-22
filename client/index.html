@@ -20,7 +20,9 @@
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Shown until React mounts, so a slow first load is never a blank screen. -->
+    <div id="root"><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0f1e;color:#00f3ff;font:800 28px/1 system-ui,sans-serif;letter-spacing:.3em;animation:boot 1.4s ease-in-out infinite alternate">NEON PATH</div></div>
+    <style>@keyframes boot{from{opacity:.25}to{opacity:1}}html,body{background:#0a0f1e}</style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

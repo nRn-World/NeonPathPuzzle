@@ -20,7 +20,7 @@ import {
 import { getDateKey } from "@/lib/daily";
 import { useSettingsStore } from "@/lib/settings";
 import { playCrashSound, playWinSound } from "@/lib/sounds";
-import { formatDuration } from "@/lib/scoring";
+import { formatDuration, formatResultTime } from "@/lib/scoring";
 import { useI18n, upper } from "@/lib/i18n";
 
 type Phase = "lobby" | "searching" | "playing" | "finished" | "lost-connection";
@@ -102,7 +102,8 @@ export default function Duel() {
         break;
       case "roundResult":
         setScore(event.score);
-        setRoundNote(event.winner === "you" ? t("duelYouWonRound") : event.winner === "opponent" ? t("duelOppWonRound") : t("duelNoWinner"));
+        const time = event.winner === "none" ? "" : ` · ${formatResultTime(event.timeMs)}`;
+        setRoundNote((event.winner === "you" ? t("duelYouWonRound") : event.winner === "opponent" ? t("duelOppWonRound") : t("duelNoWinner")) + time);
         if (event.winner === "you") playWinSound();
         else if (event.winner === "opponent") playCrashSound();
         if (event.opponentPath) {
@@ -380,11 +381,12 @@ export default function Duel() {
 }
 
 function Shell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
+  const { t } = useI18n();
   return (
     <main className="safe-scroll h-full overflow-y-auto bg-background px-5 py-8 text-foreground">
       <section className="mx-auto max-w-md space-y-6 border border-primary/20 bg-black/40 p-6">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onBack} aria-label="Back" className="p-1 text-primary hover:text-white">
+          <button type="button" onClick={onBack} aria-label={t("back")} className="p-1 text-primary hover:text-white">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="neon-text font-orbitron text-3xl font-black text-primary">{upper(title)}</h1>

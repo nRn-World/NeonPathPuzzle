@@ -16,7 +16,7 @@ import {
   type BoardResult,
 } from "@/lib/leaderboard";
 import { useI18n, upper, type TranslationKey } from "@/lib/i18n";
-import { formatDuration } from "@/lib/scoring";
+import { formatResultTime } from "@/lib/scoring";
 
 const BOARDS: { kind: BoardKind; label: TranslationKey }[] = [
   { kind: "duel", label: "rankingDuel" },
@@ -58,7 +58,7 @@ export function RankingPanel() {
     return <p className="border border-white/10 bg-black/30 p-5 text-left font-exo text-sm text-muted-foreground">{t("rankingOff")}</p>;
   }
 
-  const format = (value: number) => (kind === "stars" ? `${value} ★` : kind === "duel" ? String(value) : formatDuration(value));
+  const format = (value: number) => (kind === "stars" ? `${value} ★` : kind === "duel" ? String(value) : formatResultTime(value));
 
   return (
     <div className="space-y-4 text-left">

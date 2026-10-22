@@ -9,7 +9,7 @@ import { Check, Copy, Home, Play, RotateCcw, Share2, Star } from "lucide-react";
 import { Link } from "wouter";
 import { RIFT_LAST_LEVEL } from "@/lib/rift";
 import { generateLevelCode } from "@/lib/levelCodes";
-import { formatDuration } from "@/lib/scoring";
+import { formatDuration, formatResultTime } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
 import { shareResult, type ShareOutcome } from "@/lib/shareCard";
 import { useI18n, upper } from "@/lib/i18n";
@@ -187,8 +187,8 @@ export function WinModal({
               {!isZen ? (
                 <>
                   <div className="grid grid-cols-3 gap-2 rounded-none border border-white/10 bg-background/40 p-3">
-                    <Stat label={upper(t("time"))} value={formatDuration(timeMs)} highlight={isNewBest} />
-                    <Stat label={upper(t("best"))} value={bestTimeMs !== null ? formatDuration(bestTimeMs) : "—"} />
+                    <Stat label={upper(t("time"))} value={formatResultTime(timeMs)} highlight={isNewBest} />
+                    <Stat label={upper(t("best"))} value={bestTimeMs !== null ? formatResultTime(bestTimeMs) : "—"} />
                     <Stat label={upper(t("score"))} value={score.toLocaleString()} highlight={isNewBestScore} />
                   </div>
 
@@ -252,7 +252,7 @@ export function WinModal({
                     </code>
                     <button
                       onClick={handleCopyCode}
-                      aria-label="Copy level code"
+                      aria-label={t("copyLevelCode")}
                       className="rounded p-1.5 transition-colors hover:bg-secondary/20"
                     >
                       {codeCopied

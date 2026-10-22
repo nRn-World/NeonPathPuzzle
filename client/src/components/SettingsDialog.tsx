@@ -102,7 +102,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
         <Button
           variant="outline"
           size="sm"
-          aria-label="Settings"
+          aria-label={t("settings")}
           className={triggerClassName ?? "h-8 w-8 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary md:h-9 md:w-9"}
         >
           <GearIcon className="h-5 w-5 md:h-[22px] md:w-[22px]" />
@@ -219,7 +219,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
                 accept="application/json,.json"
                 onChange={handleImport}
                 className="hidden"
-                aria-label="Restore save file"
+                aria-label={t("restoreSave")}
               />
             </div>
             <p className="text-[10px] text-muted-foreground/70">
