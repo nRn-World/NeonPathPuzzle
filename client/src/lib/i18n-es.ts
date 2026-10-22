@@ -307,4 +307,13 @@ export const es: Record<TranslationKey, string> = {
   activeDays: "{count} días activos",
   chaptersProgress: "Capítulos",
   fastestClears: "Niveles más rápidos",
+  chapterLabel: "Capítulo {n}",
+  beginChapter: "Empezar",
+  skip: "Saltar",
+  riftName: "La Grieta",
+  bonusSector: "Sector extra",
+  chapterLocked: "> ACCESO DENEGADO.\nSupera los niveles anteriores para abrir este capítulo.",
+  riftLocked: "Supera 100 niveles para abrirla",
+  worldMap: "Mapa del mundo",
+  worldMapButton: "Mapa",
 };

@@ -1,5 +1,5 @@
 import { content } from "@/lib/contentText";
-import { getChapterForLevel } from "@/lib/chapters";
+import { chapters, getChapterForLevel } from "@/lib/chapters";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,8 @@ import { useI18n, upper } from "@/lib/i18n";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
 import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
 import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
+import { ChapterIntro } from "@/components/ChapterIntro";
+import { hasSeenChapterIntro, markChapterIntroSeen } from "@/lib/story";
 import { hasSeenIntro, markIntroSeen, MechanicIntro, MECHANIC_INTROS } from "@/components/MechanicIntro";
 import {
   crashRun,
@@ -164,6 +166,7 @@ export default function Game({ mode = "level" }: GameProps) {
   const [confirmCrash, setConfirmCrash] = useState(false);
   const [crash, setCrash] = useState<{ levelId: number; lost: number } | null>(null);
   const [introLevel, setIntroLevel] = useState<number | null>(null);
+  const [chapterIntro, setChapterIntro] = useState<number | null>(null);
   const limited = mode === "level" && frontier;
   const attemptNumber = attemptStarted ? attemptsUsed : Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
 
@@ -279,6 +282,8 @@ export default function Game({ mode = "level" }: GameProps) {
     }
 
     setIntroLevel(mode === "level" && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
+    const openingChapter = mode === "level" ? chapters.find(item => item.from === levelId) : undefined;
+    setChapterIntro(openingChapter && !hasSeenChapterIntro(openingChapter.id) ? openingChapter.id : null);
 
     if (mode === "level") {
       markLevelPlayed(userId, levelId);
@@ -650,7 +655,7 @@ export default function Game({ mode = "level" }: GameProps) {
       if (target && (target.isContentEditable
         || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
-      if (crash || confirmCrash || introLevel !== null) return;
+      if (crash || confirmCrash || introLevel !== null || chapterIntro !== null) return;
 
       if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         if (!isScored) return;
@@ -677,7 +682,7 @@ export default function Game({ mode = "level" }: GameProps) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmCrash, crash, introLevel, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
+  }, [chapterIntro, confirmCrash, crash, introLevel, handleHint, handleRestart, hasWon, isScored, pauseReason, pauseGame, resumeGame]);
 
   const crashModal = (
     <CrashModal
@@ -816,7 +821,7 @@ export default function Game({ mode = "level" }: GameProps) {
               onPathChange={handlePathChange}
               onStuckChange={setStuck}
               reducedMotion={reducedMotion}
-              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null}
+              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null || chapterIntro !== null}
             />
           </div>
         </div>
@@ -856,8 +861,15 @@ export default function Game({ mode = "level" }: GameProps) {
           onUndo={() => canvasRef.current?.undo()}
           onRestart={() => (limited && attemptNumber >= MAX_ATTEMPTS ? crashNow() : resetTransientState())}
         />
+        <ChapterIntro
+          chapterId={chapterIntro}
+          onClose={() => {
+            if (chapterIntro !== null) markChapterIntroSeen(chapterIntro);
+            setChapterIntro(null);
+          }}
+        />
         <MechanicIntro
-          levelId={introLevel}
+          levelId={chapterIntro === null ? introLevel : null}
           onClose={() => {
             if (introLevel !== null) markIntroSeen(introLevel);
             setIntroLevel(null);

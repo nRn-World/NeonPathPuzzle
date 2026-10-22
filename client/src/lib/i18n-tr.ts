@@ -307,4 +307,13 @@ export const tr: Record<TranslationKey, string> = {
   activeDays: "{count} aktif gün",
   chaptersProgress: "Bölümler",
   fastestClears: "En hızlı geçişler",
+  chapterLabel: "Bölüm {n}",
+  beginChapter: "Başla",
+  skip: "Atla",
+  riftName: "Yarık",
+  bonusSector: "Bonus sektör",
+  chapterLocked: "> ERİŞİM REDDEDİLDİ.\nBu bölümü açmak için öncesindeki seviyeleri tamamla.",
+  riftLocked: "Açmak için 100 seviye tamamla",
+  worldMap: "Dünya haritası",
+  worldMapButton: "Harita",
 };

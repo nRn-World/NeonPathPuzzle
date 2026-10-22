@@ -322,6 +322,15 @@ const en = {
   activeDays: "{count} active days",
   chaptersProgress: "Chapters",
   fastestClears: "Fastest clears",
+  chapterLabel: "Chapter {n}",
+  beginChapter: "Begin",
+  skip: "Skip",
+  riftName: "The Rift",
+  bonusSector: "Bonus sector",
+  chapterLocked: "> ACCESS DENIED.\nClear the levels before this chapter to open it.",
+  riftLocked: "Clear 100 levels to open",
+  worldMap: "World map",
+  worldMapButton: "Map",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -633,6 +642,15 @@ const sv: Record<TranslationKey, string> = {
   activeDays: "{count} aktiva dagar",
   chaptersProgress: "Kapitel",
   fastestClears: "Snabbaste banor",
+  chapterLabel: "Kapitel {n}",
+  beginChapter: "Börja",
+  skip: "Hoppa över",
+  riftName: "Rämnan",
+  bonusSector: "Bonussektor",
+  chapterLocked: "> ÅTKOMST NEKAD.\nKlara banorna före detta kapitel för att öppna det.",
+  riftLocked: "Klara 100 banor för att öppna",
+  worldMap: "Världskarta",
+  worldMapButton: "Karta",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };

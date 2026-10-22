@@ -5,6 +5,7 @@ import {
   Heart,
   HelpCircle,
   Lock,
+  Map as MapIcon,
   Star,
   Trophy,
   X,
@@ -16,6 +17,8 @@ import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { ChapterBoard } from "@/components/ChapterBoard";
 import { MenuHero } from "@/components/MenuHero";
 import { ProfilePanel } from "@/components/ProfilePanel";
+import { WorldMap } from "@/components/WorldMap";
+import { countRiftCleared, readRiftProgress } from "@/lib/riftProgress";
 import { content } from "@/lib/contentText";
 import { getChapterForLevel } from "@/lib/chapters";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
@@ -44,7 +47,7 @@ const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
 import { playClickSound } from "@/lib/sounds";
 import { useI18n, upper } from "@/lib/i18n";
 
-type MenuScreen = "main" | "info" | "completed";
+type MenuScreen = "main" | "info" | "completed" | "map";
 
 export function StartMenu() {
   const [screen, setScreen] = useState<MenuScreen>("main");
@@ -141,6 +144,11 @@ export function StartMenu() {
                         icon={<HelpCircle className="h-4 w-4" />}
                         label={t("howToPlay")}
                         onClick={() => handleButtonClick(() => setScreen("info"))}
+                      />
+                      <MenuButton
+                        icon={<MapIcon className="h-4 w-4" />}
+                        label={t("worldMapButton")}
+                        onClick={() => handleButtonClick(() => setScreen("map"))}
                       />
                       <MenuButton
                         icon={<Trophy className="h-4 w-4" />}
@@ -305,6 +313,38 @@ export function StartMenu() {
                   >
                     {upper(t("backToMenu"))}
                   </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {screen === "map" && (
+              <motion.div
+                key="map"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="w-full max-w-2xl"
+              >
+                <div className="space-y-6 rounded-none border border-primary/20 bg-[#0a0f1e]/95 p-6 md:p-8">
+                  <div className="flex items-center justify-between">
+                    <h2 className="neon-text font-orbitron text-3xl font-bold text-primary md:text-4xl">
+                      {upper(t("worldMap"))}
+                    </h2>
+                    <button
+                      onClick={() => handleButtonClick(() => setScreen("main"))}
+                      aria-label={t("close")}
+                      className="p-2 text-primary transition-colors hover:text-secondary"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  <WorldMap
+                    continueLevel={continueLevel}
+                    completedLevels={summary?.completedLevels ?? []}
+                    records={summary?.records ?? {}}
+                    riftCleared={countRiftCleared(readRiftProgress())}
+                    onPlay={levelId => handleButtonClick(() => setLocation(`/play/${levelId}`))}
+                  />
                 </div>
               </motion.div>
             )}
