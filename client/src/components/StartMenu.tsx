@@ -5,7 +5,6 @@ import {
   Heart,
   HelpCircle,
   Lock,
-  PenLine,
   Star,
   Trophy,
   X,
@@ -160,12 +159,6 @@ export function StartMenu() {
                       <LanguageSwitch />
                       <ThemeSelector />
                       <SettingsDialog triggerClassName="h-9 w-9 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary" />
-                      <Button asChild variant="outline" size="sm" className="h-9 rounded-none border-white/15 font-mono text-[11px] uppercase tracking-wider">
-                        <Link href="/editor">
-                          <PenLine className="mr-1.5 h-3.5 w-3.5" />
-                          {t("editor")}
-                        </Link>
-                      </Button>
                     </>
                   )}
                 />

@@ -13,7 +13,6 @@ import Home from "@/pages/Home";
 import Game from "@/pages/Game";
 import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
-import Editor from "@/pages/Editor";
 import Privacy from "@/pages/Privacy";
 import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
 import { applyMotionPreference, useSettingsStore } from "@/lib/settings";
@@ -28,10 +27,6 @@ function ZenGame() {
   return <Game mode="zen" />;
 }
 
-function CustomGame() {
-  return <Game mode="custom" />;
-}
-
 function AppRouter() {
   return (
     <Router hook={useHashLocation}>
@@ -41,8 +36,6 @@ function AppRouter() {
         <Route path="/daily" component={Daily} />
         <Route path="/weekly" component={Weekly} />
         <Route path="/zen/:id" component={ZenGame} />
-        <Route path="/custom/:code" component={CustomGame} />
-        <Route path="/editor" component={Editor} />
         <Route path="/privacy" component={Privacy} />
         <Route component={NotFound} />
       </Switch>
