@@ -3,7 +3,8 @@ import test from "node:test";
 
 import { getDailyLevelId } from "../../client/src/lib/daily";
 import { generateLevel } from "../../shared/level-generator";
-import { handleSubmit, handleTop, sanitizeName, type Order, type Store } from "./logic";
+import { isGeneratedName, nameFromSeed } from "../../shared/names";
+import { handleSubmit, handleTop, type Order, type Store } from "./logic";
 
 function memoryStore(): Store {
   const rows = new Map<string, { board: string; playerId: string; name: string; value: number; at: number }>();
@@ -24,6 +25,16 @@ function memoryStore(): Store {
       const index = list.findIndex(row => row.playerId === playerId);
       return index < 0 ? null : { rank: index + 1, value: list[index].value };
     },
+    async getRating() {
+      return null;
+    },
+    async saveMatch() {},
+    async topRatings() {
+      return [];
+    },
+    async rankRating() {
+      return null;
+    },
   };
 }
 
@@ -31,25 +42,26 @@ const NOW = new Date(Date.UTC(2026, 9, 22, 12));
 const DATE_KEY = "2026-10-22";
 const PLAYER = "0123456789abcdef0123";
 
-test("names are trimmed, length-limited and filtered", () => {
-  assert.equal(sanitizeName("  Neo  Runner "), "Neo Runner");
-  assert.equal(sanitizeName("ab"), null);
-  assert.equal(sanitizeName("a".repeat(17)), null);
-  assert.equal(sanitizeName("http://x.se"), null);
-  assert.equal(sanitizeName("Hitler fan"), null);
-  assert.equal(sanitizeName("Åsa_Öberg"), "Åsa_Öberg");
+test("only generated names are accepted, and every seed makes one", () => {
+  for (let seed = 0; seed < 500; seed++) assert.equal(isGeneratedName(nameFromSeed(seed)), true);
+  assert.equal(nameFromSeed(7), nameFromSeed(7));
+  assert.equal(isGeneratedName("NeonFox42"), true);
+  assert.equal(isGeneratedName("Neo"), false);
+  assert.equal(isGeneratedName("http://x.se"), false);
+  assert.equal(isGeneratedName("NeonHitler42"), false);
+  assert.equal(isGeneratedName("NeonFox421"), false);
 });
 
 test("a real solution is accepted, a fake one is not", async () => {
   const store = memoryStore();
   const solution = generateLevel(getDailyLevelId(DATE_KEY)).solution;
-  const good = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "Neo", value: 90_000, path: solution }, store, NOW);
+  const good = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "NeonFox42", value: 90_000, path: solution }, store, NOW);
   assert.equal(good.status, 200);
-  const cut = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "Neo", value: 90_000, path: solution.slice(0, 5) }, store, NOW);
+  const cut = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "NeonFox42", value: 90_000, path: solution.slice(0, 5) }, store, NOW);
   assert.equal(cut.status, 422);
-  const instant = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "Neo", value: 10, path: solution }, store, NOW);
+  const instant = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "NeonFox42", value: 10, path: solution }, store, NOW);
   assert.equal(instant.status, 422);
-  const wrongDay = await handleSubmit({ kind: "daily", dateKey: "2026-09-01", playerId: PLAYER, name: "Neo", value: 90_000, path: solution }, store, NOW);
+  const wrongDay = await handleSubmit({ kind: "daily", dateKey: "2026-09-01", playerId: PLAYER, name: "NeonFox42", value: 90_000, path: solution }, store, NOW);
   assert.equal(wrongDay.status, 400);
 });
 
@@ -58,24 +70,24 @@ test("only the best time is kept and the board is ranked", async () => {
   const solution = generateLevel(getDailyLevelId(DATE_KEY)).solution;
   const submit = (playerId: string, name: string, value: number) =>
     handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId, name, value, path: solution }, store, NOW);
-  await submit(PLAYER, "Neo", 80_000);
-  await submit(PLAYER, "Neo", 95_000);
-  await submit("fedcba9876543210fedc", "Trin", 70_000);
+  await submit(PLAYER, "NeonFox42", 80_000);
+  await submit(PLAYER, "NeonFox42", 95_000);
+  await submit("fedcba9876543210fedc", "SwiftOwl11", 70_000);
 
   const top = (await handleTop("daily", PLAYER, DATE_KEY, store, NOW)).body as {
     entries: { rank: number; name: string; value: number; you: boolean }[];
     you: { rank: number; value: number };
   };
-  assert.deepEqual(top.entries.map(entry => [entry.rank, entry.name, entry.value]), [[1, "Trin", 70_000], [2, "Neo", 80_000]]);
+  assert.deepEqual(top.entries.map(entry => [entry.rank, entry.name, entry.value]), [[1, "SwiftOwl11", 70_000], [2, "NeonFox42", 80_000]]);
   assert.deepEqual(top.you, { rank: 2, value: 80_000 });
   assert.equal(top.entries[1].you, true);
 });
 
 test("star totals rank high to low and reject impossible values", async () => {
   const store = memoryStore();
-  assert.equal((await handleSubmit({ kind: "stars", playerId: PLAYER, name: "Neo", value: 123 }, store, NOW)).status, 200);
-  assert.equal((await handleSubmit({ kind: "stars", playerId: PLAYER, name: "Neo", value: 5000 }, store, NOW)).status, 400);
-  assert.equal((await handleSubmit({ kind: "nope", playerId: PLAYER, name: "Neo", value: 1 }, store, NOW)).status, 400);
+  assert.equal((await handleSubmit({ kind: "stars", playerId: PLAYER, name: "NeonFox42", value: 123 }, store, NOW)).status, 200);
+  assert.equal((await handleSubmit({ kind: "stars", playerId: PLAYER, name: "NeonFox42", value: 5000 }, store, NOW)).status, 400);
+  assert.equal((await handleSubmit({ kind: "nope", playerId: PLAYER, name: "NeonFox42", value: 1 }, store, NOW)).status, 400);
   const top = (await handleTop("stars", null, null, store, NOW)).body as { entries: unknown[] };
   assert.equal(top.entries.length, 1);
 });

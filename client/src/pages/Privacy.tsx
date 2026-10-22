@@ -34,7 +34,7 @@ export default function Privacy() {
           <div>
             <h2 className="mb-2 text-lg font-bold text-foreground">Optional online ranking</h2>
             <p>
-              Online rankings stay off until you choose a public name in the Ranking tab. After that the game sends your public name, a random player identifier created on your device, your total star count, and the time and line of your daily and weekly challenge runs (the line is only used to check the result is real). No real name, e-mail address, location, device identifier or advertising identifier is sent. You can stop at any time by not saving a name, and you can ask for your entries to be deleted by e-mail.
+              Online rankings and duels stay off until you tap "Join online play". After that the game sends a generated public name (you cannot type your own), a random player identifier created on your device, your total star count, the time and line of your daily, weekly and duel runs (the line is only used to check the result is real), and your duel rating and win/loss counts. Opponents see only your generated name and rating. No real name, e-mail address, location, device identifier or advertising identifier is sent. You can stop at any time with "Stop sharing and go offline", and you can ask for your entries to be deleted by e-mail.
             </p>
           </div>
           <div>

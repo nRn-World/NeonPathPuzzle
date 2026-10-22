@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Crown, Loader2 } from "lucide-react";
+import { Crown, Loader2, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDateKey } from "@/lib/daily";
 import {
   fetchBoard,
+  getBackupCode,
   getPlayer,
-  isValidName,
   leaderboardEnabled,
-  setPlayerName,
+  rerollName,
+  restoreFromBackupCode,
+  setOnline,
   type BoardKind,
   type BoardResult,
 } from "@/lib/leaderboard";
@@ -15,19 +17,22 @@ import { useI18n, upper, type TranslationKey } from "@/lib/i18n";
 import { formatDuration } from "@/lib/scoring";
 
 const BOARDS: { kind: BoardKind; label: TranslationKey }[] = [
+  { kind: "duel", label: "rankingDuel" },
   { kind: "daily", label: "rankingDaily" },
   { kind: "weekly", label: "rankingWeekly" },
   { kind: "stars", label: "rankingStars" },
 ];
 
-/** Online top lists. Nothing is sent until the player picks a public name. */
+/** Online top lists. Nothing is sent until the player joins; names are generated, never typed. */
 export function RankingPanel() {
   const { t } = useI18n();
   const [player, setPlayer] = useState(getPlayer);
-  const [draft, setDraft] = useState(player.name ?? "");
-  const [kind, setKind] = useState<BoardKind>("daily");
+  const [kind, setKind] = useState<BoardKind>("duel");
   const [result, setResult] = useState<BoardResult | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const [restore, setRestore] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState(false);
 
   useEffect(() => {
     if (!leaderboardEnabled()) return;
@@ -45,48 +50,96 @@ export function RankingPanel() {
     return () => {
       cancelled = true;
     };
-  }, [kind, player.name]);
+  }, [kind, player.id, player.online]);
 
   if (!leaderboardEnabled()) {
     return <p className="border border-white/10 bg-black/30 p-5 text-left font-exo text-sm text-muted-foreground">{t("rankingOff")}</p>;
   }
 
-  const format = (value: number) => (kind === "stars" ? `${value} ★` : formatDuration(value));
-  const nameOk = isValidName(draft);
+  const format = (value: number) => (kind === "stars" ? `${value} ★` : kind === "duel" ? String(value) : formatDuration(value));
 
   return (
     <div className="space-y-4 text-left">
-      <div className="space-y-2 border border-white/10 bg-black/30 p-4">
-        <label htmlFor="ranking-name" className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
-          {t("rankingNameLabel")}
-        </label>
-        <div className="flex gap-2">
-          <input
-            id="ranking-name"
-            value={draft}
-            maxLength={16}
-            onChange={event => setDraft(event.target.value)}
-            className="min-w-0 flex-1 border border-white/15 bg-white/5 px-3 py-2 font-exo text-sm focus:border-primary focus:outline-none"
-          />
-          <Button
-            disabled={!nameOk || draft.trim() === player.name}
-            onClick={() => setPlayer(setPlayerName(draft.trim().replace(/\s+/g, " ")))}
-            className="rounded-none font-bold text-background"
-          >
-            {t("rankingSave")}
+      {!player.online ? (
+        <div className="space-y-3 border border-primary/30 bg-primary/5 p-4">
+          <p className="font-exo text-sm">{t("rankingJoinDesc")}</p>
+          <Button onClick={() => setPlayer(setOnline(true))} className="rounded-none font-bold text-background">
+            {t("rankingJoin")}
           </Button>
         </div>
-        <p className="font-exo text-[11px] text-muted-foreground">{t("rankingNameHint")}</p>
-      </div>
+      ) : (
+        <div className="space-y-3 border border-white/10 bg-black/30 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{t("rankingYourName")}</div>
+              <div className="font-orbitron text-lg font-bold text-primary">{player.name}</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setPlayer(rerollName())} className="rounded-none border-white/15">
+              <Shuffle className="mr-1.5 h-3.5 w-3.5" />
+              {t("rankingNewName")}
+            </Button>
+          </div>
+          <p className="font-exo text-[11px] text-muted-foreground">{t("rankingNameHint")}</p>
 
-      <div className="grid grid-cols-3 gap-1.5" role="tablist">
+          <div className="space-y-2 border-t border-white/10 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowCode(value => !value)}
+              className="font-mono text-[11px] uppercase tracking-wider text-primary hover:underline"
+            >
+              {t("rankingBackup")}
+            </button>
+            {showCode && (
+              <>
+                <code className="block break-all border border-white/10 bg-black/40 p-2 font-mono text-xs">{getBackupCode()}</code>
+                <p className="font-exo text-[11px] text-muted-foreground">{t("rankingBackupDesc")}</p>
+              </>
+            )}
+            <div className="flex gap-2">
+              <input
+                value={restore}
+                onChange={event => setRestore(event.target.value)}
+                placeholder={t("rankingRestorePlaceholder")}
+                aria-label={t("rankingRestore")}
+                className="min-w-0 flex-1 border border-white/15 bg-white/5 px-3 py-2 font-mono text-xs focus:border-primary focus:outline-none"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={restore.trim() === ""}
+                onClick={() => {
+                  const restored = restoreFromBackupCode(restore);
+                  setNote(restored ? t("rankingRestored") : t("rankingRestoreFail"));
+                  if (restored) {
+                    setPlayer(restored);
+                    setRestore("");
+                  }
+                }}
+                className="rounded-none border-white/15"
+              >
+                {t("rankingRestore")}
+              </Button>
+            </div>
+            {note && <p className="font-exo text-xs text-muted-foreground">{note}</p>}
+            <button
+              type="button"
+              onClick={() => setPlayer(setOnline(false))}
+              className="font-exo text-[11px] text-muted-foreground underline hover:text-foreground"
+            >
+              {t("rankingLeave")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-4 gap-1.5" role="tablist">
         {BOARDS.map(board => (
           <button
             key={board.kind}
             role="tab"
             aria-selected={kind === board.kind}
             onClick={() => setKind(board.kind)}
-            className={`border px-2 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+            className={`border px-1 py-2 font-mono text-[10px] uppercase tracking-wider transition-colors sm:text-[11px] ${
               kind === board.kind ? "border-primary bg-primary/10 text-primary" : "border-white/10 text-muted-foreground hover:border-white/30"
             }`}
           >
