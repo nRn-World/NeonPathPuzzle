@@ -142,6 +142,7 @@ export function StartMenu() {
                   streak={summary?.dailyStreak ?? 0}
                   chapterName={upper(content.chapter(getChapterForLevel(continueLevel)).name)}
                   onPlay={() => handleButtonClick(handleStartClick)}
+                  onDuel={() => handleButtonClick(() => setLocation("/duel"))}
                   actions={(
                     <>
                       <MenuButton

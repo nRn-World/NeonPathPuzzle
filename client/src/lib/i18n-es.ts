@@ -375,4 +375,6 @@ export const es: Record<TranslationKey, string> = {
   duelBotNote: "Las partidas contra el bot dan unos puntos al ganar y nunca restan.",
   duelConnectionLost: "Se perdió la conexión. Inténtalo de nuevo.",
   duelChecking: "Comprobando tu línea…",
+  duelPlayOnline: "Jugar en línea",
+  duelPlayOnlineSub: "Duelo 1 contra 1 · rival aleatorio",
 };

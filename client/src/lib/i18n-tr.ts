@@ -375,4 +375,6 @@ export const tr: Record<TranslationKey, string> = {
   duelBotNote: "Bot maçları kazanınca birkaç puan verir ve asla puan kaybettirmez.",
   duelConnectionLost: "Bağlantı koptu. Tekrar dene.",
   duelChecking: "Çizgin kontrol ediliyor…",
+  duelPlayOnline: "Çevrimiçi oyna",
+  duelPlayOnlineSub: "1'e 1 düello · rastgele rakip",
 };
