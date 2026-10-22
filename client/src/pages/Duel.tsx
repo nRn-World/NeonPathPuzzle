@@ -47,6 +47,8 @@ export default function Duel() {
   const [roundNote, setRoundNote] = useState<string | null>(null);
   const [result, setResult] = useState<Extract<DuelEvent, { kind: "matchResult" }> | null>(null);
   const [now, setNow] = useState(() => performance.now());
+  /** When the server put us in the queue, and how long until the bot is added. */
+  const [queued, setQueued] = useState<{ at: number; botAfterMs: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const connection = useRef<DuelConnection | null>(null);
 
@@ -61,13 +63,17 @@ export default function Duel() {
 
   // One clock for the countdown and the round timer.
   useEffect(() => {
-    if (phase !== "playing") return;
-    const id = window.setInterval(() => setNow(performance.now()), 100);
+    if (phase !== "playing" && phase !== "searching") return;
+    const id = window.setInterval(() => setNow(performance.now()), 250);
     return () => window.clearInterval(id);
   }, [phase]);
 
   const onEvent = useCallback((event: DuelEvent) => {
     switch (event.kind) {
+      case "queued":
+        setQueued({ at: performance.now(), botAfterMs: event.botAfterMs });
+        setNow(performance.now());
+        break;
       case "match":
         setOpponent(event.opponent);
         setScore(NO_SCORE);
@@ -108,6 +114,7 @@ export default function Duel() {
     setResult(null);
     setRound(null);
     setOpponent(null);
+    setQueued(null);
     connection.current = new DuelConnection(onEvent);
     connection.current.findMatch();
     setPhase("searching");
@@ -135,6 +142,7 @@ export default function Duel() {
     };
   }, [round]);
 
+  const secondsLeft = queued ? Math.max(0, Math.ceil((queued.at + queued.botAfterMs - now) / 1000)) : 0;
   const countdown = round ? Math.ceil((round.startsAt - now) / 1000) : 0;
   const live = round !== null && now >= round.startsAt && roundNote === null;
   const elapsed = round ? Math.max(0, now - round.startsAt) : 0;
@@ -206,6 +214,15 @@ export default function Duel() {
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="font-orbitron text-lg font-bold">{t("duelSearching")}</p>
+          {queued ? (
+            <div className="w-full max-w-xs space-y-2">
+              <p className="font-orbitron text-5xl font-black text-primary" aria-live="off">{secondsLeft}</p>
+              <div className="h-1.5 bg-white/10">
+                <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${Math.min(100, ((now - queued.at) / queued.botAfterMs) * 100)}%` }} />
+              </div>
+              <p className="font-mono text-xs text-muted-foreground">{t("duelBotIn", { s: secondsLeft })}</p>
+            </div>
+          ) : null}
           <p className="max-w-xs font-exo text-sm text-muted-foreground">{t("duelBotHint")}</p>
           <Button variant="outline" onClick={cancel} className="rounded-none border-white/15">{t("duelCancel")}</Button>
         </div>
