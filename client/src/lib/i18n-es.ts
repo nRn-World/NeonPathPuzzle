@@ -379,4 +379,7 @@ export const es: Record<TranslationKey, string> = {
   duelPlayOnlineSub: "Duelo 1 contra 1 · rival aleatorio",
   nameChangesLeft: "Cambios de nombre restantes: {left} de {max} en este dispositivo",
   duelBotIn: "Si no aparece nadie, un bot de práctica se une en {s} s",
+  duelTheirLine: "Su línea",
+  duelHelpBanner: "El rival fue más rápido. Aún puedes terminar este nivel para practicar y se muestra su línea como ayuda.",
+  duelLateDone: "¡Bien hecho! La siguiente ronda empieza enseguida.",
 };

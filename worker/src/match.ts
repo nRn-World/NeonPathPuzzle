@@ -1,4 +1,5 @@
 import { generateLevel } from "../../shared/level-generator";
+import type { Point } from "../../shared/schema";
 import { verifyPlayedPath } from "../../shared/verify";
 
 /**
@@ -16,8 +17,6 @@ export interface Fighter {
 export type ClientMessage =
   | { type: "hello"; playerId: string }
   | { type: "done"; round: number; path: unknown }
-  /** Live view for the opponent: only the last steps and a count, never the whole line. */
-  | { type: "progress"; round: number; tail: unknown; count: unknown }
   | { type: "leave" };
 
 export type ServerMessage = { type: string; [key: string]: unknown };
@@ -44,10 +43,14 @@ export const RECONNECT_MS = 15_000;
 export const ROUNDS_TO_WIN = 2;
 export const MAX_ROUNDS = 5;
 export const START_RATING = 1000;
-/** How many of the latest points an opponent gets to see. */
-export const TAIL_LENGTH = 10;
-const PROGRESS_MIN_GAP_MS = 80;
-const BOT_TICK_MS = 500;
+/**
+ * After a round is decided, the player who lost may still finish it for
+ * practice, and is shown the winner's line as help. They only ever see it once
+ * the winner is done, so it can't be copied during the race.
+ */
+export const HELP_WINDOW_MS = 30_000;
+/** Pause after a late finish before the next round starts. */
+const AFTER_LATE_FINISH_MS = 2500;
 const K = 32;
 /** Beating a bot is worth a little, up to this rating; losing to one costs nothing. */
 const BOT_WIN_POINTS = 6;
@@ -77,7 +80,6 @@ interface Seat {
   send: ((message: ServerMessage) => void) | null;
   wins: number;
   dropTimer: (() => void) | null;
-  lastProgressAt: number;
 }
 
 export class Match {
@@ -89,6 +91,9 @@ export class Match {
   private started = false;
   private over = false;
   private timers: (() => void)[] = [];
+  /** The loser of the round just decided, while they may still finish it for practice. */
+  private lateFor: Seat | null = null;
+  private cancelNext: (() => void) | null = null;
 
   constructor(
     humans: Fighter[],
@@ -97,10 +102,10 @@ export class Match {
     private readonly rng: () => number,
     private readonly onFinished: (result: MatchResult) => void,
   ) {
-    const seats: Seat[] = humans.map(fighter => ({ fighter, bot: false, send: null, wins: 0, dropTimer: null, lastProgressAt: 0 }));
+    const seats: Seat[] = humans.map(fighter => ({ fighter, bot: false, send: null, wins: 0, dropTimer: null }));
     if (vsBot) {
       const human = humans[0];
-      seats.push({ fighter: { id: "bot", name: "Bot", rating: human.rating }, bot: true, send: null, wins: 0, dropTimer: null, lastProgressAt: 0 });
+      seats.push({ fighter: { id: "bot", name: "Bot", rating: human.rating }, bot: true, send: null, wins: 0, dropTimer: null });
     }
     this.seats = seats;
     this.levels = pickLevels(seats.reduce((sum, seat) => sum + seat.fighter.rating, 0) / seats.length, rng);
@@ -175,11 +180,11 @@ export class Match {
       this.forfeit(seat);
       return;
     }
-    if (message.type === "progress") {
-      this.relayProgress(seat, message);
+    if (message.type !== "done" || message.round !== this.round) return;
+    if (!this.roundOpen) {
+      this.lateFinish(seat, message.path);
       return;
     }
-    if (message.type !== "done" || !this.roundOpen || message.round !== this.round) return;
 
     const now = this.clock.now();
     if (now < this.startAt) {
@@ -192,18 +197,22 @@ export class Match {
       seat.send?.({ type: "rejected", reason: problem });
       return;
     }
-    this.endRound(seat, elapsed);
+    this.endRound(seat, elapsed, message.path as Point[]);
   }
 
-  private relayProgress(from: Seat, message: { round: number; tail: unknown; count: unknown }) {
-    const now = this.clock.now();
-    if (!this.roundOpen || message.round !== this.round || now < this.startAt) return;
-    if (now - from.lastProgressAt < PROGRESS_MIN_GAP_MS) return;
-    const { tail, count } = message;
-    if (!Array.isArray(tail) || tail.length > TAIL_LENGTH || !Number.isInteger(count) || (count as number) < 0 || (count as number) > 800) return;
-    if (!tail.every(point => point && Number.isInteger(point.x) && Number.isInteger(point.y))) return;
-    from.lastProgressAt = now;
-    this.opponentOf(from).send?.({ type: "opponent", round: this.round, tail, count });
+  /** The loser finishing after the round was decided: no points, but the next round starts sooner. */
+  private lateFinish(seat: Seat, path: unknown) {
+    if (seat !== this.lateFor) return;
+    const problem = verifyPlayedPath(this.levels[this.round - 1], path, this.clock.now() - this.startAt);
+    if (problem) {
+      seat.send?.({ type: "rejected", reason: problem });
+      return;
+    }
+    this.lateFor = null;
+    seat.send?.({ type: "lateFinish", round: this.round });
+    this.cancelNext?.();
+    this.cancelNext = this.clock.after(AFTER_LATE_FINISH_MS, () => this.beginRound());
+    this.timers.push(this.cancelNext);
   }
 
   private sendRound(seat: Seat) {
@@ -233,21 +242,6 @@ export class Match {
       // The bot "solves" in a human-ish time: slower on big boards, a little random.
       const botMs = Math.min(ROUND_LIMIT_MS - 10_000, (2500 + level.nodes.length * 650) * (0.7 + this.rng() * 0.9));
       const round = this.round;
-      const solution = level.solution;
-      const tick = () => {
-        if (!this.roundOpen || this.round !== round) return;
-        const elapsed = this.clock.now() - this.startAt;
-        // The bot's line grows at an even pace and a little behind its finish time.
-        const count = Math.max(1, Math.min(solution.length - 1, Math.floor((elapsed / botMs) * solution.length)));
-        this.seats.filter(seat => !seat.bot).forEach(seat => seat.send?.({
-          type: "opponent",
-          round,
-          tail: solution.slice(Math.max(0, count - TAIL_LENGTH), count),
-          count,
-        }));
-        this.timers.push(this.clock.after(BOT_TICK_MS, tick));
-      };
-      this.timers.push(this.clock.after(COUNTDOWN_MS + BOT_TICK_MS, tick));
       this.timers.push(this.clock.after(COUNTDOWN_MS + botMs, () => {
         if (this.roundOpen && this.round === round) this.endRound(bot, botMs);
       }));
@@ -258,15 +252,23 @@ export class Match {
     }));
   }
 
-  private endRound(winner: Seat | null, elapsedMs: number) {
+  private endRound(winner: Seat | null, elapsedMs: number, winnerPath?: Point[]) {
     this.roundOpen = false;
     if (winner) winner.wins++;
+
+    const finalRound = this.seats.some(seat => seat.wins >= ROUNDS_TO_WIN) || this.round >= MAX_ROUNDS;
+    const line = winner?.bot ? generateLevel(this.levels[this.round - 1]).solution : winnerPath;
+    // A losing human gets the winner's line as help, but only once the race is over.
+    const loser = winner && !finalRound ? this.opponentOf(winner) : null;
+    this.lateFor = loser && !loser.bot && line ? loser : null;
+
     this.broadcast((seat, opponent) => ({
       type: "roundResult",
       round: this.round,
       winner: winner === null ? "none" : winner === seat ? "you" : "opponent",
       timeMs: Math.round(elapsedMs),
       score: { you: seat.wins, opponent: opponent.wins },
+      ...(seat === this.lateFor ? { opponentPath: line, helpMs: HELP_WINDOW_MS } : {}),
     }));
 
     const leader = this.seats.find(seat => seat.wins >= ROUNDS_TO_WIN);
@@ -279,7 +281,8 @@ export class Match {
       this.finish(a.wins === b.wins ? null : a.wins > b.wins ? a : b, false, false);
       return;
     }
-    this.timers.push(this.clock.after(BETWEEN_ROUNDS_MS, () => this.beginRound()));
+    this.cancelNext = this.clock.after(this.lateFor ? HELP_WINDOW_MS : BETWEEN_ROUNDS_MS, () => this.beginRound());
+    this.timers.push(this.cancelNext);
   }
 
   private forfeit(leaver: Seat) {

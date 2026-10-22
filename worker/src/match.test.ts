@@ -6,6 +6,7 @@ import {
   BETWEEN_ROUNDS_MS,
   COUNTDOWN_MS,
   eloDelta,
+  HELP_WINDOW_MS,
   Match,
   MAX_ROUNDS,
   pickLevels,
@@ -94,11 +95,11 @@ test("first to two rounds wins, with equal ratings moving 16 points", () => {
   assert.equal(last(b.id, "roundResult")?.winner, "opponent");
   assert.equal(last(a.id, "roundResult")?.winner, "you");
 
-  clock.advance(BETWEEN_ROUNDS_MS);
+  clock.advance(HELP_WINDOW_MS);
   assert.equal(last(a.id, "round")?.round, 2);
   clock.advance(COUNTDOWN_MS + 5000);
   solve(b.id); // the second round goes to b: 1-1
-  clock.advance(BETWEEN_ROUNDS_MS + COUNTDOWN_MS + 5000);
+  clock.advance(HELP_WINDOW_MS + COUNTDOWN_MS + 5000);
   solve(a.id);
 
   assert.equal(results.length, 1);
@@ -189,32 +190,49 @@ test("a match nobody joins is cancelled with no result", () => {
   assert.equal(results.length, 0);
 });
 
-test("progress is relayed to the opponent as a short tail only, rate-limited and validated", () => {
-  const { clock, match, humans, inbox, last } = setup(false);
+test("the loser gets the winner's line only after the round, and may still finish it for practice", () => {
+  const { clock, humans, inbox, last, solve, match } = setup(false);
   const [a, b] = humans;
-  const point = (x: number) => ({ x, y: 0 });
-  clock.advance(COUNTDOWN_MS + 500);
-  match.receive(a.id, { type: "progress", round: 1, tail: [point(1), point(2)], count: 3 });
-  assert.deepEqual(last(b.id, "opponent"), { type: "opponent", round: 1, tail: [point(1), point(2)], count: 3 });
+  clock.advance(COUNTDOWN_MS + 5000);
+  assert.equal(inbox[b.id].some(message => "opponentPath" in message), false, "nothing is shown during the race");
+  solve(a.id);
 
-  const before = inbox[b.id].length;
-  match.receive(a.id, { type: "progress", round: 1, tail: [point(3)], count: 4 });
-  assert.equal(inbox[b.id].length, before, "faster than the rate limit is dropped");
+  const help = last(b.id, "roundResult")!;
+  assert.deepEqual(help.opponentPath, generateLevel(last(b.id, "round")!.levelId as number).solution);
+  assert.equal(help.helpMs, HELP_WINDOW_MS);
+  assert.equal("opponentPath" in last(a.id, "roundResult")!, false, "the winner gets no help");
 
-  clock.advance(200);
-  match.receive(a.id, { type: "progress", round: 1, tail: Array.from({ length: 11 }, (_, i) => point(i)), count: 12 });
-  match.receive(a.id, { type: "progress", round: 1, tail: [{ x: "a", y: 1 }], count: 5 });
-  match.receive(a.id, { type: "progress", round: 2, tail: [point(1)], count: 5 });
-  assert.equal(inbox[b.id].length, before, "a long tail, bad points or the wrong round are ignored");
-  assert.equal(inbox[a.id].some(message => message.type === "opponent"), false, "you never receive your own line");
+  // The loser finishes after a while: no extra points, and the next round starts soon.
+  clock.advance(6000);
+  assert.equal(last(b.id, "round")?.round, 1);
+  solve(b.id);
+  assert.equal(last(b.id, "lateFinish")?.round, 1);
+  assert.equal(last(b.id, "roundResult")?.score && (last(b.id, "roundResult")!.score as { you: number }).you, 0);
+  clock.advance(2600);
+  assert.equal(last(b.id, "round")?.round, 2, "the next round started after the short pause");
+  match.receive(b.id, { type: "done", round: 1, path: [] });
 });
 
-test("against the bot the player sees it advance, and only its latest steps", () => {
-  const { clock, humans, inbox } = setup(true);
-  clock.advance(COUNTDOWN_MS + 6000);
-  const moves = inbox[humans[0].id].filter(message => message.type === "opponent");
-  assert.ok(moves.length >= 2);
-  assert.ok(moves.every(message => (message.tail as unknown[]).length <= 10));
-  const counts = moves.map(message => message.count as number);
-  assert.deepEqual([...counts].sort((x, y) => x - y), counts, "the bot's progress only grows");
+test("without a late finish the next round starts after the help window", () => {
+  const { clock, humans, last, solve } = setup(false);
+  clock.advance(COUNTDOWN_MS + 5000);
+  solve(humans[0].id);
+  clock.advance(HELP_WINDOW_MS - 1);
+  assert.equal(last(humans[1].id, "round")?.round, 1);
+  clock.advance(2);
+  assert.equal(last(humans[1].id, "round")?.round, 2);
+});
+
+test("a bot's win shows its line as help, and the final round shows no help", () => {
+  const bot = setup(true);
+  bot.clock.advance(60_000);
+  const result = bot.last(bot.humans[0].id, "roundResult");
+  assert.ok(result && (result.winner === "opponent" ? Array.isArray(result.opponentPath) : true));
+
+  const duel = setup(false);
+  for (let round = 0; round < 2; round++) {
+    duel.clock.advance(COUNTDOWN_MS + 4000 + (round ? HELP_WINDOW_MS : 0));
+    duel.solve(duel.humans[0].id);
+  }
+  assert.equal("opponentPath" in duel.last(duel.humans[1].id, "roundResult")!, false, "a decided match has no help round");
 });
