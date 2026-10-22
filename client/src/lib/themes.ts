@@ -1,3 +1,5 @@
+import { isSeasonRewardEarned } from './seasons';
+
 export interface Theme {
   id: string;
   name: string;
@@ -15,6 +17,8 @@ export interface Theme {
   };
   /** Levels that must be completed before the theme can be selected. */
   unlockAtLevels: number;
+  /** Seasonal themes are earned by finishing that event, not by clearing levels. */
+  seasonId?: string;
 }
 
 export const themes: Theme[] = [
@@ -119,11 +123,72 @@ export const themes: Theme[] = [
       particle: 'aqua'
     },
     unlockAtLevels: 250
+  },
+  {
+    id: 'bloom',
+    name: 'Spring Bloom',
+    description: 'Blossom pink, mint and sunlight',
+    colors: {
+      primary: '#ff9ecb',
+      secondary: '#7dffb2',
+      accent: '#fff27d',
+      background: '#0b0a14',
+      neon: ['#ff9ecb', '#7dffb2', '#fff27d']
+    },
+    effects: { glow: '0 0 26px rgba(255, 158, 203, 0.6)', particle: 'pink' },
+    unlockAtLevels: 0,
+    seasonId: 'spring'
+  },
+  {
+    id: 'solar',
+    name: 'Solar Flare',
+    description: 'Hot amber, magenta and cyan',
+    colors: {
+      primary: '#ffb300',
+      secondary: '#ff3d71',
+      accent: '#00e5ff',
+      background: '#120800',
+      neon: ['#ffb300', '#ff3d71', '#00e5ff']
+    },
+    effects: { glow: '0 0 28px rgba(255, 179, 0, 0.65)', particle: 'gold' },
+    unlockAtLevels: 0,
+    seasonId: 'summer'
+  },
+  {
+    id: 'haunted',
+    name: 'Haunted Grid',
+    description: 'Pumpkin orange, violet and acid green',
+    colors: {
+      primary: '#ff7a00',
+      secondary: '#7a1fff',
+      accent: '#b6ff00',
+      background: '#0a0010',
+      neon: ['#ff7a00', '#7a1fff', '#b6ff00']
+    },
+    effects: { glow: '0 0 28px rgba(255, 122, 0, 0.65)', particle: 'orange' },
+    unlockAtLevels: 0,
+    seasonId: 'halloween'
+  },
+  {
+    id: 'frost',
+    name: 'Frostbyte',
+    description: 'Ice blue, lavender and white',
+    colors: {
+      primary: '#8fe8ff',
+      secondary: '#b9a7ff',
+      accent: '#ffffff',
+      background: '#02101a',
+      neon: ['#8fe8ff', '#b9a7ff', '#ffffff']
+    },
+    effects: { glow: '0 0 26px rgba(143, 232, 255, 0.6)', particle: 'aqua' },
+    unlockAtLevels: 0,
+    seasonId: 'winter'
   }
 ];
 
 export const isThemeUnlocked = (themeId: string, completedLevels: number): boolean => {
   const theme = getTheme(themeId);
+  if (theme.seasonId) return isSeasonRewardEarned(theme.seasonId);
   return completedLevels >= theme.unlockAtLevels;
 };
 

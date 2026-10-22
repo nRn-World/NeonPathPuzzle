@@ -1,5 +1,6 @@
 import { content } from "@/lib/contentText";
 import { chapters, getChapterForLevel } from "@/lib/chapters";
+import { getActiveSeason, recordSeasonClear } from "@/lib/seasons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -544,6 +545,12 @@ export default function Game({ mode = "level" }: GameProps) {
         score: finalScore,
         path: completedPath,
       });
+
+      const season = getActiveSeason();
+      if (season && recordSeasonClear(season, levelId)) {
+        addTokens(season.season.rewardTokens);
+        toast({ title: t("seasonCompleteTitle"), description: t("seasonCompleteDesc", { tokens: season.season.rewardTokens }) });
+      }
 
       const wasCompleted = recordBefore?.completed ?? level.isCompleted;
       if (!wasCompleted) {

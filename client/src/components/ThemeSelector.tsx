@@ -64,7 +64,9 @@ export function ThemeSelector() {
                   <div className="min-w-0">
                     <div className="font-medium">{text.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {unlocked ? text.description : t("themeLocked", { count: theme.unlockAtLevels })}
+                      {unlocked
+                        ? text.description
+                        : theme.seasonId ? t("themeSeasonLocked") : t("themeLocked", { count: theme.unlockAtLevels })}
                     </div>
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-2">

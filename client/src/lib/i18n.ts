@@ -331,6 +331,16 @@ const en = {
   riftLocked: "Clear 100 levels to open",
   worldMap: "World map",
   worldMapButton: "Map",
+  seasonSpring: "Spring Bloom event",
+  seasonSummer: "Solar Flare event",
+  seasonHalloween: "Haunted Grid event",
+  seasonWinter: "Frostbyte event",
+  seasonDaysLeft: "{count} days left",
+  seasonGoal: "Clear {goal} different levels to earn the event theme and {tokens} hint tokens.",
+  seasonRewardEarned: "Reward earned. The event theme is yours for good.",
+  seasonCompleteTitle: "Event complete",
+  seasonCompleteDesc: "New theme unlocked and {tokens} hint tokens added.",
+  themeSeasonLocked: "Earn it by finishing a seasonal event",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -651,6 +661,16 @@ const sv: Record<TranslationKey, string> = {
   riftLocked: "Klara 100 banor för att öppna",
   worldMap: "Världskarta",
   worldMapButton: "Karta",
+  seasonSpring: "Vårblomning",
+  seasonSummer: "Solflammor",
+  seasonHalloween: "Hemsökt nät",
+  seasonWinter: "Frostbyte",
+  seasonDaysLeft: "{count} dagar kvar",
+  seasonGoal: "Klara {goal} olika banor för att få eventtemat och {tokens} ledtrådsmärken.",
+  seasonRewardEarned: "Belöning intjänad. Eventtemat är ditt för alltid.",
+  seasonCompleteTitle: "Event klart",
+  seasonCompleteDesc: "Nytt tema upplåst och {tokens} ledtrådsmärken tillagda.",
+  themeSeasonLocked: "Tjäna det genom att klara ett säsongsevent",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };

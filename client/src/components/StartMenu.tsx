@@ -24,6 +24,7 @@ import { getChapterForLevel } from "@/lib/chapters";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
+import { SeasonCard } from "@/components/SeasonCard";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
@@ -173,6 +174,7 @@ export function StartMenu() {
                     transition={{ delay: 0.5 }}
                     className="grid gap-3 text-left md:grid-cols-2"
                   >
+                    <SeasonCard />
                     <DailyCard compact />
                     <WeeklyCard compact />
                   </motion.div>
