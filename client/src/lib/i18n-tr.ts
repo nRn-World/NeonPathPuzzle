@@ -379,4 +379,7 @@ export const tr: Record<TranslationKey, string> = {
   duelPlayOnlineSub: "1'e 1 düello · rastgele rakip",
   nameChangesLeft: "Bu cihazda kalan ad değişikliği: {left} / {max}",
   duelBotIn: "Kimse bulunmazsa {s} sn içinde bir antrenman botu katılır",
+  duelTheirLine: "Onların çizgisi",
+  duelHelpBanner: "Rakip daha hızlıydı. Bunu yine de pratik için bitirebilirsin; onların çizgisi yardım olarak gösteriliyor.",
+  duelLateDone: "Aferin! Sonraki tur birazdan başlıyor.",
 };

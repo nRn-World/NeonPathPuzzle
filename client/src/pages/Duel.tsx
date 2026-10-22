@@ -51,11 +51,10 @@ export default function Duel() {
   /** When the server put us in the queue, and how long until the bot is added. */
   const [queued, setQueued] = useState<{ at: number; botAfterMs: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [opp, setOpp] = useState<{ tail: Point[]; count: number }>({ tail: [], count: 0 });
-  const roundRef = useRef(0);
-  const lastSentRef = useRef(0);
-  const pendingRef = useRef<number | null>(null);
-  const latestPathRef = useRef<Point[]>([]);
+  /** The winner's line, shown to the loser as help once the race is over. */
+  const [help, setHelp] = useState<Point[] | null>(null);
+  const [helpStep, setHelpStep] = useState(0);
+  const [lateDone, setLateDone] = useState(false);
   const connection = useRef<DuelConnection | null>(null);
 
   const enabled = leaderboardEnabled();
@@ -74,6 +73,13 @@ export default function Duel() {
     return () => window.clearInterval(id);
   }, [phase]);
 
+  // Replay the winner's line step by step so it can be followed.
+  useEffect(() => {
+    if (!help) return;
+    const id = window.setInterval(() => setHelpStep(step => Math.min(help.length, step + 1)), 140);
+    return () => window.clearInterval(id);
+  }, [help]);
+
   const onEvent = useCallback((event: DuelEvent) => {
     switch (event.kind) {
       case "queued":
@@ -90,18 +96,24 @@ export default function Duel() {
         setScore(event.score);
         setRoundNote(null);
         setSubmitted(false);
-        setOpp({ tail: [], count: 0 });
-        roundRef.current = event.round;
+        setHelp(null);
+        setLateDone(false);
         setNow(performance.now());
-        break;
-      case "opponent":
-        if (event.round === roundRef.current) setOpp({ tail: event.tail, count: event.count });
         break;
       case "roundResult":
         setScore(event.score);
         setRoundNote(event.winner === "you" ? t("duelYouWonRound") : event.winner === "opponent" ? t("duelOppWonRound") : t("duelNoWinner"));
         if (event.winner === "you") playWinSound();
         else if (event.winner === "opponent") playCrashSound();
+        if (event.opponentPath) {
+          // The race is over: the loser may still finish, with the winner's line as help.
+          setHelp(event.opponentPath);
+          setHelpStep(0);
+          setSubmitted(false);
+        }
+        break;
+      case "lateFinish":
+        setLateDone(true);
         break;
       case "matchResult":
         setResult(event);
@@ -155,28 +167,9 @@ export default function Duel() {
 
   const secondsLeft = queued ? Math.max(0, Math.ceil((queued.at + queued.botAfterMs - now) / 1000)) : 0;
   const countdown = round ? Math.ceil((round.startsAt - now) / 1000) : 0;
-  const live = round !== null && now >= round.startsAt && roundNote === null;
+  const late = help !== null;
+  const live = round !== null && now >= round.startsAt && (roundNote === null || (late && !lateDone));
   const elapsed = round ? Math.max(0, now - round.startsAt) : 0;
-
-  // Tell the opponent how far we are, at most about five times a second.
-  const sendProgress = (path: Point[]) => {
-    if (!round || submitted) return;
-    const at = performance.now();
-    latestPathRef.current = path;
-    if (at - lastSentRef.current < 200 && path.length > 1) {
-      // Keep the newest position: send it once the gap has passed.
-      if (pendingRef.current === null) {
-        pendingRef.current = window.setTimeout(() => {
-          pendingRef.current = null;
-          lastSentRef.current = performance.now();
-          connection.current?.progress(round.round, latestPathRef.current);
-        }, 200);
-      }
-      return;
-    }
-    lastSentRef.current = at;
-    connection.current?.progress(round.round, path);
-  };
 
   const submit = (path: Point[]) => {
     if (!round || submitted) return;
@@ -313,16 +306,16 @@ export default function Duel() {
       <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
 
-        {level && opponent && (
+        {level && help && (
           <div className="relative z-10 flex-shrink-0 border-b border-white/10 bg-background/60 px-3 py-2 md:hidden">
             <OpponentView
               gridSize={level.level.gridSize}
               nodes={level.level.nodes}
-              tail={opp.tail}
-              count={Math.min(opp.count, level.level.nodes.length)}
-              total={level.level.nodes.length}
-              name={opponent.bot ? t("duelPracticeBot") : opponent.name}
-              bot={opponent.bot}
+              tail={help.slice(0, helpStep)}
+              count={Math.min(helpStep, help.length)}
+              total={help.length}
+              name={t("duelTheirLine")}
+              bot={false}
               size={72}
             />
           </div>
@@ -338,7 +331,6 @@ export default function Duel() {
                 showHint={false}
                 onBacktrack={() => true}
                 onComplete={(_moves, path) => submit(path)}
-                onPathPoints={sendProgress}
                 reducedMotion={reducedMotion}
                 paused={!live || submitted}
                 gridLabel={t("gridLabel", { size: level.level.gridSize })}
@@ -347,16 +339,16 @@ export default function Duel() {
           </div>
         </div>
 
-        {level && opponent && (
+        {level && help && (
           <aside className="relative z-10 hidden w-48 flex-shrink-0 items-start justify-center border-l border-white/10 bg-background/40 p-3 md:flex">
             <OpponentView
               gridSize={level.level.gridSize}
               nodes={level.level.nodes}
-              tail={opp.tail}
-              count={Math.min(opp.count, level.level.nodes.length)}
-              total={level.level.nodes.length}
-              name={opponent.bot ? t("duelPracticeBot") : opponent.name}
-              bot={opponent.bot}
+              tail={help.slice(0, helpStep)}
+              count={Math.min(helpStep, help.length)}
+              total={help.length}
+              name={t("duelTheirLine")}
+              bot={false}
               size={160}
               className="flex-col !items-start"
             />
@@ -369,13 +361,18 @@ export default function Duel() {
             <p className="font-orbitron text-7xl font-black text-primary">{countdown}</p>
           </div>
         )}
-        {roundNote && (
+        {late && (
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 w-[min(92%,28rem)] -translate-x-1/2 border border-secondary/50 bg-background/90 px-3 py-2 text-center font-exo text-xs">
+            {lateDone ? t("duelLateDone") : t("duelHelpBanner")}
+          </div>
+        )}
+        {roundNote && !late && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
             <p className="px-6 text-center font-orbitron text-2xl font-black">{roundNote}</p>
           </div>
         )}
-        {submitted && roundNote === null && (
-          <div className="absolute bottom-4 z-20 rounded-none border border-primary/40 bg-background/90 px-4 py-2 font-mono text-xs">{t("duelChecking")}</div>
+        {submitted && (roundNote === null || (late && !lateDone)) && (
+          <div className="absolute bottom-16 z-20 rounded-none border border-primary/40 bg-background/90 px-4 py-2 font-mono text-xs">{t("duelChecking")}</div>
         )}
       </main>
     </div>
