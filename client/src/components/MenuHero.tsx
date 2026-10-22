@@ -169,7 +169,7 @@ interface MenuHeroProps {
   chapterName: string;
   onPlay: () => void;
   onDuel: () => void;
-  /** Secondary actions: how to play, completed, daily, theme, settings, editor. */
+  /** Secondary actions: how to play, map, completed, language, theme, settings. */
   actions: ReactNode;
 }
 

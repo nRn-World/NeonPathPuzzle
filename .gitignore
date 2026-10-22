@@ -49,3 +49,18 @@ nul
 
 worker/.wrangler/
 worker/node_modules/
+
+# Local/archive files that should never be tracked
+.env.local
+dev.db
+.local/
+.replit
+build_log.txt
+itch_upload_package/
+Neon-Path-Puzzle/
+.agents/
+.claude/
+.freebuff/
+brag-output/
+nul
+*.zip

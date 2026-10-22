@@ -33,6 +33,8 @@ export default {
     const store = d1Store(env.DB);
     try {
       if (request.method === "POST" && url.pathname === "/score") {
+        // A line is at most ~800 points (about 12 KB): refuse anything much larger before parsing it.
+        if (Number(request.headers.get("content-length") ?? 0) > 30_000) return json(413, { error: "too large" });
         const reply = await handleSubmit(await request.json().catch(() => null), store, now);
         return json(reply.status, reply.body);
       }

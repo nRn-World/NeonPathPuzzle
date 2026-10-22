@@ -1,6 +1,5 @@
 
 import { z } from 'zod';
-import { insertProgressSchema } from './schema';
 
 export const api = {
   levels: {

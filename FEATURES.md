@@ -113,14 +113,6 @@ Each level awards 1–3 stars:
 - Enter a code to jump directly to its level
 - Codes remain compatible with all previously released values
 
-### Circuit Editor & Custom Levels
-
-- Draw a path on a 4×4–8×8 grid in the in-app editor
-- Codes are validated for adjacency, overlaps and bounds
-- Share a level as a link (`#/custom/...`) or save it locally
-- Custom levels never touch campaign progress
-
----
 
 ## Power-ups
 
@@ -170,7 +162,7 @@ Each level awards 1–3 stars:
 - **Brain rank**: a title that grows with your stars (Novice → Apprentice → Thinker → Strategist → Mastermind → Genius → Omega), shown on the title screen and in Stats
 - **Readable HUD**: universal icons (stopwatch, undo, restart, light bulb, bolt, trophy, help, gear) with the remaining backtracks, restarts and hint tokens as large numbers beside them; the mobile header always keeps the level number visible
 - **First-run tutorial** opens with a live demo of the line drawing itself
-- Flat, square design language across the menu, dialogs, win screen and editor
+- Flat, square design language across the menu, dialogs, win screen
 - Layered synthesised sound effects (no audio files, no background music)
 
 ---

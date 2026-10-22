@@ -2,7 +2,6 @@ import type { Point } from "@shared/schema";
 import { MAX_LEVEL_ID } from "@shared/level-generator";
 import {
   emptyDailyState,
-  getDateKey,
   updateDailyState,
   type DailyResult,
   type DailyState,
@@ -528,6 +527,6 @@ export function recordDailyResult(
   return progress.daily;
 }
 
-export function getDailyState(userId: string, dateKey: string = getDateKey()): DailyState {
+export function getDailyState(userId: string): DailyState {
   return getProgress(userId).daily;
 }

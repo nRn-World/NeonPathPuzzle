@@ -24,6 +24,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Stable vendor chunks cache well across releases and keep the app chunk small.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("framer-motion")) return "motion";
+          if (id.includes("@radix-ui")) return "radix";
+          if (/node_modules[\/](react|react-dom|scheduler)[\/]/.test(id)) return "react";
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     fs: {
