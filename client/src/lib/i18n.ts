@@ -393,6 +393,7 @@ const en = {
   duelPlayOnline: "Play online",
   duelPlayOnlineSub: "1v1 duel · random opponent",
   nameChangesLeft: "Name changes left: {left} of {max} on this device",
+  duelBotIn: "A practice bot joins in {s} s if nobody is found",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -775,6 +776,7 @@ const sv: Record<TranslationKey, string> = {
   duelPlayOnline: "Spela online",
   duelPlayOnlineSub: "1 mot 1 · slumpad motståndare",
   nameChangesLeft: "Namnbyten kvar: {left} av {max} på den här enheten",
+  duelBotIn: "En träningsbot går med om {s} s om ingen hittas",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
