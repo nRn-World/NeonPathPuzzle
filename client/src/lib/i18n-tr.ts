@@ -293,4 +293,9 @@ export const tr: Record<TranslationKey, string> = {
   couldNotCopyDesc: "Seviye kodunu elle kopyala.",
   levelSaved: "Seviye kaydedildi",
   levelSavedDesc: "Aşağıda Kayıtlı devreler altında bulabilirsin.",
+  colorBlindMode: "Renk körlüğü modu",
+  colorBlindModeDesc: "Her tür renk körlüğünde ayırt edilebilen bir palet kullanır.",
+  largeText: "Büyük yazı",
+  largeTextDesc: "Arayüz yazısını yaklaşık %18 büyütür.",
+  nodesVisitedLive: "{total} düğümden {count} tanesi bağlandı",
 };

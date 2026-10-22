@@ -15,7 +15,7 @@ import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
 import Privacy from "@/pages/Privacy";
 import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
-import { applyMotionPreference, useSettingsStore } from "@/lib/settings";
+import { applyMotionPreference, applyTextPreference, useSettingsStore } from "@/lib/settings";
 import { useEffect } from "react";
 import { useLanguageStore } from "@/lib/i18n";
 
@@ -45,6 +45,11 @@ function AppRouter() {
 
 function App() {
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
+  const largeText = useSettingsStore(state => state.largeText);
+
+  useEffect(() => {
+    applyTextPreference(largeText);
+  }, [largeText]);
 
   useEffect(() => {
     applyMotionPreference(reducedMotion);

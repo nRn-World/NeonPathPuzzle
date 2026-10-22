@@ -1,6 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { type Theme, getTheme } from "@/lib/themes";
+import { useSettingsStore } from "@/lib/settings";
+
+const COLOR_BLIND_COLORS = { primary: "#56b4e9", secondary: "#e69f00", accent: "#f0e442" };
 
 interface ThemeStore {
   currentTheme: string;
@@ -30,7 +33,12 @@ export const useThemeStore = create<ThemeStore>()(
         });
         root.style.setProperty("--theme-glow", theme.effects.glow);
       },
-      getThemeColors: () => getTheme(get().currentTheme).colors,
+      getThemeColors: () => {
+        const colors = getTheme(get().currentTheme).colors;
+        return useSettingsStore.getState().colorBlind
+          ? { ...colors, ...COLOR_BLIND_COLORS, neon: Object.values(COLOR_BLIND_COLORS) }
+          : colors;
+      },
       getThemeEffects: () => getTheme(get().currentTheme).effects,
     }),
     {

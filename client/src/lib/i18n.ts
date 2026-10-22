@@ -308,6 +308,11 @@ const en = {
   couldNotCopyDesc: "Copy the level code manually.",
   levelSaved: "Level saved",
   levelSavedDesc: "Find it under Saved circuits below.",
+  colorBlindMode: "Colour-blind mode",
+  colorBlindModeDesc: "Uses a palette that stays distinct for every type of colour blindness.",
+  largeText: "Large text",
+  largeTextDesc: "Makes interface text about 18% larger.",
+  nodesVisitedLive: "{count} of {total} nodes connected",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -605,6 +610,11 @@ const sv: Record<TranslationKey, string> = {
   couldNotCopyDesc: "Kopiera nivåkoden manuellt.",
   levelSaved: "Banan sparad",
   levelSavedDesc: "Hittar du under Sparade banor nedan.",
+  colorBlindMode: "Färgblindsläge",
+  colorBlindModeDesc: "Använder en palett som är tydlig för alla typer av färgblindhet.",
+  largeText: "Stor text",
+  largeTextDesc: "Gör gränssnittets text cirka 18 % större.",
+  nodesVisitedLive: "{count} av {total} noder anslutna",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };

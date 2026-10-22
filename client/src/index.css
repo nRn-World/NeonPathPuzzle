@@ -236,3 +236,6 @@ canvas {
 
 .screen-shake .app-shell { animation: screen-shake 0.32s ease-out; }
 .screen-shake-heavy .app-shell { animation: screen-shake 0.45s ease-out 2; }
+
+/* Accessibility: larger interface text (rem-based sizes follow the root). */
+html.large-text { font-size: 118%; }

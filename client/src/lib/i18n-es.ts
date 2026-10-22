@@ -293,4 +293,9 @@ export const es: Record<TranslationKey, string> = {
   couldNotCopyDesc: "Copia el código del nivel manualmente.",
   levelSaved: "Nivel guardado",
   levelSavedDesc: "Lo encontrarás abajo, en Circuitos guardados.",
+  colorBlindMode: "Modo daltónico",
+  colorBlindModeDesc: "Usa una paleta que se distingue con cualquier tipo de daltonismo.",
+  largeText: "Texto grande",
+  largeTextDesc: "Aumenta el texto de la interfaz un 18 %.",
+  nodesVisitedLive: "{count} de {total} nodos conectados",
 };

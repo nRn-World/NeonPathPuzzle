@@ -12,6 +12,8 @@ import { createMoveRules, EMPTY_MECHANICS, type LevelMechanics } from "@shared/m
 import { motion } from "framer-motion";
 import { playMoveSound, playBacktrackSound, playMilestoneHaptic, playWinSound } from "@/lib/sounds";
 import { useTheme } from "@/hooks/use-theme";
+import { useSettingsStore } from "@/lib/settings";
+import { useI18n } from "@/lib/i18n";
 import { undoLastStep } from "@/lib/undoPath";
 
 export const MAX_BACKTRACKS = 3;
@@ -88,6 +90,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { getThemeColors, currentTheme } = useTheme();
+  const { t } = useI18n();
+  const colorBlind = useSettingsStore(state => state.colorBlind);
 
   const [path, setPath] = useState<Point[]>([level.start]);
   const pathRef = useRef<Point[]>([level.start]);
@@ -689,6 +693,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     reducedMotion,
     getThemeColors,
     currentTheme,
+    colorBlind,
     mechanics.walls,
     mechanics.portals,
     ghostPath,
@@ -931,6 +936,45 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     tryMove({ x: head.x + direction.x, y: head.y + direction.y });
   }, [paused, tryMove, undoPath]);
 
+  // Gamepad: D-pad or left stick steers the head, B undoes. Repeats while held.
+  useEffect(() => {
+    if (paused || typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") return;
+    let frame = 0;
+    let heldKey: string | null = null;
+    let lastMoveAt = 0;
+    let undoHeld = false;
+
+    const poll = (time: number) => {
+      const pad = Array.from(navigator.getGamepads()).find(Boolean);
+      if (pad) {
+        const pressed = (index: number) => Boolean(pad.buttons[index]?.pressed);
+        const [axisX = 0, axisY = 0] = pad.axes;
+        let direction: Point | null = null;
+        if (pressed(12) || axisY < -0.6) direction = { x: 0, y: -1 };
+        else if (pressed(13) || axisY > 0.6) direction = { x: 0, y: 1 };
+        else if (pressed(14) || axisX < -0.6) direction = { x: -1, y: 0 };
+        else if (pressed(15) || axisX > 0.6) direction = { x: 1, y: 0 };
+
+        const directionKey = direction ? `${direction.x},${direction.y}` : null;
+        if (direction && (directionKey !== heldKey || time - lastMoveAt > 140)) {
+          const head = pathRef.current[pathRef.current.length - 1];
+          if (head) tryMove({ x: head.x + direction.x, y: head.y + direction.y });
+          lastMoveAt = time;
+        }
+        heldKey = directionKey;
+
+        const undo = pressed(1);
+        if (undo && !undoHeld) undoPath();
+        undoHeld = undo;
+      }
+      frame = requestAnimationFrame(poll);
+    };
+    frame = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(frame);
+  }, [paused, tryMove, undoPath]);
+
+  const visitedCount = countVisitedNodes(path);
+
   return (
     <div
       ref={containerRef}
@@ -946,6 +990,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         overscrollBehavior: "contain",
       } as React.CSSProperties}
     >
+      <span className="sr-only" aria-live="polite" role="status">
+        {t("nodesVisitedLive", { count: visitedCount, total: level.nodes.length })}
+      </span>
       <motion.canvas
         ref={canvasRef}
         initial={reducedMotion ? false : { opacity: 0, scale: 0.94 }}
