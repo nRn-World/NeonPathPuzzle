@@ -291,7 +291,7 @@ export function MenuHero({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6 hidden max-w-md flex-wrap items-center gap-2 md:flex"
+          className="mt-6 flex max-w-md flex-wrap items-center gap-2"
         >
           {actions}
         </motion.div>
@@ -316,9 +316,6 @@ export function MenuHero({
           </div>
         </div>
       </motion.div>
-
-      {/* Phones: the secondary actions sit under the board instead of above it. */}
-      <div className="flex flex-wrap items-center gap-2 md:hidden">{actions}</div>
 
       <a
         href="#dashboard"
