@@ -1,6 +1,7 @@
 import { content } from "@/lib/contentText";
 import { chapters, getChapterForLevel } from "@/lib/chapters";
 import { getActiveSeason, recordSeasonClear } from "@/lib/seasons";
+import { submitDaily, submitStars, submitWeekly } from "@/lib/leaderboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ import {
   getAttemptsUsed,
   getLevelRecord,
   getProgress,
+  getTotalStars,
   isFrontierLevel,
   markLevelPlayed,
   MAX_ATTEMPTS,
@@ -519,6 +521,7 @@ export default function Game({ mode = "level" }: GameProps) {
         stars: finalStars,
       });
       setDailyStreak(daily.streak);
+      void submitDaily(dailyKey, runTime, completedPath);
       if (!dailyRecordBefore) addTokens(1);
       void queryClient.invalidateQueries({ queryKey: [api.progress.get.path, userId] });
     } else if (isWeekly) {
@@ -530,6 +533,7 @@ export default function Game({ mode = "level" }: GameProps) {
         stars: finalStars,
         completedAt: Date.now(),
       });
+      void submitWeekly(weeklyChallenge.weekKey, runTime, completedPath);
       if (!weeklyRecordBefore) addTokens(1);
       void queryClient.invalidateQueries({ queryKey: [api.progress.get.path, userId] });
     } else if (mode === "level") {
@@ -545,6 +549,8 @@ export default function Game({ mode = "level" }: GameProps) {
         score: finalScore,
         path: completedPath,
       });
+
+      void submitStars(getTotalStars(getProgress(userId)) + Math.max(0, finalStars - (recordBefore?.stars ?? 0)));
 
       const season = getActiveSeason();
       if (season && recordSeasonClear(season, levelId)) {

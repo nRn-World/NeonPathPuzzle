@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "lib": ["ES2022"],
+    "types": [],
+    "baseUrl": "..",
+    "paths": { "@shared/*": ["shared/*"], "@/*": ["client/src/*"] }
+  },
+  "include": ["src/**/*.ts", "../shared/**/*.ts", "../client/src/lib/daily.ts", "../client/src/lib/weekly.ts"],
+  "exclude": ["**/*.test.ts"]
+}

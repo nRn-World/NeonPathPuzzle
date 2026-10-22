@@ -2,6 +2,7 @@ import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, 
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Crown,
   Heart,
   HelpCircle,
   Lock,
@@ -25,6 +26,7 @@ import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SeasonCard } from "@/components/SeasonCard";
+import { RankingPanel } from "@/components/RankingPanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
@@ -186,7 +188,7 @@ export function StartMenu() {
                     className="text-left"
                   >
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
+                      <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="levels" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
                           <Star className="h-3.5 w-3.5" />
                           {t("chaptersTab")}
@@ -198,6 +200,10 @@ export function StartMenu() {
                         <TabsTrigger value="stats" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
                           <Zap className="h-3.5 w-3.5" />
                           {t("statsTab")}
+                        </TabsTrigger>
+                        <TabsTrigger value="ranking" className="gap-1.5 px-1 font-exo text-[11px] sm:text-sm">
+                          <Crown className="h-3.5 w-3.5" />
+                          {t("rankingTab")}
                         </TabsTrigger>
                       </TabsList>
 
@@ -216,6 +222,10 @@ export function StartMenu() {
                           dailyStreak={summary?.dailyStreak ?? 0}
                           bestStreak={bestStreak}
                         />
+                      </TabsContent>
+
+                      <TabsContent value="ranking" className="mt-4">
+                        <RankingPanel />
                       </TabsContent>
                     </Tabs>
                   </motion.div>

@@ -341,6 +341,17 @@ const en = {
   seasonCompleteTitle: "Event complete",
   seasonCompleteDesc: "New theme unlocked and {tokens} hint tokens added.",
   themeSeasonLocked: "Earn it by finishing a seasonal event",
+  rankingTab: "Ranking",
+  rankingOff: "Online rankings are not available in this version yet.",
+  rankingNameLabel: "Public name",
+  rankingNameHint: "3 to 16 letters or digits. Only this name, your times and your star total are shared, and only after you save a name.",
+  rankingSave: "Save",
+  rankingDaily: "Daily",
+  rankingWeekly: "Weekly",
+  rankingStars: "Stars",
+  rankingEmpty: "No results yet. Be the first on the board.",
+  rankingYou: "You",
+  rankingError: "Could not load the ranking. Check your connection.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -671,6 +682,17 @@ const sv: Record<TranslationKey, string> = {
   seasonCompleteTitle: "Event klart",
   seasonCompleteDesc: "Nytt tema upplåst och {tokens} ledtrådsmärken tillagda.",
   themeSeasonLocked: "Tjäna det genom att klara ett säsongsevent",
+  rankingTab: "Topplista",
+  rankingOff: "Onlinetopplistor finns inte i den här versionen än.",
+  rankingNameLabel: "Offentligt namn",
+  rankingNameHint: "3 till 16 bokstäver eller siffror. Bara namnet, dina tider och ditt stjärntotal delas, och först när du sparat ett namn.",
+  rankingSave: "Spara",
+  rankingDaily: "Dagens",
+  rankingWeekly: "Veckans",
+  rankingStars: "Stjärnor",
+  rankingEmpty: "Inga resultat än. Bli först på listan.",
+  rankingYou: "Du",
+  rankingError: "Kunde inte ladda topplistan. Kontrollera anslutningen.",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };
