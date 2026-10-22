@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Hexagon, MoonStar, Orbit, Repeat2, Sparkles } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Diamond, Hexagon, MoonStar, Orbit, Repeat2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n, type TranslationKey } from "@/lib/i18n";
 
@@ -10,6 +10,8 @@ export const MECHANIC_INTROS: Record<number, { icon: typeof Hexagon; title: Tran
   101: { icon: Orbit, title: "introPortals", body: "symbolPortals", color: "#8a2be2" },
   201: { icon: Hexagon, title: "introSync", body: "symbolSync", color: "#00e5a0" },
   251: { icon: MoonStar, title: "introBlackout", body: "symbolBlackout", color: "#7b8cff" },
+  301: { icon: Diamond, title: "introPhase", body: "symbolPhase", color: "#ff9f43" },
+  316: { icon: ArrowLeftRight, title: "introFlip", body: "symbolFlip", color: "#e056fd" },
 };
 
 const SEEN_KEY = "neon_path_intros_seen";

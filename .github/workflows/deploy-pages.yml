@@ -43,6 +43,9 @@ jobs:
 
       - name: Build game
         run: npm run build
+        env:
+          # Set the repository variable once the leaderboard worker is deployed; empty keeps rankings off.
+          VITE_LEADERBOARD_URL: ${{ vars.VITE_LEADERBOARD_URL }}
 
       - name: Prepare Pages fallback files
         if: github.event_name != 'pull_request'

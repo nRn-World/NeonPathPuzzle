@@ -355,7 +355,7 @@ export function StartMenu() {
                     completedLevels={summary?.completedLevels ?? []}
                     records={summary?.records ?? {}}
                     riftCleared={countRiftCleared(readRiftProgress())}
-                    onPlay={levelId => handleButtonClick(() => setLocation(`/play/${levelId}`))}
+                    onPlay={levelId => handleButtonClick(() => setLocation(`${levelId > TOTAL_LEVELS ? "/rift" : "/play"}/${levelId}`))}
                   />
                 </div>
               </motion.div>

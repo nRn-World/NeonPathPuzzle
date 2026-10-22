@@ -337,4 +337,8 @@ export const tr: Record<TranslationKey, string> = {
   rankingEmpty: "Henüz sonuç yok. Listeye ilk giren sen ol.",
   rankingYou: "Sen",
   rankingError: "Sıralama yüklenemedi. Bağlantını kontrol et.",
+  introPhase: "Faz düğümleri",
+  symbolPhase: "Eşkenar dörtgenler, çizgin çift (iki nokta) ya da tek (bir nokta) konumdayken açılır. Başlangıç 1 sayılır.",
+  introFlip: "Dönen oklar",
+  symbolFlip: "Dönen ok, çizginin konumu noktalarıyla eşleşince (iki = çift, bir = tek) parlak yöne, aksi halde ters yöne bakar.",
 };

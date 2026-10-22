@@ -352,6 +352,10 @@ const en = {
   rankingEmpty: "No results yet. Be the first on the board.",
   rankingYou: "You",
   rankingError: "Could not load the ranking. Check your connection.",
+  introPhase: "Phase nodes",
+  symbolPhase: "Diamonds open only on an even (two dots) or odd (one dot) position of your line. The start counts as 1.",
+  introFlip: "Flip arrows",
+  symbolFlip: "A flip arrow points the bright way when your line's position matches its dots (two = even, one = odd), and the opposite way otherwise.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -693,6 +697,10 @@ const sv: Record<TranslationKey, string> = {
   rankingEmpty: "Inga resultat än. Bli först på listan.",
   rankingYou: "Du",
   rankingError: "Kunde inte ladda topplistan. Kontrollera anslutningen.",
+  introPhase: "Fas-noder",
+  symbolPhase: "Romber öppnas bara på en jämn (två prickar) eller udda (en prick) position i linjen. Starten räknas som 1.",
+  introFlip: "Vändande pilar",
+  symbolFlip: "En vändande pil pekar åt det ljusa hållet när linjens position matchar prickarna (två = jämn, en = udda), annars åt motsatt håll.",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };

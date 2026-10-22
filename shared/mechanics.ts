@@ -28,9 +28,28 @@ export interface SyncNode {
   step: number;
 }
 
+/**
+ * The Rift rules. A line's "position" counts its nodes with the start as 1.
+ * A phase node may only be entered at an even (parity 0) or odd (parity 1) position.
+ */
+export interface PhaseNode {
+  point: Point;
+  parity: 0 | 1;
+}
+
+/** An arrow that points `dx,dy` while the line's head has this parity, and the opposite way otherwise. */
+export interface FlipArrow {
+  point: Point;
+  dx: number;
+  dy: number;
+  parity: 0 | 1;
+}
+
 export interface LevelMechanics {
   isBoss: boolean;
   syncNodes: SyncNode[];
+  phaseNodes: PhaseNode[];
+  flipArrows: FlipArrow[];
   /** Unvisited nodes far from the line's head are dimmed. */
   blackout: boolean;
   walls: Point[];
@@ -43,6 +62,8 @@ export interface LevelMechanics {
 export const EMPTY_MECHANICS: LevelMechanics = {
   isBoss: false,
   syncNodes: [],
+  phaseNodes: [],
+  flipArrows: [],
   blackout: false,
   walls: [],
   oneWays: [],
@@ -165,10 +186,53 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
     }
   }
 
+  // The Rift (levels 301-330): parity rules, derived from the same solution so it stays valid.
+  const phaseNodes: PhaseNode[] = [];
+  const flipArrows: FlipArrow[] = [];
+  if (levelId >= 301 && solution.length > 12) {
+    const claimed = new Set([
+      ...oneWays.map(rule => key(rule.point)),
+      ...pairs.flatMap(pair => [key(pair.first), key(pair.second)]),
+      ...syncNodes.map(node => key(node.point)),
+    ]);
+    const free = (step: number) => step >= 1 && step < solution.length - 1 && !claimed.has(key(solution[step]));
+    const place = (target: number) => {
+      let step = Math.floor(target);
+      while (step < solution.length - 1 && !free(step)) step++;
+      return free(step) ? step : null;
+    };
+
+    const phaseCount = 3 + Math.floor((levelId - 301) / 8);
+    for (let index = 0; index < phaseCount; index++) {
+      const step = place(solution.length * (index + 0.5) / phaseCount);
+      if (step === null) continue;
+      claimed.add(key(solution[step]));
+      phaseNodes.push({ point: solution[step], parity: ((step + 1) % 2) as 0 | 1 });
+    }
+
+    if (levelId >= 316) {
+      const flipCount = 3 + Math.floor((levelId - 316) / 5);
+      for (let index = 0; index < flipCount; index++) {
+        const step = place(solution.length * (index + 0.25) / flipCount);
+        if (step === null) continue;
+        const point = solution[step];
+        const next = solution[step + 1];
+        const dx = Math.sign(next.x - point.x);
+        const dy = Math.sign(next.y - point.y);
+        if (Math.abs(dx) + Math.abs(dy) !== 1) continue;
+        claimed.add(key(point));
+        flipArrows.push({ point, dx, dy, parity: ((step + 1) % 2) as 0 | 1 });
+      }
+    }
+  }
+
   return {
     isBoss,
     syncNodes,
-    blackout: levelId >= 251,
+    phaseNodes,
+    flipArrows,
+    // The first half of the Rift introduces the new rules on a lit board.
+    blackout: levelId >= 251 && !(levelId >= 301 && levelId <= 315),
     walls,
     oneWays,
     pairs,
@@ -265,6 +329,8 @@ export function createMoveRules(level: LevelData, mechanics: LevelMechanics) {
   const oneWays = new Map(mechanics.oneWays.map(rule => [key(rule.point), rule]));
   const secondOfPair = new Map(mechanics.pairs.map(pair => [key(pair.second), key(pair.first)]));
   const syncSteps = new Map(mechanics.syncNodes.map(node => [key(node.point), node.step]));
+  const phases = new Map(mechanics.phaseNodes.map(node => [key(node.point), node.parity]));
+  const flips = new Map(mechanics.flipArrows.map(rule => [key(rule.point), rule]));
 
   const visitedNodeCount = (path: Point[]) => path.filter(point => nodeKeys.has(key(point))).length;
 
@@ -281,11 +347,20 @@ export function createMoveRules(level: LevelData, mechanics: LevelMechanics) {
     const oneWay = oneWays.get(key(head));
     if (oneWay && (target.x - head.x !== oneWay.dx || target.y - head.y !== oneWay.dy)) return null;
 
+    const flip = flips.get(key(head));
+    if (flip) {
+      const sign = visitedNodeCount(path) % 2 === flip.parity ? 1 : -1;
+      if (target.x - head.x !== flip.dx * sign || target.y - head.y !== flip.dy * sign) return null;
+    }
+
     const partner = secondOfPair.get(targetKey);
     if (partner && !path.some(point => key(point) === partner)) return null;
 
     const sync = syncSteps.get(targetKey);
     if (sync !== undefined && visitedNodeCount(path) !== sync) return null;
+
+    const phase = phases.get(targetKey);
+    if (phase !== undefined && (visitedNodeCount(path) + 1) % 2 !== phase) return null;
 
     const next = [...path, target];
     if (twin && !next.some(point => key(point) === key(twin))) next.push({ ...twin });

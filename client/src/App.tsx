@@ -23,6 +23,10 @@ function LevelGame() {
   return <Game />;
 }
 
+function RiftGame() {
+  return <Game mode="rift" />;
+}
+
 function ZenGame() {
   return <Game mode="zen" />;
 }
@@ -36,6 +40,7 @@ function AppRouter() {
         <Route path="/daily" component={Daily} />
         <Route path="/weekly" component={Weekly} />
         <Route path="/zen/:id" component={ZenGame} />
+        <Route path="/rift/:id" component={RiftGame} />
         <Route path="/privacy" component={Privacy} />
         <Route component={NotFound} />
       </Switch>

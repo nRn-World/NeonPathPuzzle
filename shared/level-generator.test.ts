@@ -257,7 +257,7 @@ test("generation is deterministic and invalid ids are rejected", () => {
   }
 
   assert.throws(() => generateLevel(0), RangeError);
-  assert.throws(() => generateLevel(301), RangeError);
+  assert.throws(() => generateLevel(331), RangeError);
   assert.throws(() => generateLevel(1.5), RangeError);
 });
 
@@ -284,4 +284,19 @@ test("difficulty follows one smooth curve: a level is never harder than a later 
   }
 
   assert.ok(scores[19] < scores[49], "level 20 must be easier than level 50");
+});
+
+test("the Rift levels (301-330) are valid, distinct and branching", () => {
+  const rift = Array.from({ length: 30 }, (_, index) => generateLevel(301 + index));
+  const layouts = new Set<string>();
+  rift.forEach((level, index) => {
+    assert.ok(isValidSolutionPath(level.solution, level), `Rift level ${level.id}: invalid solution`);
+    assert.equal(level.gridSize, 13);
+    assert.ok(level.nodes.length >= 123 && level.nodes.length <= 131, `Rift level ${level.id}: ${level.nodes.length} nodes`);
+    assert.ok(countBranchingEdges(level.solution) >= 3);
+    if (index > 0) assert.notEqual(level.family, rift[index - 1].family, `Rift level ${level.id}: same silhouette twice`);
+    layouts.add(canonicalLayout(level));
+  });
+  assert.equal(layouts.size, 30, "every Rift layout is unique");
+  assert.throws(() => generateLevel(331));
 });

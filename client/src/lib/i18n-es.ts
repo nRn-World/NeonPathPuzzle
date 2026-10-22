@@ -337,4 +337,8 @@ export const es: Record<TranslationKey, string> = {
   rankingEmpty: "Aún no hay resultados. Sé el primero en la clasificación.",
   rankingYou: "Tú",
   rankingError: "No se pudo cargar la clasificación. Revisa tu conexión.",
+  introPhase: "Nodos de fase",
+  symbolPhase: "Los rombos solo se abren en una posición par (dos puntos) o impar (un punto) de tu línea. El inicio cuenta como 1.",
+  introFlip: "Flechas inversoras",
+  symbolFlip: "Una flecha inversora apunta hacia el lado brillante cuando la posición de tu línea coincide con sus puntos (dos = par, uno = impar) y al contrario en otro caso.",
 };

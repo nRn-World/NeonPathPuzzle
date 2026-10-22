@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, Home, Play, RotateCcw, Share2, Star } from "lucide-react";
 import { Link } from "wouter";
+import { RIFT_LAST_LEVEL } from "@/lib/rift";
 import { generateLevelCode } from "@/lib/levelCodes";
 import { formatDuration } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
@@ -240,7 +241,7 @@ export function WinModal({
                 </p>
               )}
 
-              {!isDaily && !isWeekly && !isZen && levelId >= 10 && (
+              {!isDaily && !isWeekly && !isZen && levelId >= 10 && levelId <= TOTAL_LEVELS && (
                 <div className="space-y-2 rounded-none border border-secondary/30 bg-secondary/10 p-3">
                   <p className="font-exo text-xs text-muted-foreground">
                     {t("permanentCode", { level: levelId })}
@@ -271,7 +272,7 @@ export function WinModal({
                   <Play className="mr-2 h-5 w-5" />
                   {isZen || isDaily || isWeekly
                     ? t("backToMenu")
-                    : levelId < TOTAL_LEVELS ? t("nextLevel") : t("finish")}
+                    : levelId < TOTAL_LEVELS || (levelId > TOTAL_LEVELS && levelId < RIFT_LAST_LEVEL) ? t("nextLevel") : t("finish")}
                 </Button>
 
                 <div className="grid grid-cols-2 gap-2">

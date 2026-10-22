@@ -1,6 +1,8 @@
 import { content } from "@/lib/contentText";
 import { chapters, getChapterForLevel } from "@/lib/chapters";
 import { getActiveSeason, recordSeasonClear } from "@/lib/seasons";
+import { isRiftLevel, RIFT_LAST_LEVEL } from "@/lib/rift";
+import { readRiftProgress, saveRiftResult } from "@/lib/riftProgress";
 import { submitDaily, submitStars, submitWeekly } from "@/lib/leaderboard";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
@@ -49,7 +51,7 @@ import {
   TOTAL_LEVELS,
 } from "@/lib/progress";
 
-export type GameMode = "level" | "daily" | "weekly" | "zen";
+export type GameMode = "level" | "daily" | "weekly" | "zen" | "rift";
 type PauseReason = "manual" | "system";
 
 interface GameProps {
@@ -60,6 +62,7 @@ interface GameProps {
 export default function Game({ mode = "level" }: GameProps) {
   const [, playParams] = useRoute("/play/:id");
   const [, zenParams] = useRoute("/zen/:id");
+  const [, riftParams] = useRoute("/rift/:id");
   const [, setLocation] = useLocation();
 
   // Pinned for the session: a timer tick past local midnight must not swap the
@@ -68,7 +71,7 @@ export default function Game({ mode = "level" }: GameProps) {
   const dailyLevelId = useMemo(() => getDailyLevelId(dailyKey), [dailyKey]);
   const weeklyChallenge = useMemo(() => getWeeklyChallenge(), []);
 
-  const parsedId = mode === "zen" ? Number(zenParams?.id) : Number(playParams?.id);
+  const parsedId = mode === "zen" ? Number(zenParams?.id) : mode === "rift" ? Number(riftParams?.id) : Number(playParams?.id);
   const levelId = mode === "daily"
     ? dailyLevelId
     : mode === "weekly"
@@ -88,6 +91,7 @@ export default function Game({ mode = "level" }: GameProps) {
   const addTokens = useHintTokenStore(state => state.addTokens);
 
   const isZen = mode === "zen";
+  const isRift = mode === "rift";
   const isDaily = mode === "daily";
   const isWeekly = mode === "weekly";
   const isScored = !isZen;
@@ -104,7 +108,7 @@ export default function Game({ mode = "level" }: GameProps) {
   const noUndo = weeklyModifier === "no-undo";
 
   const generated = useMemo(
-    () => (Number.isInteger(levelId) && levelId >= 1 && levelId <= TOTAL_LEVELS
+    () => (Number.isInteger(levelId) && levelId >= 1 && (levelId <= TOTAL_LEVELS || (isRift && isRiftLevel(levelId)))
       ? generateLevel(levelId)
       : null),
     [levelId],
@@ -269,7 +273,11 @@ export default function Game({ mode = "level" }: GameProps) {
     const weeklyRecord = isWeekly ? getWeeklyResult(weeklyChallenge.weekKey) : null;
 
     setBestTimeMs(
-      isDaily ? dailyRecord?.timeMs ?? null : isWeekly ? weeklyRecord?.timeMs ?? null : record?.bestTimeMs ?? null,
+      isDaily
+        ? dailyRecord?.timeMs ?? null
+        : isWeekly
+          ? weeklyRecord?.timeMs ?? null
+          : isRift ? readRiftProgress()[String(levelId)]?.bestTimeMs ?? null : record?.bestTimeMs ?? null,
     );
     setBestScore(isDaily || isWeekly ? null : record?.bestScore ?? null);
 
@@ -284,7 +292,7 @@ export default function Game({ mode = "level" }: GameProps) {
       return;
     }
 
-    setIntroLevel(mode === "level" && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
+    setIntroLevel((mode === "level" || isRift) && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
     const openingChapter = mode === "level" ? chapters.find(item => item.from === levelId) : undefined;
     setChapterIntro(openingChapter && !hasSeenChapterIntro(openingChapter.id) ? openingChapter.id : null);
 
@@ -296,6 +304,7 @@ export default function Game({ mode = "level" }: GameProps) {
     crashNow,
     dailyKey,
     isDaily,
+    isRift,
     isWeekly,
     levelId,
     mode,
@@ -463,14 +472,15 @@ export default function Game({ mode = "level" }: GameProps) {
     setFinalTimeMs(runTime);
 
     const progressBefore = getProgress(userId);
-    const recordBefore = getLevelRecord(progressBefore, levelId);
+    const riftBefore = isRift ? readRiftProgress()[String(levelId)] : undefined;
+    const recordBefore = isRift ? null : getLevelRecord(progressBefore, levelId);
     const dailyRecordBefore = isDaily ? progressBefore.daily.results[dailyKey] : undefined;
     const weeklyRecordBefore = isWeekly ? getWeeklyResult(weeklyChallenge.weekKey) : null;
     const previousBest = isDaily
       ? dailyRecordBefore?.timeMs ?? null
       : isWeekly
         ? weeklyRecordBefore?.timeMs ?? null
-        : recordBefore?.bestTimeMs ?? null;
+        : isRift ? riftBefore?.bestTimeMs ?? null : recordBefore?.bestTimeMs ?? null;
 
     const finalStars = isScored
       ? calculateStars({
@@ -536,6 +546,8 @@ export default function Game({ mode = "level" }: GameProps) {
       void submitWeekly(weeklyChallenge.weekKey, runTime, completedPath);
       if (!weeklyRecordBefore) addTokens(1);
       void queryClient.invalidateQueries({ queryKey: [api.progress.get.path, userId] });
+    } else if (isRift) {
+      saveRiftResult(levelId, finalStars, runTime);
     } else if (mode === "level") {
       updateProgressMutation.mutate({
         userId,
@@ -636,7 +648,9 @@ export default function Game({ mode = "level" }: GameProps) {
   ]);
 
   const handleNext = () => {
-    if (mode === "level") {
+    if (isRift) {
+      setLocation(levelId < RIFT_LAST_LEVEL ? `/rift/${levelId + 1}` : "/");
+    } else if (mode === "level") {
       setLocation(levelId < TOTAL_LEVELS ? `/play/${levelId + 1}` : "/");
     } else {
       setLocation("/");
@@ -747,7 +761,9 @@ export default function Game({ mode = "level" }: GameProps) {
   });
 
   // The chapter gives every level a place in the campaign.
-  const chapterName = mode === "level" ? upper(content.chapter(getChapterForLevel(levelId)).name) : undefined;
+  const chapterName = mode === "level"
+    ? upper(content.chapter(getChapterForLevel(levelId)).name)
+    : isRift ? upper(t("riftName")) : undefined;
 
   const modeTitle = isDaily
     ? undefined
@@ -803,12 +819,15 @@ export default function Game({ mode = "level" }: GameProps) {
       </div>
 
       {(mechanics.oneWays.length > 0 || mechanics.pairs.length > 0 || mechanics.portals.length > 0
-        || mechanics.syncNodes.length > 0 || mechanics.blackout) && (
+        || mechanics.syncNodes.length > 0 || mechanics.phaseNodes.length > 0 || mechanics.flipArrows.length > 0
+        || mechanics.blackout) && (
         <div className="flex items-center gap-x-3 gap-y-0.5 overflow-x-auto whitespace-nowrap border-b border-white/5 bg-background/40 px-2 py-1 font-exo text-[10px] text-muted-foreground sm:flex-wrap sm:justify-center sm:whitespace-normal">
           {mechanics.oneWays.length > 0 && <span>{t("symbolOneWay")}</span>}
           {mechanics.pairs.length > 0 && <span>{t("symbolPairs")}</span>}
           {mechanics.portals.length > 0 && <span>{t("symbolPortals")}</span>}
           {mechanics.syncNodes.length > 0 && <span className="text-emerald-300/90">{t("symbolSync")}</span>}
+          {mechanics.phaseNodes.length > 0 && <span className="text-orange-300/90">{t("symbolPhase")}</span>}
+          {mechanics.flipArrows.length > 0 && <span className="text-fuchsia-300/90">{t("symbolFlip")}</span>}
           {mechanics.blackout && <span className="text-indigo-300/90">{t("symbolBlackout")}</span>}
         </div>
       )}

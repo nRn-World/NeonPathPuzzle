@@ -12,7 +12,7 @@
 
 <img src="docs/hero.gif" alt="The board draws its own solution: one continuous line through every node" width="460">
 
-🔥 **300 Unique Levels** | 💥 **3 Attempts or Crash** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **6 Neon Themes** | 📱 **Mobile Ready**
+🔥 **300 Unique Levels** | 💥 **3 Attempts or Crash** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **10 Neon Themes (4 seasonal)** | 📱 **Mobile Ready**
 
 </div>
 
@@ -47,6 +47,13 @@
 
 ## ✨ Features
 
+- 🗺️ **World map & story** - every chapter opens with a short terminal briefing, and the map shows where you are
+- 🌀 **The Rift** - 30 bonus levels after the campaign with new rules: phase diamonds (even/odd positions) and flip arrows
+- 📈 **Profile** - rank progress, 12-week activity calendar, chapter progress and fastest clears
+- 🎉 **Seasonal events** - spring, summer, Halloween and winter events that earn a permanent theme
+- 🏆 **Online rankings** (optional) - daily, weekly and star boards, results verified by replaying your line
+- ♿ **Accessibility** - colour-blind palette, large text, gamepad support, screen-reader progress, reduced motion
+- 📳 **Haptics** - distinct patterns for steps, milestones, wins and crashes
 - 🎯 **300 Unique Levels** - Progressive difficulty across 12 chapters, with walls, one-way nodes, ordered color pairs, portals, sync nodes, blackout boards and boss levels — every one proven solvable by the test suite
 - 💥 **Three Attempts** - Two restarts per new level; fail the third and the system crashes back to level 1 (stars and records are kept)
 - 🎵 **Procedural Sound Effects** - Layered step notes that rise with your progress, a win chime, dead-end and crash effects, all synthesised live (no audio files)
