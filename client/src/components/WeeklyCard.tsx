@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { CalendarClock, Check, Play, Sparkles, Star } from "lucide-react";
-import { formatDuration } from "@/lib/scoring";
+import { formatResultTime } from "@/lib/scoring";
 import { useI18n, upper } from "@/lib/i18n";
 import {
   getTimeUntilNextWeekly,
@@ -50,7 +50,7 @@ export function WeeklyCard({ compact = false }: { compact?: boolean }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-orbitron text-sm font-bold text-amber-300">{upper(t("weeklyChallenge"))}</h3>
+              <h3 className="font-orbitron text-[13px] font-bold leading-tight text-amber-300 sm:text-sm">{upper(t("weeklyChallenge"))}</h3>
               <span className="flex items-center gap-1 rounded-none border border-amber-400/30 px-2 py-0.5 font-exo text-[10px] text-amber-200/90">
                 <Sparkles className="h-2.5 w-2.5" />
                 {t(modifier.label)}
@@ -61,7 +61,7 @@ export function WeeklyCard({ compact = false }: { compact?: boolean }) {
             </p>
             <p className="mt-0.5 font-mono text-[10px] text-amber-200/60">
               {result
-                ? `${formatDuration(result.timeMs)} · ${result.stars}/3 stars · `
+                ? `${formatResultTime(result.timeMs)} · ${t("starsOutOfThree", { n: result.stars })} · `
                 : ""}
               {t("weeklyLeft", { time: formatRemaining(remainingMs) })}
             </p>

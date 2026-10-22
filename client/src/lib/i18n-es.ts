@@ -350,4 +350,13 @@ export const es: Record<TranslationKey, string> = {
   duelTheirLine: "Su línea",
   duelHelpBanner: "El rival fue más rápido. Aún puedes terminar este nivel para practicar y se muestra su línea como ayuda.",
   duelLateDone: "¡Bien hecho! La siguiente ronda empieza enseguida.",
+  starsOutOfThree: "{n}/3 estrellas",
+  notPlayed: "sin jugar",
+  filterLevels: "Filtrar niveles",
+  openLevel: "Abrir nivel",
+  copyLevelCode: "Copiar código de nivel",
+  activeDay: "{count} día activo",
+  duelRecord: "{wins} V · {losses} D",
+  duelOpponentAway: "El rival perdió la conexión. Tiene {s} s para volver o ganas tú.",
+  duelGo: "¡YA!",
 };

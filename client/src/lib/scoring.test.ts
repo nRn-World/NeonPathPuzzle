@@ -5,6 +5,7 @@ import {
   calculateScore,
   calculateStars,
   formatDuration,
+  formatResultTime,
   getParTimeMs,
 } from "./scoring";
 
@@ -55,4 +56,7 @@ test("durations format as minutes and seconds", () => {
   assert.equal(formatDuration(0), "0:00");
   assert.equal(formatDuration(65_000), "1:05");
   assert.equal(formatDuration(600_000), "10:00");
+  assert.equal(formatResultTime(0), "0:00.0");
+  assert.equal(formatResultTime(7_480), "0:07.4");
+  assert.equal(formatResultTime(65_099), "1:05.0");
 });

@@ -12,6 +12,22 @@ const CORS = {
   "access-control-allow-headers": "content-type",
 };
 
+/**
+ * Best-effort limit on score posts per IP. It lives in one isolate's memory, so
+ * it only slows down a flood; a Cloudflare rate-limit rule is the real guard.
+ */
+const SCORE_LIMIT = 30;
+const SCORE_WINDOW_MS = 60_000;
+const recentPosts = new Map<string, number[]>();
+
+function tooManyPosts(ip: string, now: number): boolean {
+  const recent = (recentPosts.get(ip) ?? []).filter(at => now - at < SCORE_WINDOW_MS);
+  recent.push(now);
+  recentPosts.set(ip, recent);
+  if (recentPosts.size > 5000) recentPosts.clear();
+  return recent.length > SCORE_LIMIT;
+}
+
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "content-type": "application/json" } });
 
@@ -35,6 +51,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/score") {
         // A line is at most ~800 points (about 12 KB): refuse anything much larger before parsing it.
         if (Number(request.headers.get("content-length") ?? 0) > 30_000) return json(413, { error: "too large" });
+        if (tooManyPosts(request.headers.get("cf-connecting-ip") ?? "unknown", now.getTime())) return json(429, { error: "slow down" });
         const reply = await handleSubmit(await request.json().catch(() => null), store, now);
         return json(reply.status, reply.body);
       }

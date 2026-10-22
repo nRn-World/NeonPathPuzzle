@@ -365,6 +365,15 @@ const en = {
   duelTheirLine: "Their line",
   duelHelpBanner: "Opponent was faster. You can still finish this one for practice, and their line is shown as help.",
   duelLateDone: "Well done! The next round starts in a moment.",
+  starsOutOfThree: "{n}/3 stars",
+  notPlayed: "not played",
+  filterLevels: "Filter levels",
+  openLevel: "Open level",
+  copyLevelCode: "Copy level code",
+  activeDay: "{count} active day",
+  duelRecord: "{wins} W · {losses} L",
+  duelOpponentAway: "Opponent lost connection. They have {s} s to come back, or you win.",
+  duelGo: "GO!",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -719,6 +728,15 @@ const sv: Record<TranslationKey, string> = {
   duelTheirLine: "Deras linje",
   duelHelpBanner: "Motståndaren var snabbare. Du kan ändå klara den här för övning, och deras linje visas som hjälp.",
   duelLateDone: "Bra jobbat! Nästa runda startar strax.",
+  starsOutOfThree: "{n}/3 stjärnor",
+  notPlayed: "inte spelad",
+  filterLevels: "Filtrera nivåer",
+  openLevel: "Öppna nivå",
+  copyLevelCode: "Kopiera nivåkod",
+  activeDay: "{count} aktiv dag",
+  duelRecord: "{wins} V · {losses} F",
+  duelOpponentAway: "Motståndaren tappade anslutningen. Den har {s} s på sig att komma tillbaka, annars vinner du.",
+  duelGo: "KÖR!",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };

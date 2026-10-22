@@ -187,21 +187,21 @@ export function WorldMap({ continueLevel, completedLevels, records, riftCleared,
               </text>
               <text
                 x={labelLeft ? x + 40 : x - 40}
-                y={y - 4}
+                y={y - 5}
                 textAnchor={labelLeft ? "start" : "end"}
                 fontFamily="Orbitron, sans-serif"
                 fontWeight={700}
-                fontSize={11}
+                fontSize={13}
                 fill="#e8ecf8"
               >
                 {upper(node.name)}
               </text>
               <text
                 x={labelLeft ? x + 40 : x - 40}
-                y={y + 12}
+                y={y + 13}
                 textAnchor={labelLeft ? "start" : "end"}
                 fontFamily="'Exo 2', sans-serif"
-                fontSize={10}
+                fontSize={12}
                 fill="#8b93a7"
               >
                 {node.cleared}/{node.total} · {node.stars}★

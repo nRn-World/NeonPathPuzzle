@@ -20,6 +20,8 @@ export type DuelEvent =
   /** `opponentPath` is only sent to the round's loser, after the race, as help. */
   | { kind: "roundResult"; round: number; winner: "you" | "opponent" | "none"; timeMs: number; score: DuelScore; opponentPath?: Point[] }
   | { kind: "lateFinish"; round: number }
+  | { kind: "opponentAway"; graceMs: number }
+  | { kind: "opponentBack" }
   | { kind: "matchResult"; winner: "you" | "opponent" | "draw" | "cancelled"; forfeit: boolean; rating: number; ratingDelta: number; score: DuelScore }
   | { kind: "rejected"; reason: string }
   | { kind: "error"; reason: string };
@@ -95,6 +97,10 @@ export class DuelConnection {
           score: message.score as DuelScore,
           opponentPath: Array.isArray(message.opponentPath) ? (message.opponentPath as Point[]) : undefined,
         };
+      case "opponentAway":
+        return { kind: "opponentAway", graceMs: Number(message.graceMs) || 15_000 };
+      case "opponentBack":
+        return { kind: "opponentBack" };
       case "lateFinish":
         return { kind: "lateFinish", round: Number(message.round) };
       case "matchResult":

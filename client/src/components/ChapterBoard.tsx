@@ -130,7 +130,7 @@ export function ChapterBoard({
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter levels">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("filterLevels")}>
             {filters.map(item => (
               <button
                 key={item.id}
@@ -177,7 +177,7 @@ export function ChapterBoard({
             />
             <button
               type="submit"
-              aria-label="Open level"
+              aria-label={t("openLevel")}
               className="flex h-8 w-8 items-center justify-center rounded-none border border-white/15 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
             >
               <CornerDownLeft className="h-3.5 w-3.5" />

@@ -138,10 +138,12 @@ export class Match {
       send({ type: "error", reason: "not in this match" });
       return;
     }
+    const returning = seat.dropTimer !== null && this.started && !this.over;
     seat.dropTimer?.();
     seat.dropTimer = null;
     seat.send = send;
     const opponent = this.opponentOf(seat);
+    if (returning) opponent.send?.({ type: "opponentBack" });
     send({
       type: "match",
       you: { name: seat.fighter.name, rating: seat.fighter.rating },
@@ -171,6 +173,7 @@ export class Match {
       return;
     }
     seat.dropTimer = this.clock.after(RECONNECT_MS, () => this.forfeit(seat));
+    this.opponentOf(seat).send?.({ type: "opponentAway", graceMs: RECONNECT_MS });
   }
 
   receive(playerId: string, message: ClientMessage) {

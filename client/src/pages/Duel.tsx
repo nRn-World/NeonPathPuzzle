@@ -19,8 +19,8 @@ import {
 } from "@/lib/leaderboard";
 import { getDateKey } from "@/lib/daily";
 import { useSettingsStore } from "@/lib/settings";
-import { playCrashSound, playWinSound } from "@/lib/sounds";
-import { formatDuration } from "@/lib/scoring";
+import { playClickSound, playCrashSound, playMilestoneHaptic, playWinSound } from "@/lib/sounds";
+import { formatDuration, formatResultTime } from "@/lib/scoring";
 import { useI18n, upper } from "@/lib/i18n";
 
 type Phase = "lobby" | "searching" | "playing" | "finished" | "lost-connection";
@@ -41,7 +41,9 @@ export default function Duel() {
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
   const [player, setPlayer] = useState(getPlayer);
   const [phase, setPhase] = useState<Phase>("lobby");
-  const [rating, setRating] = useState<number | null>(null);
+  const [record, setRecord] = useState<{ rating: number; rank: number; wins: number; losses: number } | null>(null);
+  /** performance.now() until which a dropped opponent may still come back. */
+  const [opponentAwayUntil, setOpponentAwayUntil] = useState<number | null>(null);
   const [opponent, setOpponent] = useState<{ name: string; rating: number; bot: boolean } | null>(null);
   const [round, setRound] = useState<RoundState | null>(null);
   const [score, setScore] = useState<DuelScore>(NO_SCORE);
@@ -61,7 +63,9 @@ export default function Duel() {
 
   useEffect(() => {
     if (!enabled || !player.online) return;
-    fetchBoard("duel", getDateKey()).then(board => setRating(board.you?.value ?? null)).catch(() => undefined);
+    fetchBoard("duel", getDateKey())
+      .then(board => setRecord(board.you ? { rating: board.you.value, rank: board.you.rank, wins: board.you.wins ?? 0, losses: board.you.losses ?? 0 } : null))
+      .catch(() => undefined);
   }, [enabled, player.online, player.id, result]);
 
   useEffect(() => () => connection.current?.close(), []);
@@ -98,11 +102,13 @@ export default function Duel() {
         setSubmitted(false);
         setHelp(null);
         setLateDone(false);
+        lastTick.current = null;
         setNow(performance.now());
         break;
       case "roundResult":
         setScore(event.score);
-        setRoundNote(event.winner === "you" ? t("duelYouWonRound") : event.winner === "opponent" ? t("duelOppWonRound") : t("duelNoWinner"));
+        const time = event.winner === "none" ? "" : ` · ${formatResultTime(event.timeMs)}`;
+        setRoundNote((event.winner === "you" ? t("duelYouWonRound") : event.winner === "opponent" ? t("duelOppWonRound") : t("duelNoWinner")) + time);
         if (event.winner === "you") playWinSound();
         else if (event.winner === "opponent") playCrashSound();
         if (event.opponentPath) {
@@ -115,7 +121,14 @@ export default function Duel() {
       case "lateFinish":
         setLateDone(true);
         break;
+      case "opponentAway":
+        setOpponentAwayUntil(performance.now() + event.graceMs);
+        break;
+      case "opponentBack":
+        setOpponentAwayUntil(null);
+        break;
       case "matchResult":
+        setOpponentAwayUntil(null);
         setResult(event);
         setPhase("finished");
         if (event.winner === "you") playWinSound();
@@ -171,6 +184,27 @@ export default function Duel() {
   const live = round !== null && now >= round.startsAt && (roundNote === null || (late && !lateDone));
   const elapsed = round ? Math.max(0, now - round.startsAt) : 0;
 
+  // A tick on every countdown second and a short "GO!" when the race starts.
+  const lastTick = useRef<number | null>(null);
+  const [goFlash, setGoFlash] = useState(false);
+  const tick = Math.max(0, countdown);
+  useEffect(() => {
+    if (!round || roundNote !== null || tick === lastTick.current) return;
+    const previous = lastTick.current;
+    lastTick.current = tick;
+    if (tick > 0 && tick <= 3) playClickSound();
+    if (tick === 0 && previous !== null && previous > 0) {
+      playMilestoneHaptic();
+      setGoFlash(true);
+    }
+  }, [tick, round, roundNote]);
+
+  useEffect(() => {
+    if (!goFlash) return;
+    const id = window.setTimeout(() => setGoFlash(false), 700);
+    return () => window.clearTimeout(id);
+  }, [goFlash]);
+
   const submit = (path: Point[]) => {
     if (!round || submitted) return;
     setSubmitted(true);
@@ -205,7 +239,8 @@ export default function Duel() {
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{t("rankingYourName")}</div>
                   <div className="font-orbitron text-lg font-bold text-primary">{player.name}</div>
-                  <div className="font-mono text-xs text-muted-foreground">{t("duelRating")}: {rating ?? 1000}</div>
+                  <div className="font-mono text-xs text-muted-foreground">{t("duelRating")}: {record?.rating ?? 1000}
+                    {record && ` · #${record.rank} · ${t("duelRecord", { wins: record.wins, losses: record.losses })}`}</div>
                 </div>
                 <Button
                   variant="outline"
@@ -361,9 +396,19 @@ export default function Duel() {
             <p className="font-orbitron text-7xl font-black text-primary">{countdown}</p>
           </div>
         )}
+        {opponentAwayUntil !== null && (
+          <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 border border-amber-300/50 bg-background/90 px-3 py-2 text-center font-exo text-xs text-amber-200">
+            {t("duelOpponentAway", { s: Math.max(0, Math.ceil((opponentAwayUntil - now) / 1000)) })}
+          </div>
+        )}
         {late && (
           <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 w-[min(92%,28rem)] -translate-x-1/2 border border-secondary/50 bg-background/90 px-3 py-2 text-center font-exo text-xs">
             {lateDone ? t("duelLateDone") : t("duelHelpBanner")}
+          </div>
+        )}
+        {goFlash && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+            <p className="animate-ping font-orbitron text-6xl font-black text-primary [animation-fill-mode:forwards] [animation-iteration-count:1]">{t("duelGo")}</p>
           </div>
         )}
         {roundNote && !late && (
@@ -380,11 +425,12 @@ export default function Duel() {
 }
 
 function Shell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
+  const { t } = useI18n();
   return (
     <main className="safe-scroll h-full overflow-y-auto bg-background px-5 py-8 text-foreground">
       <section className="mx-auto max-w-md space-y-6 border border-primary/20 bg-black/40 p-6">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onBack} aria-label="Back" className="p-1 text-primary hover:text-white">
+          <button type="button" onClick={onBack} aria-label={t("back")} className="p-1 text-primary hover:text-white">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="neon-text font-orbitron text-3xl font-black text-primary">{upper(title)}</h1>

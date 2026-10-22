@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { content } from "@/lib/contentText";
 import { chapters } from "@/lib/chapters";
 import { useI18n, upper } from "@/lib/i18n";
-import { formatDuration } from "@/lib/scoring";
+import { formatResultTime } from "@/lib/scoring";
 import { computeProfileStats } from "@/lib/stats";
 import { TOTAL_LEVELS, type ProgressData } from "@/lib/progress";
 
@@ -16,6 +16,7 @@ function Card({ label, value }: { label: string; value: string }) {
 }
 
 function formatHours(ms: number): string {
+  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))} s`;
   const minutes = Math.round(ms / 60000);
   return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
 }
@@ -70,12 +71,12 @@ export function ProfilePanel({
       <div>
         <div className="mb-2 flex items-baseline justify-between">
           <h3 className="font-mono text-[11px] uppercase tracking-[0.25em] text-primary">{t("activityTitle")}</h3>
-          <span className="font-mono text-[10px] text-muted-foreground">{t("activeDays", { count: stats.activeDays })}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{t(stats.activeDays === 1 ? "activeDay" : "activeDays", { count: stats.activeDays })}</span>
         </div>
         <div
           className="grid grid-flow-col grid-rows-7 gap-[3px]"
           role="img"
-          aria-label={t("activeDays", { count: stats.activeDays })}
+          aria-label={t(stats.activeDays === 1 ? "activeDay" : "activeDays", { count: stats.activeDays })}
         >
           {stats.activity.map(day => (
             <span
@@ -113,7 +114,7 @@ export function ProfilePanel({
             {stats.fastest.map((entry, index) => (
               <li key={entry.levelId} className="flex items-center justify-between border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs">
                 <span className="text-muted-foreground">#{index + 1} · {upper(t("level"))} {entry.levelId}</span>
-                <span className="text-primary">{formatDuration(entry.timeMs)}</span>
+                <span className="text-primary">{formatResultTime(entry.timeMs)}</span>
               </li>
             ))}
           </ol>

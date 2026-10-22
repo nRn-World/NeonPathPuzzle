@@ -350,4 +350,13 @@ export const tr: Record<TranslationKey, string> = {
   duelTheirLine: "Onların çizgisi",
   duelHelpBanner: "Rakip daha hızlıydı. Bunu yine de pratik için bitirebilirsin; onların çizgisi yardım olarak gösteriliyor.",
   duelLateDone: "Aferin! Sonraki tur birazdan başlıyor.",
+  starsOutOfThree: "{n}/3 yıldız",
+  notPlayed: "oynanmadı",
+  filterLevels: "Seviyeleri filtrele",
+  openLevel: "Seviyeyi aç",
+  copyLevelCode: "Seviye kodunu kopyala",
+  activeDay: "{count} aktif gün",
+  duelRecord: "{wins} G · {losses} M",
+  duelOpponentAway: "Rakibin bağlantısı koptu. Geri dönmek için {s} sn'si var, yoksa sen kazanırsın.",
+  duelGo: "BAŞLA!",
 };

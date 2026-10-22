@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Check, Lock, Star } from "lucide-react";
 import { motion } from "framer-motion";
-import { formatDuration } from "@/lib/scoring";
+import { formatResultTime } from "@/lib/scoring";
 import { useI18n } from "@/lib/i18n";
 
 interface LevelCardProps {
@@ -42,7 +42,7 @@ export function LevelCard({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: delay * 0.03 }}
         title={bestTimeMs !== null
-          ? `${t("bestTimeStat")} ${formatDuration(bestTimeMs)}${bestScore ? ` · ${t("bestScore")} ${bestScore.toLocaleString()}` : ""}`
+          ? `${t("bestTimeStat")} ${formatResultTime(bestTimeMs)}${bestScore ? ` · ${t("bestScore")} ${bestScore.toLocaleString()}` : ""}`
           : undefined}
         className={`
           relative aspect-square rounded-[4px] cursor-pointer group overflow-hidden

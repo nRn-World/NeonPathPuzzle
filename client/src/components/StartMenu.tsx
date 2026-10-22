@@ -553,6 +553,8 @@ const LevelPopup = forwardRef<LevelPopupHandle>(function LevelPopup(_props, ref)
   return (
     <div
       aria-hidden={!open}
+      // Hidden but mounted: keep its buttons out of the tab order too.
+      {...(open ? {} : { inert: "" })}
       className={`level-popup-layer fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 ${open ? "is-open" : ""}`}
       onClick={() => setOpen(false)}
     >
