@@ -11,6 +11,8 @@ import {
   fetchBoard,
   getPlayer,
   leaderboardEnabled,
+  MAX_NAME_CHANGES,
+  nameChangesLeft,
   rerollName,
   setOnline,
 } from "@/lib/leaderboard";
@@ -173,11 +175,20 @@ export default function Duel() {
                   <div className="font-orbitron text-lg font-bold text-primary">{player.name}</div>
                   <div className="font-mono text-xs text-muted-foreground">{t("duelRating")}: {rating ?? 1000}</div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setPlayer(rerollName())} className="rounded-none border-white/15">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={nameChangesLeft(player) === 0}
+                  onClick={() => setPlayer(rerollName())}
+                  className="rounded-none border-white/15"
+                >
                   <Shuffle className="mr-1.5 h-3.5 w-3.5" />
                   {t("rankingNewName")}
                 </Button>
               </div>
+              <p className="-mt-3 border border-amber-300/30 bg-amber-300/5 px-3 py-2 font-mono text-xs text-amber-300">
+                {t("nameChangesLeft", { left: nameChangesLeft(player), max: MAX_NAME_CHANGES })}
+              </p>
               <Button onClick={start} className="h-14 w-full rounded-none bg-primary font-orbitron text-lg font-black tracking-wide text-background">
                 <Swords className="mr-2 h-5 w-5" />
                 {upper(t("duelFind"))}

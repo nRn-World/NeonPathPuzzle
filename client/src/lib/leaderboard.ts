@@ -23,7 +23,14 @@ export interface Player {
   online: boolean;
   /** Seed behind the current name, so "new name" can step to the next one. */
   nameSeed: number;
+  /** Name changes used on this device. Restoring a backup code does not reset it. */
+  rerollsUsed: number;
 }
+
+/** How many times a device may pick a new generated name. */
+export const MAX_NAME_CHANGES = 10;
+
+export const nameChangesLeft = (player: Player) => Math.max(0, MAX_NAME_CHANGES - (player.rerollsUsed || 0));
 
 function storage(): Storage | null {
   try {
@@ -60,14 +67,20 @@ export function getPlayer(): Player {
     const parsed = JSON.parse(storage()?.getItem(PLAYER_KEY) ?? "null") as Partial<Player> | null;
     if (parsed && typeof parsed.id === "string" && ID_PATTERN.test(parsed.id)) {
       const seed = Number.isInteger(parsed.nameSeed) ? (parsed.nameSeed as number) : newSeed();
-      return { id: parsed.id, name: nameFromSeed(seed), online: Boolean(parsed.online), nameSeed: seed };
+      return {
+        id: parsed.id,
+        name: nameFromSeed(seed),
+        online: Boolean(parsed.online),
+        nameSeed: seed,
+        rerollsUsed: Math.min(MAX_NAME_CHANGES, Math.max(0, Math.trunc(Number(parsed.rerollsUsed)) || 0)),
+      };
     }
   } catch {
     // Fall through to a fresh identity.
   }
   if (sessionPlayer) return sessionPlayer;
   const seed = newSeed();
-  sessionPlayer = save({ id: newId(), name: nameFromSeed(seed), online: false, nameSeed: seed });
+  sessionPlayer = save({ id: newId(), name: nameFromSeed(seed), online: false, nameSeed: seed, rerollsUsed: 0 });
   return sessionPlayer;
 }
 
@@ -80,8 +93,10 @@ export const setOnline = (online: boolean): Player => update({ online });
 
 /** A different generated name; the old one stays on the server only until the next result is sent. */
 export function rerollName(): Player {
+  const player = getPlayer();
+  if (nameChangesLeft(player) === 0) return player;
   const seed = newSeed();
-  return update({ nameSeed: seed, name: nameFromSeed(seed) });
+  return update({ nameSeed: seed, name: nameFromSeed(seed), rerollsUsed: player.rerollsUsed + 1 });
 }
 
 /** The id in groups of four, e.g. "9F3A-0C11-...": enough to restore the rating on a new device. */

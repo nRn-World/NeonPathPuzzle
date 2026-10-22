@@ -377,4 +377,5 @@ export const tr: Record<TranslationKey, string> = {
   duelChecking: "Çizgin kontrol ediliyor…",
   duelPlayOnline: "Çevrimiçi oyna",
   duelPlayOnlineSub: "1'e 1 düello · rastgele rakip",
+  nameChangesLeft: "Bu cihazda kalan ad değişikliği: {left} / {max}",
 };
