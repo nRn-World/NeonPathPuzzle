@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Brain, ChevronDown, Flame, Play, Star } from "lucide-react";
+import { Brain, ChevronDown, Flame, Play, Star, Swords } from "lucide-react";
 import { getBrainRank } from "@/lib/rank";
 import type { Point } from "@shared/schema";
 import { HERO_BOARD } from "@/lib/heroBoard";
@@ -168,6 +168,7 @@ interface MenuHeroProps {
   streak: number;
   chapterName: string;
   onPlay: () => void;
+  onDuel: () => void;
   /** Secondary actions: how to play, completed, daily, theme, settings, editor. */
   actions: ReactNode;
 }
@@ -182,6 +183,7 @@ export function MenuHero({
   streak,
   chapterName,
   onPlay,
+  onDuel,
   actions,
 }: MenuHeroProps) {
   const { t } = useI18n();
@@ -285,6 +287,18 @@ export function MenuHero({
               )}
             </span>
           </div>
+
+          <button
+            type="button"
+            onClick={onDuel}
+            className="mt-4 flex w-full items-center justify-between border border-secondary/60 bg-secondary/10 px-5 py-4 text-left transition-colors hover:bg-secondary/20"
+          >
+            <span>
+              <span className="block font-orbitron text-lg font-black tracking-wide text-secondary">{upper(t("duelPlayOnline"))}</span>
+              <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("duelPlayOnlineSub")}</span>
+            </span>
+            <Swords className="h-7 w-7 text-secondary" />
+          </button>
         </motion.div>
 
         <motion.div

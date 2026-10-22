@@ -390,6 +390,8 @@ const en = {
   duelBotNote: "Bot matches give a few points for a win and never cost any.",
   duelConnectionLost: "The connection was lost. Try again.",
   duelChecking: "Checking your line…",
+  duelPlayOnline: "Play online",
+  duelPlayOnlineSub: "1v1 duel · random opponent",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -769,6 +771,8 @@ const sv: Record<TranslationKey, string> = {
   duelBotNote: "Botmatcher ger några poäng för en vinst och kostar aldrig några.",
   duelConnectionLost: "Anslutningen bröts. Försök igen.",
   duelChecking: "Kontrollerar din linje…",
+  duelPlayOnline: "Spela online",
+  duelPlayOnlineSub: "1 mot 1 · slumpad motståndare",
 };
 
 export const dictionaries: Record<Language, Record<TranslationKey, string>> = { en, sv, tr, es };

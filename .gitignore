@@ -46,3 +46,6 @@ android/.gradle/
 # Test tooling artifacts (may contain API keys)
 testsprite_tests/tmp/
 nul
+
+worker/.wrangler/
+worker/node_modules/
