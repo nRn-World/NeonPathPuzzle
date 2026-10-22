@@ -14,6 +14,7 @@ import Game from "@/pages/Game";
 import Daily from "@/pages/Daily";
 import Weekly from "@/pages/Weekly";
 import Privacy from "@/pages/Privacy";
+import Duel from "@/pages/Duel";
 import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
 import { applyMotionPreference, applyTextPreference, useSettingsStore } from "@/lib/settings";
 import { useEffect } from "react";
@@ -41,6 +42,7 @@ function AppRouter() {
         <Route path="/weekly" component={Weekly} />
         <Route path="/zen/:id" component={ZenGame} />
         <Route path="/rift/:id" component={RiftGame} />
+        <Route path="/duel" component={Duel} />
         <Route path="/privacy" component={Privacy} />
         <Route component={NotFound} />
       </Switch>

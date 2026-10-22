@@ -10,7 +10,7 @@ The game stores level progress, settings, achievements, and an anonymous local p
 
 ## Optional online ranking
 
-Online rankings are off until the player chooses a public name in the Ranking tab. After that, the game sends to the ranking server (a Cloudflare Worker operated by nRn World): the chosen public name, a random player identifier generated on the device, the player's total star count, and the completion time and line drawn for the daily and weekly challenges (the line is used only to check that the result is real). No real name, e-mail address, location, device identifier, or advertising identifier is sent. A player can stop sharing at any time by not saving a name, and can ask for their ranking entries to be deleted by e-mail.
+Online rankings and duels are off until the player taps "Join online play". After that, the game sends to the ranking server (a Cloudflare Worker operated by nRn World): a generated public name (players cannot type their own), a random player identifier generated on the device, the player's total star count, the completion time and line drawn for the daily and weekly challenges and for online duels (the line is used only to check that the result is real), and the duel rating and win/loss counts. Duel opponents see only the generated name and rating. No real name, e-mail address, location, device identifier, or advertising identifier is sent. A player can stop sharing at any time by choosing "Stop sharing and go offline", and can ask for their ranking entries to be deleted by e-mail.
 
 ## Permissions and third-party services
 

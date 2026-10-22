@@ -8,6 +8,7 @@ import {
   Lock,
   Map as MapIcon,
   Star,
+  Swords,
   Trophy,
   X,
   Zap,
@@ -152,6 +153,11 @@ export function StartMenu() {
                         icon={<MapIcon className="h-4 w-4" />}
                         label={t("worldMapButton")}
                         onClick={() => handleButtonClick(() => setScreen("map"))}
+                      />
+                      <MenuButton
+                        icon={<Swords className="h-4 w-4" />}
+                        label={t("duelButton")}
+                        onClick={() => handleButtonClick(() => setLocation("/duel"))}
                       />
                       <MenuButton
                         icon={<Trophy className="h-4 w-4" />}

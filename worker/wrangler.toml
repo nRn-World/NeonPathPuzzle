@@ -6,4 +6,16 @@ compatibility_date = "2025-01-01"
 binding = "DB"
 database_name = "neon-path-leaderboard"
 # Run `npx wrangler d1 create neon-path-leaderboard` and paste the printed id here.
-database_id = "REPLACE_WITH_D1_ID"
+database_id = "b6cb0d82-14c8-4efb-9cc6-7322954ae018"
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Lobby"
+
+[[durable_objects.bindings]]
+name = "ARENA"
+class_name = "Arena"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Lobby", "Arena"]

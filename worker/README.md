@@ -1,4 +1,4 @@
-# Neon Path leaderboard worker
+# Neon Path online worker (rankings + duels)
 
 A small Cloudflare Worker + D1 database behind the game's **Ranking** tab. The game works fully without it: until `VITE_LEADERBOARD_URL` is set, nothing is ever sent.
 
@@ -23,4 +23,15 @@ For GitHub Pages, add `VITE_LEADERBOARD_URL` as a repository variable and pass i
 ## Test
 ```bash
 npx tsx --test worker/src/logic.test.ts
+```
+
+## Duels
+`/ws/queue` is the matchmaking queue (one `Lobby` Durable Object); each match runs in its own `Arena` Durable Object at `/ws/arena/<id>`. Best of three: the same level for both players, the first line that the shared move rules accept wins the round, first to two wins. After 18 s in the queue a practice bot is added (bot wins give +6 rating up to 1200 and never cost points). Ratings (Elo, K=32, start 1000) are stored in the `ratings` table and shown on the Duel board. Players never type a name: names are generated from fixed word lists (`shared/names.ts`) and the server rejects anything else.
+
+Local end-to-end test:
+```bash
+cd worker
+npx wrangler d1 execute neon-path-leaderboard --local --file=schema.sql
+npx wrangler dev --local --port 8787
+npx tsx scripts/duel-smoke.mts pvp   # two scripted players; or "bot" for the bot path
 ```
