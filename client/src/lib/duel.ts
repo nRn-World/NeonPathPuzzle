@@ -17,6 +17,7 @@ export type DuelEvent =
   | { kind: "matched"; vsBot: boolean }
   | { kind: "match"; you: { name: string; rating: number }; opponent: { name: string; rating: number; bot: boolean }; roundsToWin: number }
   | { kind: "round"; round: number; levelId: number; startsInMs: number; limitMs: number; score: DuelScore; receivedAt: number }
+  | { kind: "opponent"; round: number; tail: Point[]; count: number }
   | { kind: "roundResult"; round: number; winner: "you" | "opponent" | "none"; timeMs: number; score: DuelScore }
   | { kind: "matchResult"; winner: "you" | "opponent" | "draw" | "cancelled"; forfeit: boolean; rating: number; ratingDelta: number; score: DuelScore }
   | { kind: "rejected"; reason: string }
@@ -84,6 +85,8 @@ export class DuelConnection {
           score: message.score as DuelScore,
           receivedAt: performance.now(),
         };
+      case "opponent":
+        return { kind: "opponent", round: Number(message.round), tail: message.tail as Point[], count: Number(message.count) };
       case "roundResult":
         return { kind: "roundResult", round: Number(message.round), winner: message.winner as never, timeMs: Number(message.timeMs), score: message.score as DuelScore };
       case "matchResult":
@@ -107,6 +110,13 @@ export class DuelConnection {
 
   submit(round: number, path: Point[]) {
     if (this.arena?.readyState === WebSocket.OPEN) this.arena.send(JSON.stringify({ type: "done", round, path }));
+  }
+
+  /** Live view for the opponent: only the last steps and the count are sent, never the whole line. */
+  progress(round: number, path: Point[]) {
+    if (this.arena?.readyState === WebSocket.OPEN) {
+      this.arena.send(JSON.stringify({ type: "progress", round, tail: path.slice(-10), count: path.length }));
+    }
   }
 
   /** Leaving mid-match counts as a forfeit. */

@@ -188,3 +188,33 @@ test("a match nobody joins is cancelled with no result", () => {
   clock.advance(60_000);
   assert.equal(results.length, 0);
 });
+
+test("progress is relayed to the opponent as a short tail only, rate-limited and validated", () => {
+  const { clock, match, humans, inbox, last } = setup(false);
+  const [a, b] = humans;
+  const point = (x: number) => ({ x, y: 0 });
+  clock.advance(COUNTDOWN_MS + 500);
+  match.receive(a.id, { type: "progress", round: 1, tail: [point(1), point(2)], count: 3 });
+  assert.deepEqual(last(b.id, "opponent"), { type: "opponent", round: 1, tail: [point(1), point(2)], count: 3 });
+
+  const before = inbox[b.id].length;
+  match.receive(a.id, { type: "progress", round: 1, tail: [point(3)], count: 4 });
+  assert.equal(inbox[b.id].length, before, "faster than the rate limit is dropped");
+
+  clock.advance(200);
+  match.receive(a.id, { type: "progress", round: 1, tail: Array.from({ length: 11 }, (_, i) => point(i)), count: 12 });
+  match.receive(a.id, { type: "progress", round: 1, tail: [{ x: "a", y: 1 }], count: 5 });
+  match.receive(a.id, { type: "progress", round: 2, tail: [point(1)], count: 5 });
+  assert.equal(inbox[b.id].length, before, "a long tail, bad points or the wrong round are ignored");
+  assert.equal(inbox[a.id].some(message => message.type === "opponent"), false, "you never receive your own line");
+});
+
+test("against the bot the player sees it advance, and only its latest steps", () => {
+  const { clock, humans, inbox } = setup(true);
+  clock.advance(COUNTDOWN_MS + 6000);
+  const moves = inbox[humans[0].id].filter(message => message.type === "opponent");
+  assert.ok(moves.length >= 2);
+  assert.ok(moves.every(message => (message.tail as unknown[]).length <= 10));
+  const counts = moves.map(message => message.count as number);
+  assert.deepEqual([...counts].sort((x, y) => x - y), counts, "the bot's progress only grows");
+});

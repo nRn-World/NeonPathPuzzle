@@ -30,6 +30,8 @@ export interface GameCanvasProps {
   hintPath?: Point[];
   onBacktrack: () => boolean;
   onPathChange?: (visitedNodes: number, pathLength: number) => void;
+  /** The full line after every move, for live views such as duels. */
+  onPathPoints?: (path: Point[]) => void;
   reducedMotion?: boolean;
   paused?: boolean;
   mechanics?: LevelMechanics;
@@ -117,6 +119,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     hintPath,
     onBacktrack,
     onPathChange,
+    onPathPoints,
     reducedMotion = false,
     paused = false,
     mechanics = EMPTY_MECHANICS,
@@ -152,8 +155,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const previousPathLengthRef = useRef(1);
   const celebrateAtRef = useRef<number | null>(null);
 
-  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange });
-  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange };
+  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange, onPathPoints });
+  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange, onPathPoints };
 
   const nodeKeys = useMemo(() => new Set(level.nodes.map(pointKey)), [level.nodes]);
   const oneWayMap = useMemo(
@@ -837,6 +840,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
   const notifyPathChange = (nextPath: Point[]) => {
     callbacksRef.current.onPathChange?.(countVisitedNodes(nextPath), nextPath.length);
+    callbacksRef.current.onPathPoints?.(nextPath);
     callbacksRef.current.onStuckChange?.(rules.isStuck(nextPath));
   };
 

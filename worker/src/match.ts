@@ -16,6 +16,8 @@ export interface Fighter {
 export type ClientMessage =
   | { type: "hello"; playerId: string }
   | { type: "done"; round: number; path: unknown }
+  /** Live view for the opponent: only the last steps and a count, never the whole line. */
+  | { type: "progress"; round: number; tail: unknown; count: unknown }
   | { type: "leave" };
 
 export type ServerMessage = { type: string; [key: string]: unknown };
@@ -42,6 +44,10 @@ export const RECONNECT_MS = 15_000;
 export const ROUNDS_TO_WIN = 2;
 export const MAX_ROUNDS = 5;
 export const START_RATING = 1000;
+/** How many of the latest points an opponent gets to see. */
+export const TAIL_LENGTH = 10;
+const PROGRESS_MIN_GAP_MS = 80;
+const BOT_TICK_MS = 500;
 const K = 32;
 /** Beating a bot is worth a little, up to this rating; losing to one costs nothing. */
 const BOT_WIN_POINTS = 6;
@@ -71,6 +77,7 @@ interface Seat {
   send: ((message: ServerMessage) => void) | null;
   wins: number;
   dropTimer: (() => void) | null;
+  lastProgressAt: number;
 }
 
 export class Match {
@@ -90,10 +97,10 @@ export class Match {
     private readonly rng: () => number,
     private readonly onFinished: (result: MatchResult) => void,
   ) {
-    const seats: Seat[] = humans.map(fighter => ({ fighter, bot: false, send: null, wins: 0, dropTimer: null }));
+    const seats: Seat[] = humans.map(fighter => ({ fighter, bot: false, send: null, wins: 0, dropTimer: null, lastProgressAt: 0 }));
     if (vsBot) {
       const human = humans[0];
-      seats.push({ fighter: { id: "bot", name: "Bot", rating: human.rating }, bot: true, send: null, wins: 0, dropTimer: null });
+      seats.push({ fighter: { id: "bot", name: "Bot", rating: human.rating }, bot: true, send: null, wins: 0, dropTimer: null, lastProgressAt: 0 });
     }
     this.seats = seats;
     this.levels = pickLevels(seats.reduce((sum, seat) => sum + seat.fighter.rating, 0) / seats.length, rng);
@@ -168,6 +175,10 @@ export class Match {
       this.forfeit(seat);
       return;
     }
+    if (message.type === "progress") {
+      this.relayProgress(seat, message);
+      return;
+    }
     if (message.type !== "done" || !this.roundOpen || message.round !== this.round) return;
 
     const now = this.clock.now();
@@ -182,6 +193,17 @@ export class Match {
       return;
     }
     this.endRound(seat, elapsed);
+  }
+
+  private relayProgress(from: Seat, message: { round: number; tail: unknown; count: unknown }) {
+    const now = this.clock.now();
+    if (!this.roundOpen || message.round !== this.round || now < this.startAt) return;
+    if (now - from.lastProgressAt < PROGRESS_MIN_GAP_MS) return;
+    const { tail, count } = message;
+    if (!Array.isArray(tail) || tail.length > TAIL_LENGTH || !Number.isInteger(count) || (count as number) < 0 || (count as number) > 800) return;
+    if (!tail.every(point => point && Number.isInteger(point.x) && Number.isInteger(point.y))) return;
+    from.lastProgressAt = now;
+    this.opponentOf(from).send?.({ type: "opponent", round: this.round, tail, count });
   }
 
   private sendRound(seat: Seat) {
@@ -211,6 +233,21 @@ export class Match {
       // The bot "solves" in a human-ish time: slower on big boards, a little random.
       const botMs = Math.min(ROUND_LIMIT_MS - 10_000, (2500 + level.nodes.length * 650) * (0.7 + this.rng() * 0.9));
       const round = this.round;
+      const solution = level.solution;
+      const tick = () => {
+        if (!this.roundOpen || this.round !== round) return;
+        const elapsed = this.clock.now() - this.startAt;
+        // The bot's line grows at an even pace and a little behind its finish time.
+        const count = Math.max(1, Math.min(solution.length - 1, Math.floor((elapsed / botMs) * solution.length)));
+        this.seats.filter(seat => !seat.bot).forEach(seat => seat.send?.({
+          type: "opponent",
+          round,
+          tail: solution.slice(Math.max(0, count - TAIL_LENGTH), count),
+          count,
+        }));
+        this.timers.push(this.clock.after(BOT_TICK_MS, tick));
+      };
+      this.timers.push(this.clock.after(COUNTDOWN_MS + BOT_TICK_MS, tick));
       this.timers.push(this.clock.after(COUNTDOWN_MS + botMs, () => {
         if (this.roundOpen && this.round === round) this.endRound(bot, botMs);
       }));

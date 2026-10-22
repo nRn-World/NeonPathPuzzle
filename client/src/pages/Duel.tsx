@@ -6,6 +6,7 @@ import { getLevelMechanics } from "@shared/mechanics";
 import type { Point } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { GameCanvas } from "@/components/GameCanvas";
+import { OpponentView } from "@/components/OpponentView";
 import { DuelConnection, type DuelEvent, type DuelScore } from "@/lib/duel";
 import {
   fetchBoard,
@@ -50,6 +51,11 @@ export default function Duel() {
   /** When the server put us in the queue, and how long until the bot is added. */
   const [queued, setQueued] = useState<{ at: number; botAfterMs: number } | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [opp, setOpp] = useState<{ tail: Point[]; count: number }>({ tail: [], count: 0 });
+  const roundRef = useRef(0);
+  const lastSentRef = useRef(0);
+  const pendingRef = useRef<number | null>(null);
+  const latestPathRef = useRef<Point[]>([]);
   const connection = useRef<DuelConnection | null>(null);
 
   const enabled = leaderboardEnabled();
@@ -84,7 +90,12 @@ export default function Duel() {
         setScore(event.score);
         setRoundNote(null);
         setSubmitted(false);
+        setOpp({ tail: [], count: 0 });
+        roundRef.current = event.round;
         setNow(performance.now());
+        break;
+      case "opponent":
+        if (event.round === roundRef.current) setOpp({ tail: event.tail, count: event.count });
         break;
       case "roundResult":
         setScore(event.score);
@@ -146,6 +157,26 @@ export default function Duel() {
   const countdown = round ? Math.ceil((round.startsAt - now) / 1000) : 0;
   const live = round !== null && now >= round.startsAt && roundNote === null;
   const elapsed = round ? Math.max(0, now - round.startsAt) : 0;
+
+  // Tell the opponent how far we are, at most about five times a second.
+  const sendProgress = (path: Point[]) => {
+    if (!round || submitted) return;
+    const at = performance.now();
+    latestPathRef.current = path;
+    if (at - lastSentRef.current < 200 && path.length > 1) {
+      // Keep the newest position: send it once the gap has passed.
+      if (pendingRef.current === null) {
+        pendingRef.current = window.setTimeout(() => {
+          pendingRef.current = null;
+          lastSentRef.current = performance.now();
+          connection.current?.progress(round.round, latestPathRef.current);
+        }, 200);
+      }
+      return;
+    }
+    lastSentRef.current = at;
+    connection.current?.progress(round.round, path);
+  };
 
   const submit = (path: Point[]) => {
     if (!round || submitted) return;
@@ -279,23 +310,58 @@ export default function Duel() {
         </div>
       </header>
 
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-2 py-2">
+      <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
-        <div className="relative z-10 h-full max-h-[calc(100vh-90px)] w-full max-w-4xl">
-          {level && round && (
-            <GameCanvas
-              key={round.round}
-              level={level.level}
-              mechanics={level.mechanics}
-              showHint={false}
-              onBacktrack={() => true}
-              onComplete={(_moves, path) => submit(path)}
-              reducedMotion={reducedMotion}
-              paused={!live || submitted}
-              gridLabel={t("gridLabel", { size: level.level.gridSize })}
+
+        {level && opponent && (
+          <div className="relative z-10 flex-shrink-0 border-b border-white/10 bg-background/60 px-3 py-2 md:hidden">
+            <OpponentView
+              gridSize={level.level.gridSize}
+              nodes={level.level.nodes}
+              tail={opp.tail}
+              count={Math.min(opp.count, level.level.nodes.length)}
+              total={level.level.nodes.length}
+              name={opponent.bot ? t("duelPracticeBot") : opponent.name}
+              bot={opponent.bot}
+              size={72}
             />
-          )}
+          </div>
+        )}
+
+        <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 py-2">
+          <div className="h-full max-h-[calc(100vh-90px)] w-full max-w-4xl">
+            {level && round && (
+              <GameCanvas
+                key={round.round}
+                level={level.level}
+                mechanics={level.mechanics}
+                showHint={false}
+                onBacktrack={() => true}
+                onComplete={(_moves, path) => submit(path)}
+                onPathPoints={sendProgress}
+                reducedMotion={reducedMotion}
+                paused={!live || submitted}
+                gridLabel={t("gridLabel", { size: level.level.gridSize })}
+              />
+            )}
+          </div>
         </div>
+
+        {level && opponent && (
+          <aside className="relative z-10 hidden w-48 flex-shrink-0 items-start justify-center border-l border-white/10 bg-background/40 p-3 md:flex">
+            <OpponentView
+              gridSize={level.level.gridSize}
+              nodes={level.level.nodes}
+              tail={opp.tail}
+              count={Math.min(opp.count, level.level.nodes.length)}
+              total={level.level.nodes.length}
+              name={opponent.bot ? t("duelPracticeBot") : opponent.name}
+              bot={opponent.bot}
+              size={160}
+              className="flex-col !items-start"
+            />
+          </aside>
+        )}
 
         {round && countdown > 0 && roundNote === null && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/70 backdrop-blur-sm">
