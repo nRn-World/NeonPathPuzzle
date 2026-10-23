@@ -25,6 +25,8 @@ export interface Player {
   nameSeed: number;
   /** Name changes used on this device. Restoring a backup code does not reset it. */
   rerollsUsed: number;
+  /** Signed in with Google: the id comes from the account, so the points follow it to any device. */
+  google: boolean;
 }
 
 /** How many times a device may pick a new generated name. */
@@ -73,6 +75,7 @@ export function getPlayer(): Player {
         online: Boolean(parsed.online),
         nameSeed: seed,
         rerollsUsed: Math.min(MAX_NAME_CHANGES, Math.max(0, Math.trunc(Number(parsed.rerollsUsed)) || 0)),
+        google: Boolean(parsed.google),
       };
     }
   } catch {
@@ -80,7 +83,7 @@ export function getPlayer(): Player {
   }
   if (sessionPlayer) return sessionPlayer;
   const seed = newSeed();
-  sessionPlayer = save({ id: newId(), name: nameFromSeed(seed), online: false, nameSeed: seed, rerollsUsed: 0 });
+  sessionPlayer = save({ id: newId(), name: nameFromSeed(seed), online: false, nameSeed: seed, rerollsUsed: 0, google: false });
   return sessionPlayer;
 }
 
@@ -91,13 +94,40 @@ function update(change: Partial<Player>): Player {
 
 export const setOnline = (online: boolean): Player => update({ online });
 
-/** A different generated name; the old one stays on the server only until the next result is sent. */
+/**
+ * A different generated name. A guest starts over with a new id, so the old
+ * points stay with the old name; a Google account keeps its points.
+ */
 export function rerollName(): Player {
   const player = getPlayer();
   if (nameChangesLeft(player) === 0) return player;
   const seed = newSeed();
-  return update({ nameSeed: seed, name: nameFromSeed(seed), rerollsUsed: player.rerollsUsed + 1 });
+  return update({
+    nameSeed: seed,
+    name: nameFromSeed(seed),
+    rerollsUsed: player.rerollsUsed + 1,
+    ...(player.google ? {} : { id: newId() }),
+  });
 }
+
+/** Trades a Google ID token for the account's player id; null when sign-in fails or is off. */
+export async function signInWithGoogle(idToken: string): Promise<Player | null> {
+  if (!leaderboardEnabled()) return null;
+  try {
+    const response = await fetch(`${BASE}/auth/google`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idToken }),
+    });
+    const { playerId } = (await response.json()) as { playerId?: string };
+    return response.ok && typeof playerId === "string" && ID_PATTERN.test(playerId) ? update({ id: playerId, online: true, google: true }) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Back to a fresh guest, so the account's points are not mixed with a guest's. */
+export const signOutGoogle = (): Player => update({ id: newId(), google: false });
 
 /** The id in groups of four, e.g. "9F3A-0C11-...": enough to restore the rating on a new device. */
 export const getBackupCode = (): string => (getPlayer().id.toUpperCase().match(/.{4}/g) ?? []).join("-");
@@ -106,7 +136,7 @@ export const getBackupCode = (): string => (getPlayer().id.toUpperCase().match(/
 export function restoreFromBackupCode(code: string): Player | null {
   const id = code.toLowerCase().replace(/[^0-9a-f]/g, "");
   if (!ID_PATTERN.test(id)) return null;
-  return update({ id, online: true });
+  return update({ id, online: true, google: false });
 }
 
 export type BoardKind = "daily" | "weekly" | "stars" | "duel";

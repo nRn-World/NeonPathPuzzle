@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Crown, Loader2, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getDateKey } from "@/lib/daily";
+import { getDateKey } from "@/lib/daily";
+import { googleSignInEnabled, renderGoogleButton } from "@/lib/googleSignIn";
 import {
   fetchBoard,
   getBackupCode,
@@ -12,7 +13,10 @@ import {
   rerollName,
   restoreFromBackupCode,
   setOnline,
+  signInWithGoogle,
+  signOutGoogle,
   type BoardKind,
+  type Player,
   type BoardResult,
 } from "@/lib/leaderboard";
 import { useI18n, upper, type TranslationKey } from "@/lib/i18n";
@@ -24,6 +28,43 @@ const BOARDS: { kind: BoardKind; label: TranslationKey }[] = [
   { kind: "weekly", label: "rankingWeekly" },
   { kind: "stars", label: "rankingStars" },
 ];
+
+/** Google account: points follow the account. Guests keep the generated-name play. Hidden until a client id is set. */
+function GoogleAccount({ player, onChange }: { player: Player; onChange: (player: Player) => void }) {
+  const { t } = useI18n();
+  const slot = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+  const enabled = googleSignInEnabled();
+
+  useEffect(() => {
+    if (!enabled || player.google || !slot.current) return;
+    renderGoogleButton(slot.current, async token => {
+      const signedIn = await signInWithGoogle(token);
+      setFailed(signedIn === null);
+      if (signedIn) onChange(signedIn);
+    }).catch(() => setFailed(true));
+  }, [enabled, player.google, onChange]);
+
+  if (!enabled) return null;
+  return (
+    <div className="space-y-2 border-t border-white/10 pt-3">
+      {player.google ? (
+        <>
+          <p className="font-exo text-xs text-muted-foreground">{t("googleSignedIn")}</p>
+          <button type="button" onClick={() => onChange(signOutGoogle())} className="font-exo text-[11px] text-muted-foreground underline hover:text-foreground">
+            {t("googleSignOut")}
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="font-exo text-[11px] text-muted-foreground">{player.online ? t("guestNote") : t("googleOr")}</p>
+          <div ref={slot} />
+        </>
+      )}
+      {failed && <p className="font-exo text-xs text-destructive">{t("googleFail")}</p>}
+    </div>
+  );
+}
 
 /** Online top lists. Nothing is sent until the player joins; names are generated, never typed. */
 export function RankingPanel() {
@@ -68,6 +109,7 @@ export function RankingPanel() {
           <Button onClick={() => setPlayer(setOnline(true))} className="rounded-none font-bold text-background">
             {t("rankingJoin")}
           </Button>
+          <GoogleAccount player={player} onChange={setPlayer} />
         </div>
       ) : (
         <div className="space-y-3 border border-white/10 bg-black/30 p-4">
@@ -91,6 +133,7 @@ export function RankingPanel() {
             {t("nameChangesLeft", { left: nameChangesLeft(player), max: MAX_NAME_CHANGES })}
           </p>
           <p className="font-exo text-[11px] text-muted-foreground">{t("rankingNameHint")}</p>
+          <GoogleAccount player={player} onChange={setPlayer} />
 
           <div className="space-y-2 border-t border-white/10 pt-3">
             <button

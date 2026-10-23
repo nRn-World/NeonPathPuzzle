@@ -19,3 +19,7 @@ class_name = "Arena"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Lobby", "Arena"]
+
+[vars]
+# Web client id from Google Cloud (OAuth). Empty keeps Google sign-in off.
+GOOGLE_CLIENT_ID = ""
