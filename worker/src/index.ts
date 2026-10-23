@@ -1,10 +1,12 @@
+import { googleKeys, playerIdForGoogle, verifyGoogleToken } from "./google";
 import { handleSubmit, handleTop } from "./logic";
 import { Arena, Lobby, type RoomEnv } from "./rooms";
 import { d1Store } from "./store";
 
 export { Arena, Lobby };
 
-type Env = RoomEnv;
+/** GOOGLE_CLIENT_ID is the web client id from Google Cloud; empty keeps Google sign-in off. */
+type Env = RoomEnv & { GOOGLE_CLIENT_ID?: string };
 
 const CORS = {
   "access-control-allow-origin": "*",
@@ -44,6 +46,20 @@ export default {
       const matchId = url.pathname.slice("/ws/arena/".length);
       if (!/^[0-9a-f-]{36}$/.test(matchId)) return json(400, { error: "bad match id" });
       return env.ARENA.get(env.ARENA.idFromName(matchId)).fetch(request);
+    }
+
+    if (request.method === "POST" && url.pathname === "/auth/google") {
+      const clientId = env.GOOGLE_CLIENT_ID ?? "";
+      if (clientId === "") return json(501, { error: "google sign-in is not set up" });
+      if (Number(request.headers.get("content-length") ?? 0) > 8_000) return json(413, { error: "too large" });
+      if (tooManyPosts(request.headers.get("cf-connecting-ip") ?? "unknown", now.getTime())) return json(429, { error: "slow down" });
+      try {
+        const body = (await request.json().catch(() => null)) as { idToken?: unknown } | null;
+        const sub = await verifyGoogleToken(body?.idToken, clientId, await googleKeys(now.getTime()), now.getTime());
+        return sub ? json(200, { playerId: await playerIdForGoogle(sub) }) : json(401, { error: "invalid token" });
+      } catch {
+        return json(500, { error: "server error" });
+      }
     }
 
     const store = d1Store(env.DB);
