@@ -30,7 +30,7 @@ const BOARDS: { kind: BoardKind; label: TranslationKey }[] = [
 ];
 
 /** Google account: points follow the account. Guests keep the generated-name play. Hidden until a client id is set. */
-function GoogleAccount({ player, onChange }: { player: Player; onChange: (player: Player) => void }) {
+export function GoogleAccount({ player, onChange }: { player: Player; onChange: (player: Player) => void }) {
   const { t } = useI18n();
   const slot = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
