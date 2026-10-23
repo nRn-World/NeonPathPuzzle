@@ -3,8 +3,8 @@ import type { Point } from "../../shared/schema";
 import { verifyPlayedPath } from "../../shared/verify";
 
 /**
- * One best-of-three duel: the same level for both players, the first valid
- * solution wins the round, first to two rounds wins. This class is pure (no
+ * One best-of-five duel: the same level for both players, the first valid
+ * solution wins the round, first to three rounds wins. This class is pure (no
  * sockets, no timers of its own) so it is tested with a fake clock; the
  * Durable Object in index.ts only feeds it messages and time.
  */
@@ -40,7 +40,7 @@ export const ROUND_LIMIT_MS = 120_000;
 export const BETWEEN_ROUNDS_MS = 4500;
 export const JOIN_WAIT_MS = 25_000;
 export const RECONNECT_MS = 15_000;
-export const ROUNDS_TO_WIN = 2;
+export const ROUNDS_TO_WIN = 3;
 export const MAX_ROUNDS = 5;
 export const START_RATING = 1000;
 /**

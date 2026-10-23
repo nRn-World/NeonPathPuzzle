@@ -9,6 +9,7 @@ import {
   HELP_WINDOW_MS,
   Match,
   MAX_ROUNDS,
+  ROUNDS_TO_WIN,
   pickLevels,
   RECONNECT_MS,
   ROUND_LIMIT_MS,
@@ -84,7 +85,7 @@ test("elo is symmetric and rewards the underdog more", () => {
   assert.ok(eloDelta(800, 1200, 1) > eloDelta(1200, 800, 1));
 });
 
-test("first to two rounds wins, with equal ratings moving 16 points", () => {
+test("first to three rounds wins, with equal ratings moving 16 points", () => {
   const { clock, humans, results, inbox, last, solve } = setup(false);
   const [a, b] = humans;
   assert.equal(last(a.id, "round")?.round, 1);
@@ -99,8 +100,10 @@ test("first to two rounds wins, with equal ratings moving 16 points", () => {
   assert.equal(last(a.id, "round")?.round, 2);
   clock.advance(COUNTDOWN_MS + 5000);
   solve(b.id); // the second round goes to b: 1-1
-  clock.advance(HELP_WINDOW_MS + COUNTDOWN_MS + 5000);
-  solve(a.id);
+  for (const winner of [a, b, a]) { // 2-1, 2-2, then a takes the fifth: 3-2
+    clock.advance(HELP_WINDOW_MS + COUNTDOWN_MS + 5000);
+    solve(winner.id);
+  }
 
   assert.equal(results.length, 1);
   assert.equal(results[0].winnerId, a.id);
@@ -165,7 +168,7 @@ test("a round nobody solves is void, and five void rounds draw without rating ch
 test("a bot match pays a few points for a win and never costs points", () => {
   const win = setup(true);
   const human = win.humans[0];
-  for (let round = 0; round < 2; round++) {
+  for (let round = 0; round < ROUNDS_TO_WIN; round++) {
     win.clock.advance(COUNTDOWN_MS + 4000); // faster than any bot, slower than the minimum time
     win.solve(human.id);
     win.clock.advance(BETWEEN_ROUNDS_MS);
@@ -230,7 +233,7 @@ test("a bot's win shows its line as help, and the final round shows no help", ()
   assert.ok(result && (result.winner === "opponent" ? Array.isArray(result.opponentPath) : true));
 
   const duel = setup(false);
-  for (let round = 0; round < 2; round++) {
+  for (let round = 0; round < ROUNDS_TO_WIN; round++) {
     duel.clock.advance(COUNTDOWN_MS + 4000 + (round ? HELP_WINDOW_MS : 0));
     duel.solve(duel.humans[0].id);
   }

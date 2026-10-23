@@ -321,7 +321,7 @@ export const tr: Record<TranslationKey, string> = {
   rankingLeave: "Paylaşımı durdur ve çevrimdışı ol",
   rankingNameHint: "Adlar üretilir, asla elle yazılmaz; bu yüzden hep güvenlidir. Yalnızca bu ad, sürelerin ve puanın paylaşılır.",
   duelTitle: "Düello",
-  duelRules: "Rastgele bir oyuncuyla aynı seviyelerde yarış. Üç seviye, her birini en hızlı çözen kazanır ve ikiyi ilk alan maçı kazanır. Kazan ve puan listesinde yüksel.",
+  duelRules: "Rastgele bir oyuncuyla aynı seviyelerde yarış. En fazla beş seviye, her birini en hızlı çözen kazanır ve üçü ilk alan maçı kazanır. Kazan ve puan listesinde yüksel.",
   duelFind: "Maç bul",
   duelSearching: "Rakip aranıyor…",
   duelBotHint: "Yaklaşık 20 saniye içinde kimse bulunmazsa hemen oynayabilmen için bir antrenman botu katılır.",

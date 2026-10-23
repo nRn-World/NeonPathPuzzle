@@ -391,7 +391,7 @@ export default function Duel() {
         )}
 
         {round && countdown > 0 && roundNote === null && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background">
             <p className="font-mono text-xs tracking-[0.3em] text-muted-foreground">{upper(t("duelRound", { n: round.round }))}</p>
             <p className="font-orbitron text-7xl font-black text-primary">{countdown}</p>
           </div>

@@ -321,7 +321,7 @@ export const es: Record<TranslationKey, string> = {
   rankingLeave: "Dejar de compartir y desconectar",
   rankingNameHint: "Los nombres se generan, nunca se escriben, así que siempre son amables. Solo se comparten este nombre, tus tiempos y tu puntuación.",
   duelTitle: "Duelo",
-  duelRules: "Compite contra un jugador aleatorio en los mismos niveles. Tres niveles, gana cada uno la solución más rápida y quien gane dos se lleva la partida. Gana para subir en la clasificación.",
+  duelRules: "Compite contra un jugador aleatorio en los mismos niveles. Hasta cinco niveles, gana cada uno la solución más rápida y quien gane tres se lleva la partida. Gana para subir en la clasificación.",
   duelFind: "Buscar partida",
   duelSearching: "Buscando rival…",
   duelBotHint: "Si no aparece nadie en unos 20 segundos, se une un bot de práctica para que juegues enseguida.",
