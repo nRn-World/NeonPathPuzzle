@@ -21,5 +21,5 @@ tag = "v1"
 new_sqlite_classes = ["Lobby", "Arena"]
 
 [vars]
-# Web client id from Google Cloud (OAuth). Empty keeps Google sign-in off.
+# Google OAuth client ids, comma separated: web now, Android and iOS added with the apps. Empty keeps sign-in off.
 GOOGLE_CLIENT_ID = "970228207998-6kadvce8pgc46nmd0i1p0go111lltl8l.apps.googleusercontent.com"

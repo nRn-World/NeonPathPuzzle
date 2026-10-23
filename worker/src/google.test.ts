@@ -28,6 +28,7 @@ test("a genuine Google token gives the account id; anything else gives null", as
   const forged = (await sign(good)).replace(/\.[^.]+$/, `.${enc("nope")}`);
   assert.equal(await verifyGoogleToken(forged, "client-1", [jwk], NOW), null, "bad signature");
   assert.equal(await verifyGoogleToken(await sign(good), "", [jwk], NOW), null, "sign-in switched off");
+  assert.equal(await verifyGoogleToken(await sign({ ...good, aud: "ios-1" }), "client-1, ios-1", [jwk], NOW), "1234", "any of the app ids");
   assert.equal(await verifyGoogleToken("a.b", "client-1", [jwk], NOW), null);
 });
 

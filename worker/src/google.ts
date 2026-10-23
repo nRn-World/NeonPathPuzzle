@@ -25,9 +25,11 @@ const json = (text: string): Record<string, unknown> | null => {
   }
 };
 
-/** Returns the Google account id (`sub`) when the token is genuine, for this app and not expired. */
-export async function verifyGoogleToken(token: unknown, clientId: string, keys: Jwk[], nowMs: number): Promise<string | null> {
-  if (typeof token !== "string" || clientId === "") return null;
+/** `clientIds` is one id or several separated by commas: the web, Android and iOS apps each have their own. */
+/** Returns the Google account id (`sub`) when the token is genuine, for one of these apps and not expired. */
+export async function verifyGoogleToken(token: unknown, clientIds: string, keys: Jwk[], nowMs: number): Promise<string | null> {
+  const allowed = clientIds.split(",").map(id => id.trim()).filter(Boolean);
+  if (typeof token !== "string" || allowed.length === 0) return null;
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const header = json(parts[0]);
@@ -38,7 +40,7 @@ export async function verifyGoogleToken(token: unknown, clientId: string, keys: 
   const key = await crypto.subtle.importKey("jwk", { ...jwk, alg: "RS256", ext: true }, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
   const signed = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
   if (!(await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64(parts[2]), signed))) return null;
-  if (claims.aud !== clientId || !ISSUERS.includes(String(claims.iss))) return null;
+  if (!allowed.includes(String(claims.aud)) || !ISSUERS.includes(String(claims.iss))) return null;
   if (typeof claims.exp !== "number" || claims.exp * 1000 < nowMs) return null;
   return typeof claims.sub === "string" && claims.sub !== "" ? claims.sub : null;
 }
