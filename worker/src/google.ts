@@ -45,6 +45,24 @@ export async function verifyGoogleToken(token: unknown, clientIds: string, keys:
   return typeof claims.sub === "string" && claims.sub !== "" ? claims.sub : null;
 }
 
+/**
+ * The popup sign-in on the web gives an access token instead of an ID token. Google's tokeninfo
+ * endpoint says which app it was issued to and for which account.
+ */
+export async function verifyAccessToken(
+  token: unknown,
+  clientIds: string,
+  get: (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }> = fetch,
+): Promise<string | null> {
+  const allowed = clientIds.split(",").map(id => id.trim()).filter(Boolean);
+  if (typeof token !== "string" || !/^[\w.~-]{10,2048}$/.test(token) || allowed.length === 0) return null;
+  const response = await get(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`);
+  if (!response.ok) return null;
+  const info = (await response.json()) as { aud?: string; azp?: string; sub?: string; expires_in?: string | number };
+  const app = info.aud ?? info.azp ?? "";
+  return allowed.includes(app) && Number(info.expires_in) > 0 && typeof info.sub === "string" && info.sub !== "" ? info.sub : null;
+}
+
 /** 32 hex characters, the same shape as an anonymous player id. */
 export async function playerIdForGoogle(sub: string): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`neon-path:google:${sub}`)));

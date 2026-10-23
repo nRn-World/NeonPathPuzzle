@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { playerIdForGoogle, verifyGoogleToken, type Jwk } from "./google";
+import { playerIdForGoogle, verifyAccessToken, verifyGoogleToken, type Jwk } from "./google";
 
 const enc = (value: unknown) => Buffer.from(typeof value === "string" ? value : JSON.stringify(value)).toString("base64url");
 
@@ -37,4 +37,16 @@ test("the same Google account always maps to the same 32-character player id", a
   assert.match(id, /^[0-9a-f]{32}$/);
   assert.equal(id, await playerIdForGoogle("1234"));
   assert.notEqual(id, await playerIdForGoogle("1235"));
+});
+
+test("a popup access token is accepted only when Google says it belongs to one of our apps", async () => {
+  const reply = (info: unknown, ok = true) => async () => ({ ok, json: async () => info });
+  const info = { aud: "client-1", sub: "1234", expires_in: "3000" };
+  const token = "ya29.a0AfH6SMBx-example_token";
+  assert.equal(await verifyAccessToken(token, "client-1", reply(info)), "1234");
+  assert.equal(await verifyAccessToken(token, "client-1", reply({ ...info, aud: "other" })), null, "someone else's app");
+  assert.equal(await verifyAccessToken(token, "client-1", reply({ ...info, expires_in: "0" })), null, "expired");
+  assert.equal(await verifyAccessToken(token, "client-1", reply({}, false)), null, "Google rejected it");
+  assert.equal(await verifyAccessToken("a b&c=d", "client-1", reply(info)), null, "malformed token never reaches Google");
+  assert.equal(await verifyAccessToken(token, "", reply(info)), null, "sign-in switched off");
 });

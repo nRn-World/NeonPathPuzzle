@@ -7,11 +7,22 @@ export const GOOGLE_CLIENT_ID = (import.meta.env?.VITE_GOOGLE_CLIENT_ID as strin
 
 export const googleSignInEnabled = () => GOOGLE_CLIENT_ID !== "";
 
+interface Oauth2 {
+  initTokenClient(options: {
+    client_id: string;
+    scope: string;
+    callback: (response: { access_token?: string }) => void;
+    error_callback: () => void;
+  }): { requestAccessToken(): void };
+}
+
 interface Gsi {
   accounts: {
     id: {
       initialize(options: { client_id: string; callback: (response: { credential: string }) => void }): void;
       renderButton(element: HTMLElement, options: Record<string, unknown>): void;
+      prompt(listener?: (moment: { isNotDisplayed(): boolean; isSkippedMoment(): boolean; isDismissedMoment(): boolean }) => void): void;
+      disableAutoSelect(): void;
     };
   };
 }
@@ -39,3 +50,27 @@ export async function renderGoogleButton(element: HTMLElement, onToken: (idToken
   accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: response => onToken(response.credential) });
   accounts.id.renderButton(element, { theme: "filled_black", size: "large", shape: "rectangular" });
 }
+
+/** Start loading Google's script early, so the sign-in popup can open straight from a click. */
+export const preloadGoogle = () => void loadGsi().catch(() => undefined);
+
+/**
+ * Opens Google's account popup. It must run inside a click handler (no await before it), so it
+ * returns false when the script has not loaded yet. `onToken` gets an access token the worker can check.
+ */
+export function openGooglePopup(onToken: (accessToken: string) => void, onFail: () => void): boolean {
+  const gis = (window as unknown as { google?: { accounts?: { oauth2?: Oauth2 } } }).google?.accounts?.oauth2;
+  if (!gis) return false;
+  gis
+    .initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: "openid",
+      callback: response => (response.access_token ? onToken(response.access_token) : onFail()),
+      error_callback: onFail,
+    })
+    .requestAccessToken();
+  return true;
+}
+
+/** Stops Google from picking the same account again without asking, after a sign-out. */
+export const forgetGoogleAccount = () => loadGsi().then(({ accounts }) => accounts.id.disableAutoSelect()).catch(() => undefined);

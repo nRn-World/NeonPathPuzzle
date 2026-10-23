@@ -39,7 +39,7 @@ export function GoogleAccount({ player, onChange }: { player: Player; onChange: 
   useEffect(() => {
     if (!enabled || player.google || !slot.current) return;
     renderGoogleButton(slot.current, async token => {
-      const signedIn = await signInWithGoogle(token);
+      const signedIn = await signInWithGoogle({ idToken: token });
       setFailed(signedIn === null);
       if (signedIn) onChange(signedIn);
     }).catch(() => setFailed(true));
