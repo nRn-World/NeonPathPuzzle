@@ -21,7 +21,7 @@ export default function Privacy() {
         </div>
 
         <div className="space-y-5 font-exo leading-relaxed text-muted-foreground">
-          <p className="text-sm">Last updated: 22 October 2026</p>
+          <p className="text-sm">Last updated: 24 October 2026</p>
           <p>
             Neon Path Puzzle does not collect personal data by default and never sells or shares it. The only data that can leave your device is the optional online ranking described below.
           </p>
@@ -38,9 +38,15 @@ export default function Privacy() {
             </p>
           </div>
           <div>
+            <h2 className="mb-2 text-lg font-bold text-foreground">Optional Google sign-in</h2>
+            <p>
+              You can sign in with your Google account so your ranking follows you to other devices. Google tells the game only that the sign-in is genuine and gives it a stable account number; the game turns that number into a one-way hashed player identifier on its server and stores nothing else. Your name, e-mail address and profile picture are not read or stored, and your Google account is never used for advertising. Without signing in you play as a guest with a generated name. Signing out returns you to a new guest identity, and you can ask for your ranking entries to be deleted by e-mail.
+            </p>
+          </div>
+          <div>
             <h2 className="mb-2 text-lg font-bold text-foreground">Permissions and services</h2>
             <p>
-              The game uses vibration for optional gameplay feedback. It contains no advertising, analytics, accounts, purchases, or third-party tracking services.
+              The game uses vibration for optional gameplay feedback. It contains no advertising, analytics, purchases, or third-party tracking services. The only third-party service is Google sign-in, and only if you choose it.
             </p>
           </div>
           <div>
