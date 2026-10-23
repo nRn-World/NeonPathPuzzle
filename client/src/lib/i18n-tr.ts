@@ -323,6 +323,7 @@ export const tr: Record<TranslationKey, string> = {
   googleOr: "Ya da puanlarını her cihazda korumak için Google ile giriş yap.",
   googleSignOut: "Google'dan çıkış yap",
   googleFail: "Google girişi başarısız oldu. Tekrar dene.",
+  googleMenu: "Google ile giriş yap",
   guestNote: "Misafir olarak oynuyorsun: yeni ad aynı zamanda puanları sıfırdan başlatır.",
   rankingNameHint: "Adlar üretilir, asla elle yazılmaz; bu yüzden hep güvenlidir. Yalnızca bu ad, sürelerin ve puanın paylaşılır.",
   duelTitle: "Düello",

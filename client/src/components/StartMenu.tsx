@@ -5,6 +5,7 @@ import {
   Crown,
   Heart,
   HelpCircle,
+  LogIn,
   Lock,
   Map as MapIcon,
   Star,
@@ -27,6 +28,7 @@ import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SeasonCard } from "@/components/SeasonCard";
 import { RankingPanel } from "@/components/RankingPanel";
+import { googleSignInEnabled } from "@/lib/googleSignIn";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
@@ -159,6 +161,16 @@ export function StartMenu() {
                         label={t("completed")}
                         onClick={() => handleButtonClick(() => setScreen("completed"))}
                       />
+                      {googleSignInEnabled() && (
+                        <MenuButton
+                          icon={<LogIn className="h-4 w-4" />}
+                          label={t("googleMenu")}
+                          onClick={() => handleButtonClick(() => {
+                            setActiveTab("ranking");
+                            window.setTimeout(() => document.getElementById("dashboard")?.scrollIntoView({ behavior: "smooth" }), 50);
+                          })}
+                        />
+                      )}
                       <LanguageSwitch />
                       <ThemeSelector />
                       <SettingsDialog triggerClassName="h-9 w-9 rounded-none border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary" />

@@ -323,6 +323,7 @@ export const es: Record<TranslationKey, string> = {
   googleOr: "O inicia sesión con Google para conservar tus puntos en todos los dispositivos.",
   googleSignOut: "Cerrar sesión de Google",
   googleFail: "Falló el inicio de sesión con Google. Inténtalo de nuevo.",
+  googleMenu: "Iniciar sesión con Google",
   guestNote: "Juegas como invitado: un nombre nuevo también empieza de cero con puntos nuevos.",
   rankingNameHint: "Los nombres se generan, nunca se escriben, así que siempre son amables. Solo se comparten este nombre, tus tiempos y tu puntuación.",
   duelTitle: "Duelo",

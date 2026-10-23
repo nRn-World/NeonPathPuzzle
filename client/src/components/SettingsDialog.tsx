@@ -22,9 +22,13 @@ import { getDateKey } from "@/lib/daily";
 import { applyBackup, backupToJson, createBackup, parseBackup } from "@/lib/backup";
 import { useI18n } from "@/lib/i18n";
 import { useHintTokenStore } from "@/lib/hintTokens";
+import { GoogleAccount } from "@/components/RankingPanel";
+import { getPlayer } from "@/lib/leaderboard";
+import { googleSignInEnabled } from "@/lib/googleSignIn";
 
 export function SettingsDialog({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
+  const [player, setPlayer] = useState(getPlayer);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userId = useUserId();
   const { toast } = useToast();
@@ -188,6 +192,12 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             </div>
             <LanguageButtons />
           </div>
+
+          {googleSignInEnabled() && (
+            <div className="rounded-lg border border-white/10 p-3 [&>div]:border-t-0 [&>div]:pt-0">
+              <GoogleAccount player={player} onChange={setPlayer} />
+            </div>
+          )}
 
           <div className="space-y-3 rounded-lg border border-white/10 p-3">
             <div className="space-y-1">

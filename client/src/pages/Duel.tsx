@@ -6,6 +6,7 @@ import { getLevelMechanics } from "@shared/mechanics";
 import type { Point } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { GameCanvas } from "@/components/GameCanvas";
+import { GoogleAccount } from "@/components/RankingPanel";
 import { OpponentView } from "@/components/OpponentView";
 import { DuelConnection, type DuelEvent, type DuelScore } from "@/lib/duel";
 import {
@@ -232,6 +233,7 @@ export default function Duel() {
               <Button onClick={() => setPlayer(setOnline(true))} className="rounded-none font-bold text-background">
                 {t("rankingJoin")}
               </Button>
+              <GoogleAccount player={player} onChange={setPlayer} />
             </div>
           ) : (
             <>
@@ -252,6 +254,9 @@ export default function Duel() {
                   <Shuffle className="mr-1.5 h-3.5 w-3.5" />
                   {t("rankingNewName")}
                 </Button>
+              </div>
+              <div className="-mt-3 border border-white/10 bg-black/30 p-4 pt-0">
+                <GoogleAccount player={player} onChange={setPlayer} />
               </div>
               <p className="-mt-3 border border-amber-300/30 bg-amber-300/5 px-3 py-2 font-mono text-xs text-amber-300">
                 {t("nameChangesLeft", { left: nameChangesLeft(player), max: MAX_NAME_CHANGES })}
