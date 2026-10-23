@@ -5,7 +5,7 @@ import { d1Store } from "./store";
 
 export { Arena, Lobby };
 
-/** GOOGLE_CLIENT_ID is the web client id from Google Cloud; empty keeps Google sign-in off. */
+/** GOOGLE_CLIENT_ID: comma-separated Google client ids (web, Android, iOS); empty keeps sign-in off. */
 type Env = RoomEnv & { GOOGLE_CLIENT_ID?: string };
 
 const CORS = {
