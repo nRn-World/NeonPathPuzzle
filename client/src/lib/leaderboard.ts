@@ -1,5 +1,6 @@
 import type { Point } from "@shared/schema";
 import { nameFromSeed } from "@shared/names";
+import { forgetGoogleAccount } from "@/lib/googleSignIn";
 
 /**
  * Online rankings talk to the Cloudflare Worker in /worker. With no URL set
@@ -13,6 +14,7 @@ export const leaderboardEnabled = () => BASE !== "";
 export const duelSocketBase = () => BASE.replace(/^http/, "ws");
 
 const PLAYER_KEY = "neon_path_player_v1";
+export const PLAYER_EVENT = "neon-path-player";
 
 export interface Player {
   /** 32 hex characters; the backup code is this id in groups of four. */
@@ -89,6 +91,8 @@ export function getPlayer(): Player {
 
 function update(change: Partial<Player>): Player {
   sessionPlayer = save({ ...getPlayer(), ...change });
+  // Lets other parts of the page (the menu button) follow a sign-in or sign-out.
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(PLAYER_EVENT));
   return sessionPlayer;
 }
 
@@ -111,13 +115,13 @@ export function rerollName(): Player {
 }
 
 /** Trades a Google ID token for the account's player id; null when sign-in fails or is off. */
-export async function signInWithGoogle(idToken: string): Promise<Player | null> {
+export async function signInWithGoogle(token: { idToken: string } | { accessToken: string }): Promise<Player | null> {
   if (!leaderboardEnabled()) return null;
   try {
     const response = await fetch(`${BASE}/auth/google`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify(token),
     });
     const { playerId } = (await response.json()) as { playerId?: string };
     return response.ok && typeof playerId === "string" && ID_PATTERN.test(playerId) ? update({ id: playerId, online: true, google: true }) : null;
@@ -127,7 +131,10 @@ export async function signInWithGoogle(idToken: string): Promise<Player | null> 
 }
 
 /** Back to a fresh guest, so the account's points are not mixed with a guest's. */
-export const signOutGoogle = (): Player => update({ id: newId(), google: false });
+export const signOutGoogle = (): Player => {
+  void forgetGoogleAccount();
+  return update({ id: newId(), google: false });
+};
 
 /** The id in groups of four, e.g. "9F3A-0C11-...": enough to restore the rating on a new device. */
 export const getBackupCode = (): string => (getPlayer().id.toUpperCase().match(/.{4}/g) ?? []).join("-");

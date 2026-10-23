@@ -6,6 +6,7 @@ import {
   Heart,
   HelpCircle,
   LogIn,
+  LogOut,
   Lock,
   Map as MapIcon,
   Star,
@@ -28,7 +29,8 @@ import { DailyCard } from "@/components/DailyCard";
 import { WeeklyCard } from "@/components/WeeklyCard";
 import { SeasonCard } from "@/components/SeasonCard";
 import { RankingPanel } from "@/components/RankingPanel";
-import { googleSignInEnabled } from "@/lib/googleSignIn";
+import { googleSignInEnabled, openGooglePopup, preloadGoogle } from "@/lib/googleSignIn";
+import { getPlayer, PLAYER_EVENT, signInWithGoogle, signOutGoogle } from "@/lib/leaderboard";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
@@ -57,6 +59,13 @@ type MenuScreen = "main" | "info" | "completed" | "map";
 export function StartMenu() {
   const [screen, setScreen] = useState<MenuScreen>("main");
   const [activeTab, setActiveTab] = useState("levels");
+  const [player, setPlayer] = useState(getPlayer);
+  useEffect(() => {
+    if (googleSignInEnabled()) preloadGoogle();
+    const sync = () => setPlayer(getPlayer());
+    window.addEventListener(PLAYER_EVENT, sync);
+    return () => window.removeEventListener(PLAYER_EVENT, sync);
+  }, []);
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState("");
   const popupRef = useRef<LevelPopupHandle>(null);
@@ -163,11 +172,21 @@ export function StartMenu() {
                       />
                       {googleSignInEnabled() && (
                         <MenuButton
-                          icon={<LogIn className="h-4 w-4" />}
-                          label={t("googleMenu")}
+                          icon={player.google ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+                          label={player.google ? t("googleSignOut") : t("googleMenu")}
                           onClick={() => handleButtonClick(() => {
-                            setActiveTab("ranking");
-                            window.setTimeout(() => document.getElementById("dashboard")?.scrollIntoView({ behavior: "smooth" }), 50);
+                            if (player.google) return setPlayer(signOutGoogle());
+                            const showRanking = () => {
+                              setActiveTab("ranking");
+                              window.setTimeout(() => document.getElementById("dashboard")?.scrollIntoView({ behavior: "smooth" }), 50);
+                            };
+                            // The popup opens right here; the Ranking tab is only the fallback (script not loaded, popup failed).
+                            const opened = openGooglePopup(async accessToken => {
+                              const signedIn = await signInWithGoogle({ accessToken });
+                              if (signedIn) setPlayer(signedIn);
+                              else showRanking();
+                            }, showRanking);
+                            if (!opened) showRanking();
                           })}
                         />
                       )}

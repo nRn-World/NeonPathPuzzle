@@ -1,4 +1,4 @@
-import { googleKeys, playerIdForGoogle, verifyGoogleToken } from "./google";
+import { googleKeys, playerIdForGoogle, verifyAccessToken, verifyGoogleToken } from "./google";
 import { handleSubmit, handleTop } from "./logic";
 import { Arena, Lobby, type RoomEnv } from "./rooms";
 import { d1Store } from "./store";
@@ -54,8 +54,10 @@ export default {
       if (Number(request.headers.get("content-length") ?? 0) > 8_000) return json(413, { error: "too large" });
       if (tooManyPosts(request.headers.get("cf-connecting-ip") ?? "unknown", now.getTime())) return json(429, { error: "slow down" });
       try {
-        const body = (await request.json().catch(() => null)) as { idToken?: unknown } | null;
-        const sub = await verifyGoogleToken(body?.idToken, clientId, await googleKeys(now.getTime()), now.getTime());
+        const body = (await request.json().catch(() => null)) as { idToken?: unknown; accessToken?: unknown } | null;
+        const sub = body?.accessToken !== undefined
+          ? await verifyAccessToken(body.accessToken, clientId)
+          : await verifyGoogleToken(body?.idToken, clientId, await googleKeys(now.getTime()), now.getTime());
         return sub ? json(200, { playerId: await playerIdForGoogle(sub) }) : json(401, { error: "invalid token" });
       } catch {
         return json(500, { error: "server error" });
