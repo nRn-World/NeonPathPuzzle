@@ -21,6 +21,7 @@ import { useLanguageStore } from "@/lib/i18n";
 // Loaded on demand: neither page is needed to start playing.
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const Duel = lazy(() => import("@/pages/Duel"));
+const Survival = lazy(() => import("@/pages/Survival"));
 
 function LevelGame() {
   return <Game />;
@@ -46,6 +47,7 @@ function AppRouter() {
           <Route path="/zen/:id" component={ZenGame} />
           <Route path="/rift/:id" component={RiftGame} />
           <Route path="/duel" component={Duel} />
+          <Route path="/survival" component={Survival} />
           <Route path="/privacy" component={Privacy} />
           <Route component={NotFound} />
         </Switch>

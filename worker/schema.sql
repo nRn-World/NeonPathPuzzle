@@ -17,3 +17,11 @@ CREATE TABLE IF NOT EXISTS ratings (
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ratings_rating ON ratings (rating);
+
+-- Cloud saves: the whole local progress blob, one row per player. The game is
+-- playable offline, so this is only ever a mirror written by a signed-in device.
+CREATE TABLE IF NOT EXISTS saves (
+  player_id TEXT PRIMARY KEY,
+  data TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);

@@ -32,6 +32,8 @@ import { getDailyLevelId, getDateKey } from "@/lib/daily";
 import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKeys } from "@/lib/weekly";
 import { useI18n, upper } from "@/lib/i18n";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
+import { shareSolveClip, type ClipOutcome } from "@/lib/solveClip";
+import { scheduleProgressPush } from "@/lib/cloudSync";
 import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
 import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
 import { ChapterIntro } from "@/components/ChapterIntro";
@@ -154,6 +156,8 @@ export default function Game({ mode = "level" }: GameProps) {
   const [bestTimeMs, setBestTimeMs] = useState<number | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [ghostPath, setGhostPath] = useState<Point[] | null>(null);
+  /** The line that won this run, kept for the solve clip. */
+  const [winPath, setWinPath] = useState<Point[]>([]);
   const [isNewBest, setIsNewBest] = useState(false);
   const [isNewBestScore, setIsNewBestScore] = useState(false);
   const [connectedCount, setConnectedCount] = useState(1);
@@ -464,6 +468,7 @@ export default function Game({ mode = "level" }: GameProps) {
     setHasWon(true);
     setShowHint(false);
     setStuck(false);
+    setWinPath(completedPath);
     frontierRef.current = false;
     setFrontier(false);
 
@@ -561,6 +566,7 @@ export default function Game({ mode = "level" }: GameProps) {
         score: finalScore,
         path: completedPath,
       });
+      scheduleProgressPush(userId);
 
       void submitStars(getTotalStars(getProgress(userId)) + Math.max(0, finalStars - (recordBefore?.stars ?? 0)));
 
@@ -646,6 +652,28 @@ export default function Game({ mode = "level" }: GameProps) {
     weeklyChallenge.modifier,
     weeklyChallenge.weekKey,
   ]);
+
+  /** Feeds the recorded clip from the win screen. */
+  const handleSaveClip = useCallback(async (): Promise<ClipOutcome> => {
+    if (!level) return "failed";
+    const clipPath = winPath.length > 1 ? winPath : hintPath ?? [];
+    if (clipPath.length < 2) return "failed";
+    return shareSolveClip({
+      levelId,
+      gridSize: level.gridSize,
+      nodes: level.nodes,
+      path: clipPath,
+      timeMs: finalTimeMs || elapsedMs,
+      stars,
+      label: isDaily
+        ? upper(t("dailyChallenge"))
+        : isWeekly
+          ? upper(t("weeklyChallenge"))
+          : isRift
+            ? `${upper(t("riftName"))} ${levelId}`
+            : undefined,
+    });
+  }, [elapsedMs, finalTimeMs, hintPath, isDaily, isRift, isWeekly, level, levelId, stars, t, winPath]);
 
   const handleNext = () => {
     if (isRift) {
@@ -935,6 +963,7 @@ export default function Game({ mode = "level" }: GameProps) {
         parTimeMs={parTimeMs}
         onNext={handleNext}
         onReplay={resetTransientState}
+        onSaveClip={handleSaveClip}
       />
     </div>
   );

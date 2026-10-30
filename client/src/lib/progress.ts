@@ -325,6 +325,11 @@ export function importProgress(userId: string, value: unknown): ProgressData {
   return normalized;
 }
 
+/** Cleans untrusted data (a cloud save, an import) without touching storage. */
+export function sanitizeProgress(value: unknown): ProgressData {
+  return normalizeProgress(value);
+}
+
 export function saveProgress(userId: string, progress: ProgressData): void {
   if (!userId) return;
   const normalized = normalizeProgress(progress);
@@ -495,6 +500,96 @@ export function saveLevelResult(userId: string, input: LevelResultInput): Applie
   const applied = applyLevelResult(progress, input);
   saveProgress(userId, applied.progress);
   return applied;
+}
+
+const minNullable = (a: number | null, b: number | null): number | null => {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.min(a, b);
+};
+
+const maxNullable = (a: number | null, b: number | null): number | null => {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.max(a, b);
+};
+
+/** The ghost of the faster run, so a merge never shows a slower route. */
+function pickBestPath(a: LevelRecord, b: LevelRecord): Point[] | null {
+  if (!a.bestPath) return b.bestPath;
+  if (!b.bestPath) return a.bestPath;
+  return (a.bestTimeMs ?? Number.POSITIVE_INFINITY) <= (b.bestTimeMs ?? Number.POSITIVE_INFINITY)
+    ? a.bestPath
+    : b.bestPath;
+}
+
+/**
+ * Combines two snapshots of the same player (this device and the cloud) without
+ * losing a star, a record or an unlock. Every clash resolves to the better run.
+ */
+export function mergeProgress(local: ProgressData, remote: ProgressData): ProgressData {
+  const completed = Array.from(new Set([...local.completed, ...remote.completed])).sort((a, b) => a - b);
+  const completedSet = new Set(completed);
+  const runCompleted = Array.from(new Set([...local.runCompleted, ...remote.runCompleted]))
+    .filter(levelId => completedSet.has(levelId))
+    .sort((a, b) => a - b);
+  const hints = Array.from(new Set([...local.hints, ...remote.hints])).sort((a, b) => a - b);
+
+  const records: Record<string, LevelRecord> = {};
+  new Set([...Object.keys(local.records), ...Object.keys(remote.records)]).forEach(key => {
+    const mine = local.records[key];
+    const theirs = remote.records[key];
+    if (!mine) {
+      records[key] = theirs;
+      return;
+    }
+    if (!theirs) {
+      records[key] = mine;
+      return;
+    }
+    records[key] = {
+      levelId: mine.levelId,
+      completed: mine.completed || theirs.completed,
+      stars: Math.max(mine.stars, theirs.stars),
+      bestTimeMs: minNullable(mine.bestTimeMs, theirs.bestTimeMs),
+      bestMoves: minNullable(mine.bestMoves, theirs.bestMoves),
+      bestMistakes: minNullable(mine.bestMistakes, theirs.bestMistakes),
+      bestScore: maxNullable(mine.bestScore, theirs.bestScore),
+      bestPath: pickBestPath(mine, theirs),
+      hintsUsed: mine.hintsUsed || theirs.hintsUsed,
+      updatedAt: Math.max(mine.updatedAt, theirs.updatedAt),
+    };
+  });
+
+  // The daily history is a log: keep whichever entry finished later per day.
+  const results: Record<string, DailyResult> = { ...remote.daily.results };
+  Object.entries(local.daily.results).forEach(([dateKey, result]) => {
+    const other = results[dateKey];
+    if (!other || result.completedAt >= other.completedAt) results[dateKey] = result;
+  });
+  // The streak belongs to the device that played most recently.
+  const latestDaily = (local.daily.lastPlayedDate ?? "") >= (remote.daily.lastPlayedDate ?? "")
+    ? local.daily
+    : remote.daily;
+
+  return {
+    version: 2,
+    completed,
+    runCompleted,
+    attempts: { ...remote.attempts, ...local.attempts },
+    crashes: Math.max(local.crashes, remote.crashes),
+    hints,
+    records,
+    lastLevelId: local.completed.length >= remote.completed.length ? local.lastLevelId : remote.lastLevelId,
+    daily: {
+      lastPlayedDate: latestDaily.lastPlayedDate,
+      streak: latestDaily.streak,
+      bestStreak: Math.max(local.daily.bestStreak, remote.daily.bestStreak),
+      results,
+    },
+    tutorialSeen: local.tutorialSeen || remote.tutorialSeen,
+    createdAt: Math.min(local.createdAt, remote.createdAt),
+  };
 }
 
 export function markLevelPlayed(userId: string, levelId: number): void {

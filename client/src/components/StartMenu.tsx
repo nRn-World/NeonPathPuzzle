@@ -2,6 +2,7 @@ import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, 
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Cloud,
   Crown,
   Heart,
   HelpCircle,
@@ -28,6 +29,7 @@ import { WeeklyCard } from "@/components/WeeklyCard";
 import { SeasonCard } from "@/components/SeasonCard";
 import { RankingPanel } from "@/components/RankingPanel";
 import { googleSignInEnabled, openGooglePopup, preloadGoogle } from "@/lib/googleSignIn";
+import { cloudSyncReady, syncProgress, type SyncOutcome } from "@/lib/cloudSync";
 import { getPlayer, PLAYER_EVENT, signInWithGoogle, signOutGoogle } from "@/lib/leaderboard";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
@@ -35,6 +37,8 @@ import { TutorialOverlay } from "@/components/TutorialOverlay";
 import { getLevelFromCode } from "@/lib/levelCodes";
 import { getLevelMessage } from "@/lib/levelMessages";
 import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { unlockLevelsThroughCode } from "@/lib/sessionLevelUnlock";
 import { getProgress, markTutorialSeen, TOTAL_LEVELS } from "@/lib/progress";
 import type { TranslationKey } from "@/lib/i18n";
@@ -73,6 +77,26 @@ export function StartMenu() {
   const { data: levels, refetch } = useLevels(userId);
   const { data: summary } = useUserProgress(userId);
   const [tutorialOpen, setTutorialOpen] = useState(() => !getProgress(userId).tutorialSeen);
+  /** null until a sync has been attempted in this session. */
+  const [syncState, setSyncState] = useState<"syncing" | SyncOutcome | null>(null);
+  const syncedOnceRef = useRef(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // An account that is already signed in picks its save up on every visit: this
+  // is what makes a new phone continue where the old one stopped.
+  useEffect(() => {
+    if (syncedOnceRef.current || !userId || !cloudSyncReady()) return;
+    syncedOnceRef.current = true;
+    setSyncState("syncing");
+    void syncProgress(userId).then(async outcome => {
+      setSyncState(outcome);
+      if (outcome === "synced" || outcome === "pulled" || outcome === "pushed") {
+        await refetch();
+        void queryClient.invalidateQueries();
+      }
+    });
+  }, [queryClient, refetch, userId]);
 
   const completedLevels = levels?.filter(level => level.isCompleted) ?? [];
   const completedCount = summary?.completedCount ?? completedLevels.length;
@@ -159,6 +183,11 @@ export function StartMenu() {
                         onClick={() => handleButtonClick(() => setScreen("info"))}
                       />
                       <MenuButton
+                        icon={<Zap className="h-4 w-4" />}
+                        label={t("survivalTitle")}
+                        onClick={() => handleButtonClick(() => setLocation("/survival"))}
+                      />
+                      <MenuButton
                         icon={<MapIcon className="h-4 w-4" />}
                         label={t("worldMapButton")}
                         onClick={() => handleButtonClick(() => setScreen("map"))}
@@ -173,7 +202,11 @@ export function StartMenu() {
                           icon={<GoogleG />}
                           label={player.google ? t("googleSignOut") : t("googleMenu")}
                           onClick={() => handleButtonClick(() => {
-                            if (player.google) return setPlayer(signOutGoogle());
+                            if (player.google) {
+                              setPlayer(signOutGoogle());
+                              setSyncState(null);
+                              return;
+                            }
                             const showRanking = () => {
                               setActiveTab("ranking");
                               window.setTimeout(() => document.getElementById("dashboard")?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -181,8 +214,21 @@ export function StartMenu() {
                             // The popup opens right here; the Ranking tab is only the fallback (script not loaded, popup failed).
                             const opened = openGooglePopup(async accessToken => {
                               const signedIn = await signInWithGoogle({ accessToken });
-                              if (signedIn) setPlayer(signedIn);
-                              else showRanking();
+                              if (!signedIn) return showRanking();
+                              setPlayer(signedIn);
+
+                              // Signing in is also the moment to join this device's
+                              // progress with the account's save.
+                              setSyncState("syncing");
+                              const outcome = await syncProgress(userId);
+                              setSyncState(outcome);
+                              if (outcome === "synced" || outcome === "pulled" || outcome === "pushed") {
+                                await refetch();
+                                void queryClient.invalidateQueries();
+                                toast({ title: t("cloudSynced"), description: t("cloudSyncOn") });
+                              } else if (outcome === "failed") {
+                                toast({ title: t("cloudSyncFailed"), description: t("cloudSyncOff") });
+                              }
                             }, showRanking);
                             if (!opened) showRanking();
                           })}
@@ -258,6 +304,26 @@ export function StartMenu() {
                         <RankingPanel />
                       </TabsContent>
                     </Tabs>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.58 }}
+                    className="flex items-center justify-center gap-2 font-exo text-[11px] text-muted-foreground"
+                  >
+                    <Cloud className={`h-3.5 w-3.5 ${player.google ? "text-primary" : "text-muted-foreground/60"}`} />
+                    <span>
+                      {!googleSignInEnabled()
+                        ? t("cloudSyncOff")
+                        : !player.google
+                          ? t("cloudSyncOff")
+                          : syncState === "syncing"
+                            ? t("cloudSyncing")
+                            : syncState === "failed"
+                              ? t("cloudSyncFailed")
+                              : t("cloudSyncOn")}
+                    </span>
                   </motion.div>
 
                   <motion.div
