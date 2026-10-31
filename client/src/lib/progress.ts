@@ -1,5 +1,6 @@
 import type { Point } from "@shared/schema";
 import { MAX_LEVEL_ID } from "@shared/level-generator";
+import { chapters } from "./chapters";
 import {
   emptyDailyState,
   updateDailyState,
@@ -11,6 +12,13 @@ export const TOTAL_LEVELS = MAX_LEVEL_ID;
 
 /** Tries per campaign level: the first run plus two restarts. */
 export const MAX_ATTEMPTS = 3;
+
+/**
+ * The personal-best ghost only runs on the opening levels, where it works as a
+ * gentle demo of the line. From level 11 on the board is solved from scratch —
+ * no overlay may hand the player a route.
+ */
+export const GHOST_LEVEL_LIMIT = 10;
 
 const STORAGE_PREFIX = "neon_path_progress_v2_";
 const LEGACY_PREFIX = "neon_path_progress_";
@@ -386,16 +394,34 @@ export function startAttempt(userId: string, levelId: number): number {
 }
 
 /**
- * Three failed attempts on one level: the run starts over from level 1. Stars,
- * records, themes and achievements are kept; only the run is cleared.
+ * The highest chapter that is fully cleared. A crash sends the run back to this
+ * checkpoint, so a finished chapter is never lost twice.
+ */
+export function crashCheckpoint(runCompleted: number[]): number {
+  const cleared = new Set(runCompleted);
+  let checkpoint = 0;
+  for (const chapter of chapters) {
+    for (let levelId = chapter.from; levelId <= chapter.to; levelId++) {
+      if (!cleared.has(levelId)) return checkpoint;
+    }
+    checkpoint = chapter.to;
+  }
+  return checkpoint;
+}
+
+/**
+ * Three failed attempts on one level: the run restarts at the last finished
+ * chapter instead of level 1, so at most the unfinished chapter is locked
+ * again. Stars, records, themes and achievements are always kept.
  */
 export function applyCrash(progress: ProgressData): ProgressData {
+  const checkpoint = crashCheckpoint(progress.runCompleted);
   return {
     ...progress,
-    runCompleted: [],
+    runCompleted: Array.from({ length: checkpoint }, (_, index) => index + 1),
     attempts: {},
     crashes: progress.crashes + 1,
-    lastLevelId: 1,
+    lastLevelId: clampLevel(checkpoint + 1),
   };
 }
 
@@ -415,6 +441,11 @@ export function getTotalScore(progress: ProgressData): number {
 
 export function getLevelRecord(progress: ProgressData, levelId: number): LevelRecord | null {
   return progress.records[String(levelId)] ?? null;
+}
+
+/** Whether this level is allowed to show a ghost at all. */
+export function showsGhost(levelId: number): boolean {
+  return levelId >= 1 && levelId <= GHOST_LEVEL_LIMIT;
 }
 
 export function applyLevelResult(

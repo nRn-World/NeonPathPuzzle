@@ -40,6 +40,8 @@ export interface GameCanvasProps {
   statusText?: string;
   /** Fires with true when the line has no legal forward move left. */
   onStuckChange?: (stuck: boolean) => void;
+  /** Draws the board larger than the viewport and follows the line's head. */
+  zoom?: number;
 }
 
 interface Particle {
@@ -57,6 +59,9 @@ interface Metrics {
   cellSize: number;
   dpr: number;
   size: number;
+  /** Board pixels hidden to the left/top of the viewport while zoomed in. */
+  offsetX: number;
+  offsetY: number;
 }
 
 const pointKey = (point: Point) => `${point.x},${point.y}`;
@@ -131,6 +136,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     gridLabel,
     statusText,
     onStuckChange,
+    zoom = 1,
   },
   ref,
 ) {
@@ -144,7 +150,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const pathRef = useRef<Point[]>([level.start]);
   const [isDragging, setIsDragging] = useState(false);
 
-  const metricsRef = useRef<Metrics>({ cellSize: 0, dpr: 1, size: 0 });
+  const metricsRef = useRef<Metrics>({ cellSize: 0, dpr: 1, size: 0, offsetX: 0, offsetY: 0 });
   const lastPointerRef = useRef<Point | null>(null);
   const wonRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
@@ -243,9 +249,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
 
-    const cell = size / level.gridSize;
-    metricsRef.current = { cellSize: cell, dpr, size };
-  }, [level.gridSize]);
+    const cell = (size * zoom) / level.gridSize;
+    metricsRef.current = { ...metricsRef.current, cellSize: cell, dpr, size };
+  }, [level.gridSize, zoom]);
 
   useEffect(() => {
     updateMetrics();
@@ -309,6 +315,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.clearRect(0, 0, size, size);
+
+    // Zoomed in, the board is wider than the viewport: the view slides with the
+    // head and clamps at the board's edges, so the line never leaves the screen.
+    const maxOffset = Math.max(0, level.gridSize * cell - size);
+    const headCenterX = (head?.x ?? 0) * cell + cell / 2;
+    const headCenterY = (head?.y ?? 0) * cell + cell / 2;
+    const offsetX = Math.min(Math.max(headCenterX - size / 2, 0), maxOffset);
+    const offsetY = Math.min(Math.max(headCenterY - size / 2, 0), maxOffset);
+    metricsRef.current = { ...metricsRef.current, offsetX, offsetY };
+    if (offsetX !== 0 || offsetY !== 0) context.translate(-offsetX, -offsetY);
 
     // Board plate: a glassy panel so the grid reads as a device, not a void.
     const boardSize = level.gridSize * cell;
@@ -920,15 +936,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [render, reducedMotion, paused]);
+  }, [render, reducedMotion, paused, zoom]);
 
   const getGridPos = useCallback((clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
-    const cell = metricsRef.current.cellSize;
+    // The pointer has to be mapped through the zoom camera, not the raw viewport.
+    const { cellSize: cell, offsetX, offsetY } = metricsRef.current;
     if (!canvas || !cell) return null;
     const rect = canvas.getBoundingClientRect();
-    const gridX = Math.floor((clientX - rect.left) / cell);
-    const gridY = Math.floor((clientY - rect.top) / cell);
+    const gridX = Math.floor((clientX - rect.left + offsetX) / cell);
+    const gridY = Math.floor((clientY - rect.top + offsetY) / cell);
 
     if (gridX < 0 || gridY < 0 || gridX >= level.gridSize || gridY >= level.gridSize) {
       return null;

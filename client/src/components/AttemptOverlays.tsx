@@ -132,13 +132,15 @@ interface CrashProps {
   levelId: number;
   /** Levels the run had cleared before it crashed. */
   lostLevels: number;
+  /** Level the run restarts on: right after the last finished chapter. */
+  restartLevel: number;
   reducedMotion: boolean;
   onRestartRun: () => void;
   onMenu: () => void;
 }
 
 /** Three failed attempts: the run is wiped and starts again at level 1. */
-export function CrashModal({ open, levelId, lostLevels, reducedMotion, onRestartRun, onMenu }: CrashProps) {
+export function CrashModal({ open, levelId, lostLevels, restartLevel, reducedMotion, onRestartRun, onMenu }: CrashProps) {
   const { t } = useI18n();
   return (
     <AnimatePresence>
@@ -167,7 +169,7 @@ export function CrashModal({ open, levelId, lostLevels, reducedMotion, onRestart
               SYSTEM CRASH
             </h2>
             <p className="font-exo text-sm text-muted-foreground">
-              {t("crashDesc", { level: levelId })}
+              {t("crashDesc", { level: levelId, restart: restartLevel })}
             </p>
             {lostLevels > 0 && (
               <p className="font-exo text-xs text-red-300/80">{t("crashLost", { count: lostLevels })}</p>
@@ -178,7 +180,7 @@ export function CrashModal({ open, levelId, lostLevels, reducedMotion, onRestart
             <div className="flex flex-col gap-2">
               <Button onClick={onRestartRun} className="bg-red-500 py-5 font-bold text-white hover:bg-red-400">
                 <RotateCcw className="mr-2 h-4 w-4" />
-                {t("rebootFromOne")}
+                {t("rebootAtLevel", { level: restartLevel })}
               </Button>
               <Button variant="outline" onClick={onMenu} className="border-white/15">
                 <Home className="mr-2 h-4 w-4" />
