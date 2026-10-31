@@ -44,10 +44,26 @@ function loadGsi(): Promise<Gsi> {
   return loading;
 }
 
+/**
+ * Google's library may only be initialized once per page: every extra call
+ * replaces the previous callback (and logs a warning), which would break the
+ * button that was drawn first. So one init registers a forwarder that always
+ * calls the handler registered last.
+ */
+let initialized = false;
+let latestHandler: ((idToken: string) => void) | null = null;
+
 /** Draws Google's own button into `element`; `onToken` gets the ID token after the player picks an account. */
 export async function renderGoogleButton(element: HTMLElement, onToken: (idToken: string) => void): Promise<void> {
   const { accounts } = await loadGsi();
-  accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: response => onToken(response.credential) });
+  latestHandler = onToken;
+  if (!initialized) {
+    initialized = true;
+    accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: response => latestHandler?.(response.credential),
+    });
+  }
   accounts.id.renderButton(element, { theme: "filled_black", size: "large", shape: "rectangular" });
 }
 
