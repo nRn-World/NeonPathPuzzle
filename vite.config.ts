@@ -21,6 +21,8 @@ export default defineConfig({
     },
   },
   root: path.resolve(__dirname, "client"),
+  // Env files live at the project root (same .env.local the server uses), not inside client/.
+  envDir: __dirname,
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,

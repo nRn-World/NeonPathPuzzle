@@ -130,8 +130,9 @@ Each level awards 1–3 stars:
 
 ### Personal Best Ghost
 
-- The fastest run's path is stored per level
-- A faint dashed trace shows your best line while you replay
+- The fastest run's path is stored per level, but the ghost only runs on levels 1–10
+- A faint dashed trace shows your best line while you replay those opening levels
+- From level 11 on nothing marks the route — later boards are read from scratch
 - Toggle it in Settings
 
 ---

@@ -12,7 +12,7 @@ import { generateLevel } from "@shared/level-generator";
 import { EMPTY_MECHANICS, getLevelMechanics, isValidPlayerPath, mirrorLevel } from "@shared/mechanics";
 import type { Point } from "@shared/schema";
 import confetti from "canvas-confetti";
-import { Loader2, Pause, Play } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, Pause, Play } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { useLevel, useUpdateProgress, useUserId } from "@/hooks/use-game";
@@ -32,6 +32,8 @@ import { getDailyLevelId, getDateKey } from "@/lib/daily";
 import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKeys } from "@/lib/weekly";
 import { useI18n, upper } from "@/lib/i18n";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
+import { shareSolveClip, type ClipOutcome } from "@/lib/solveClip";
+import { scheduleProgressPush } from "@/lib/cloudSync";
 import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
 import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
 import { ChapterIntro } from "@/components/ChapterIntro";
@@ -48,6 +50,7 @@ import {
   MAX_ATTEMPTS,
   startAttempt,
   recordDailyResult,
+  showsGhost,
   TOTAL_LEVELS,
 } from "@/lib/progress";
 
@@ -154,6 +157,8 @@ export default function Game({ mode = "level" }: GameProps) {
   const [bestTimeMs, setBestTimeMs] = useState<number | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
   const [ghostPath, setGhostPath] = useState<Point[] | null>(null);
+  /** The line that won this run, kept for the solve clip. */
+  const [winPath, setWinPath] = useState<Point[]>([]);
   const [isNewBest, setIsNewBest] = useState(false);
   const [isNewBestScore, setIsNewBestScore] = useState(false);
   const [connectedCount, setConnectedCount] = useState(1);
@@ -171,7 +176,9 @@ export default function Game({ mode = "level" }: GameProps) {
   const [attemptStarted, setAttemptStarted] = useState(false);
   const [stuck, setStuck] = useState(false);
   const [confirmCrash, setConfirmCrash] = useState(false);
-  const [crash, setCrash] = useState<{ levelId: number; lost: number } | null>(null);
+  const [crash, setCrash] = useState<{ levelId: number; lost: number; restartLevel: number } | null>(null);
+  /** null follows the screen size; a tap on the zoom button overrides it. */
+  const [bigBoardOverride, setBigBoardOverride] = useState<boolean | null>(null);
   const [introLevel, setIntroLevel] = useState<number | null>(null);
   const [chapterIntro, setChapterIntro] = useState<number | null>(null);
   const limited = mode === "level" && frontier;
@@ -248,15 +255,18 @@ export default function Game({ mode = "level" }: GameProps) {
 
   const crashNow = useCallback(() => {
     if (!userId) return;
-    const lost = getProgress(userId).runCompleted.length;
-    crashRun(userId);
+    // The crash keeps the last finished chapter open, so only the levels after
+    // that checkpoint are actually lost.
+    const clearedBefore = getProgress(userId).runCompleted.length;
+    const crashed = crashRun(userId);
+    const lost = Math.max(0, clearedBefore - crashed.runCompleted.length);
     playCrashSound();
     frontierRef.current = true;
     setFrontier(true);
     setAttemptsUsed(0);
     setConfirmCrash(false);
     setStuck(false);
-    setCrash({ levelId, lost });
+    setCrash({ levelId, lost, restartLevel: crashed.lastLevelId });
     // Not the level query: it would lock this board under the crash screen.
     void queryClient.invalidateQueries({ queryKey: [api.progress.get.path] });
     void queryClient.invalidateQueries({ queryKey: [api.levels.list.path] });
@@ -321,7 +331,11 @@ export default function Game({ mode = "level" }: GameProps) {
       setGhostPath(null);
       return;
     }
-    const savedGhost = getLevelRecord(getProgress(userId), levelId)?.bestPath ?? null;
+    // Past the opening levels the board must be read from scratch, so the ghost
+    // is not even loaded — a save from an earlier run stays untouched.
+    const savedGhost = showsGhost(levelId)
+      ? getLevelRecord(getProgress(userId), levelId)?.bestPath ?? null
+      : null;
     const ghostMechanics = getLevelMechanics(level, generated.solution);
     setGhostPath(
       savedGhost && isValidPlayerPath(savedGhost, level, ghostMechanics) ? savedGhost : null,
@@ -464,6 +478,7 @@ export default function Game({ mode = "level" }: GameProps) {
     setHasWon(true);
     setShowHint(false);
     setStuck(false);
+    setWinPath(completedPath);
     frontierRef.current = false;
     setFrontier(false);
 
@@ -561,6 +576,7 @@ export default function Game({ mode = "level" }: GameProps) {
         score: finalScore,
         path: completedPath,
       });
+      scheduleProgressPush(userId);
 
       void submitStars(getTotalStars(getProgress(userId)) + Math.max(0, finalStars - (recordBefore?.stars ?? 0)));
 
@@ -647,6 +663,28 @@ export default function Game({ mode = "level" }: GameProps) {
     weeklyChallenge.weekKey,
   ]);
 
+  /** Feeds the recorded clip from the win screen. */
+  const handleSaveClip = useCallback(async (): Promise<ClipOutcome> => {
+    if (!level) return "failed";
+    const clipPath = winPath.length > 1 ? winPath : hintPath ?? [];
+    if (clipPath.length < 2) return "failed";
+    return shareSolveClip({
+      levelId,
+      gridSize: level.gridSize,
+      nodes: level.nodes,
+      path: clipPath,
+      timeMs: finalTimeMs || elapsedMs,
+      stars,
+      label: isDaily
+        ? upper(t("dailyChallenge"))
+        : isWeekly
+          ? upper(t("weeklyChallenge"))
+          : isRift
+            ? `${upper(t("riftName"))} ${levelId}`
+            : undefined,
+    });
+  }, [elapsedMs, finalTimeMs, hintPath, isDaily, isRift, isWeekly, level, levelId, stars, t, winPath]);
+
   const handleNext = () => {
     if (isRift) {
       setLocation(levelId < RIFT_LAST_LEVEL ? `/rift/${levelId + 1}` : "/");
@@ -670,9 +708,10 @@ export default function Game({ mode = "level" }: GameProps) {
   }, [attemptsUsed, resetTransientState]);
 
   const handleCrashRestart = () => {
+    const restartAt = crash?.restartLevel ?? 1;
     setCrash(null);
-    if (levelId === 1) resetTransientState();
-    else setLocation("/play/1");
+    if (levelId === restartAt) resetTransientState();
+    else setLocation(`/play/${restartAt}`);
   };
 
   useEffect(() => {
@@ -716,6 +755,7 @@ export default function Game({ mode = "level" }: GameProps) {
       open={crash !== null}
       levelId={crash?.levelId ?? levelId}
       lostLevels={crash?.lost ?? 0}
+      restartLevel={crash?.restartLevel ?? 1}
       reducedMotion={reducedMotion}
       onRestartRun={handleCrashRestart}
       onMenu={() => {
@@ -778,6 +818,13 @@ export default function Game({ mode = "level" }: GameProps) {
       ? t("practiceNoRecords")
       : undefined;
 
+  // A 13x13 board leaves ~27 px cells on a phone; the zoom view follows the
+  // line's head so the cells stay big enough to read.
+  const autoBigBoard = level.gridSize >= 11
+    && typeof window !== "undefined"
+    && window.innerWidth < 700;
+  const bigBoard = bigBoardOverride ?? autoBigBoard;
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
       <Header
@@ -834,6 +881,18 @@ export default function Game({ mode = "level" }: GameProps) {
 
       <main className="relative flex w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 md:px-4 md:py-4">
         <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
+        {level.gridSize >= 11 && (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={t("bigBoard")}
+            aria-pressed={bigBoard}
+            onClick={() => setBigBoardOverride(!bigBoard)}
+            className="absolute right-2 top-2 z-20 h-8 w-8 border-white/15 p-0 text-foreground/80 hover:border-primary hover:bg-primary/10 hover:text-primary"
+          >
+            {bigBoard ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        )}
         <div className="relative z-10 flex h-full w-full items-center justify-center">
           <div className="h-full max-h-[calc(100vh-120px)] w-full max-w-4xl">
             <GameCanvas
@@ -852,6 +911,7 @@ export default function Game({ mode = "level" }: GameProps) {
               onBacktrack={handleBacktrack}
               onPathChange={handlePathChange}
               onStuckChange={setStuck}
+              zoom={bigBoard ? 1.8 : 1}
               reducedMotion={reducedMotion}
               paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null || chapterIntro !== null}
             />
@@ -935,6 +995,7 @@ export default function Game({ mode = "level" }: GameProps) {
         parTimeMs={parTimeMs}
         onNext={handleNext}
         onReplay={resetTransientState}
+        onSaveClip={handleSaveClip}
       />
     </div>
   );

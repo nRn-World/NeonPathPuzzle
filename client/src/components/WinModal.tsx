@@ -5,13 +5,14 @@ import { TOTAL_LEVELS } from "@/lib/progress";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Home, Play, RotateCcw, Share2, Star } from "lucide-react";
+import { Check, Copy, Home, Play, RotateCcw, Share2, Star, Video } from "lucide-react";
 import { Link } from "wouter";
 import { RIFT_LAST_LEVEL } from "@/lib/rift";
 import { generateLevelCode } from "@/lib/levelCodes";
 import { formatDuration, formatResultTime } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
 import { shareResult, type ShareOutcome } from "@/lib/shareCard";
+import type { ClipOutcome } from "@/lib/solveClip";
 import { useI18n, upper } from "@/lib/i18n";
 
 interface WinModalProps {
@@ -33,6 +34,8 @@ interface WinModalProps {
   parTimeMs?: number;
   onNext: () => void;
   onReplay: () => void;
+  /** Records a 9:16 clip of this solve. Absent when the board can't be replayed. */
+  onSaveClip?: () => Promise<ClipOutcome>;
 }
 
 export function WinModal({
@@ -54,9 +57,11 @@ export function WinModal({
   parTimeMs,
   onNext,
   onReplay,
+  onSaveClip,
 }: WinModalProps) {
   const [codeCopied, setCodeCopied] = useState(false);
   const [shareState, setShareState] = useState<ShareOutcome | null>(null);
+  const [clipState, setClipState] = useState<"idle" | "recording" | ClipOutcome>("idle");
   const { t } = useI18n();
   const levelCode = generateLevelCode(levelId);
   const showStars = !isZen;
@@ -86,6 +91,14 @@ export function WinModal({
     window.setTimeout(() => setShareState(null), 2500);
   };
 
+  const handleSaveClip = async () => {
+    if (!onSaveClip || clipState === "recording") return;
+    setClipState("recording");
+    const outcome = await onSaveClip();
+    setClipState(outcome);
+    window.setTimeout(() => setClipState("idle"), 3200);
+  };
+
   const shareLabel = shareState === "shared"
     ? t("shared")
     : shareState === "downloaded"
@@ -95,6 +108,16 @@ export function WinModal({
         : shareState === "failed"
           ? t("couldNotShare")
           : t("shareClear");
+
+  const clipLabel = clipState === "recording"
+    ? t("clipSaving")
+    : clipState === "shared" || clipState === "downloaded"
+      ? t("clipReady")
+      : clipState === "unsupported"
+        ? t("clipUnsupported")
+        : clipState === "failed"
+          ? t("clipFailed")
+          : t("saveClip");
 
   // Finishing the last level of a chapter gets its own moment.
   const chapter = getChapterForLevel(levelId);
@@ -304,6 +327,18 @@ export function WinModal({
                   >
                     <Share2 className="mr-2 h-4 w-4" />
                     {shareLabel}
+                  </Button>
+                )}
+
+                {onSaveClip && (
+                  <Button
+                    variant="outline"
+                    onClick={handleSaveClip}
+                    disabled={clipState === "recording"}
+                    className="border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
+                  >
+                    <Video className={`mr-2 h-4 w-4 ${clipState === "recording" ? "animate-pulse" : ""}`} />
+                    {clipLabel}
                   </Button>
                 )}
               </div>

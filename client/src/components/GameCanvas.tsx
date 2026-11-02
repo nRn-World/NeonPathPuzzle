@@ -40,6 +40,8 @@ export interface GameCanvasProps {
   statusText?: string;
   /** Fires with true when the line has no legal forward move left. */
   onStuckChange?: (stuck: boolean) => void;
+  /** Draws the board larger than the viewport and follows the line's head. */
+  zoom?: number;
 }
 
 interface Particle {
@@ -57,6 +59,9 @@ interface Metrics {
   cellSize: number;
   dpr: number;
   size: number;
+  /** Board pixels hidden to the left/top of the viewport while zoomed in. */
+  offsetX: number;
+  offsetY: number;
 }
 
 const pointKey = (point: Point) => `${point.x},${point.y}`;
@@ -108,6 +113,11 @@ function drawArrow(
 const BLACKOUT_RADIUS = 2.6;
 /** How long a hint takes to draw itself. */
 const HINT_DRAW_MS = 650;
+/** A hint that has to send the line backwards uses its own colour. */
+const HINT_REWIND_COLOR = "#ffb020";
+/** Ghost race pace: milliseconds per grid step, plus the pause before it laps. */
+const GHOST_MS_PER_CELL = 220;
+const GHOST_HOLD_MS = 1200;
 
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
@@ -126,6 +136,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     gridLabel,
     statusText,
     onStuckChange,
+    zoom = 1,
   },
   ref,
 ) {
@@ -139,7 +150,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const pathRef = useRef<Point[]>([level.start]);
   const [isDragging, setIsDragging] = useState(false);
 
-  const metricsRef = useRef<Metrics>({ cellSize: 0, dpr: 1, size: 0 });
+  const metricsRef = useRef<Metrics>({ cellSize: 0, dpr: 1, size: 0, offsetX: 0, offsetY: 0 });
   const lastPointerRef = useRef<Point | null>(null);
   const wonRef = useRef(false);
   const particlesRef = useRef<Particle[]>([]);
@@ -238,9 +249,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     canvas.style.width = `${size}px`;
     canvas.style.height = `${size}px`;
 
-    const cell = size / level.gridSize;
-    metricsRef.current = { cellSize: cell, dpr, size };
-  }, [level.gridSize]);
+    const cell = (size * zoom) / level.gridSize;
+    metricsRef.current = { ...metricsRef.current, cellSize: cell, dpr, size };
+  }, [level.gridSize, zoom]);
 
   useEffect(() => {
     updateMetrics();
@@ -304,6 +315,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.clearRect(0, 0, size, size);
+
+    // Zoomed in, the board is wider than the viewport: the view slides with the
+    // head and clamps at the board's edges, so the line never leaves the screen.
+    const maxOffset = Math.max(0, level.gridSize * cell - size);
+    const headCenterX = (head?.x ?? 0) * cell + cell / 2;
+    const headCenterY = (head?.y ?? 0) * cell + cell / 2;
+    const offsetX = Math.min(Math.max(headCenterX - size / 2, 0), maxOffset);
+    const offsetY = Math.min(Math.max(headCenterY - size / 2, 0), maxOffset);
+    metricsRef.current = { ...metricsRef.current, offsetX, offsetY };
+    if (offsetX !== 0 || offsetY !== 0) context.translate(-offsetX, -offsetY);
 
     // Board plate: a glassy panel so the grid reads as a device, not a void.
     const boardSize = level.gridSize * cell;
@@ -562,24 +583,70 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.restore();
     });
 
-    // Personal-best ghost, kept faint so the live line stays dominant.
+    // Personal-best ghost. It runs the saved route at a steady pace, so it
+    // reads as a rival racing the line instead of a static overlay.
     if (showGhost && ghostPath && ghostPath.length > 1) {
+      const total = ghostPath.length - 1;
+      const ghostX = (index: number) => ghostPath[index].x * cell + cell / 2;
+      const ghostY = (index: number) => ghostPath[index].y * cell + cell / 2;
+
+      // Reduced motion parks the ghost at the finish; everyone else watches it run.
+      const lap = total * GHOST_MS_PER_CELL;
+      const phase = reducedMotion ? lap : time % (lap + GHOST_HOLD_MS);
+      const progress = Math.min(total, phase / GHOST_MS_PER_CELL);
+      const whole = Math.min(total, Math.floor(progress));
+      const part = progress - whole;
+
       context.save();
-      context.globalAlpha = 0.2;
-      context.strokeStyle = colors.accent;
-      context.lineWidth = Math.min(4, Math.max(1.5, cell * 0.04));
       context.lineCap = "round";
       context.lineJoin = "round";
-      context.setLineDash([cell * 0.12, cell * 0.1]);
-      context.beginPath();
-      ghostPath.forEach((point, index) => {
-        const x = point.x * cell + cell / 2;
-        const y = point.y * cell + cell / 2;
-        if (index === 0) context.moveTo(x, y);
-        else context.lineTo(x, y);
-      });
-      context.stroke();
+
+      // The stretch the ghost has not reached yet stays faint and dashed.
+      if (whole < total) {
+        context.globalAlpha = 0.16;
+        context.strokeStyle = colors.accent;
+        context.lineWidth = Math.min(4, Math.max(1.5, cell * 0.04));
+        context.setLineDash([cell * 0.12, cell * 0.1]);
+        context.beginPath();
+        context.moveTo(ghostX(whole), ghostY(whole));
+        for (let index = whole + 1; index <= total; index++) context.lineTo(ghostX(index), ghostY(index));
+        context.stroke();
+        context.setLineDash([]);
+      }
+
+      // The part already run, brighter so the ghost has a visible tail.
+      if (whole > 0 || part > 0) {
+        context.globalAlpha = 0.5;
+        context.strokeStyle = colors.accent;
+        context.shadowColor = colors.accent;
+        context.shadowBlur = glow(10);
+        context.lineWidth = Math.min(5, Math.max(2, cell * 0.055));
+        context.beginPath();
+        context.moveTo(ghostX(0), ghostY(0));
+        for (let index = 1; index <= whole; index++) context.lineTo(ghostX(index), ghostY(index));
+        if (whole < total) {
+          context.lineTo(ghostX(whole) + (ghostX(whole + 1) - ghostX(whole)) * part, ghostY(whole) + (ghostY(whole + 1) - ghostY(whole)) * part);
+        }
+        context.stroke();
+        context.shadowBlur = 0;
+      }
       context.restore();
+
+      // A hollow head, so the ghost never hides the live line when they overlap.
+      if (!reducedMotion && whole < total) {
+        const headX = ghostX(whole) + (ghostX(whole + 1) - ghostX(whole)) * part;
+        const headY = ghostY(whole) + (ghostY(whole + 1) - ghostY(whole)) * part;
+        context.save();
+        context.globalAlpha = 0.8;
+        context.strokeStyle = colors.accent;
+        context.lineWidth = Math.max(1.5, cell * 0.045);
+        context.setLineDash([cell * 0.07, cell * 0.06]);
+        context.lineDashOffset = -time / 30;
+        context.beginPath();
+        context.arc(headX, headY, cell * 0.21, 0, Math.PI * 2);
+        context.stroke();
+        context.restore();
+      }
     }
 
     // Start marker
@@ -665,46 +732,102 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
-    // Hint: the solution draws itself forward so the direction is obvious.
+    // Hint: only the stretch still ahead of the line, not the whole solution.
+    // When the line has already left the solution, the hint sends it back to
+    // the last shared step instead of pretending everything is fine.
     if (showHint && hintPath && hintPath.length > 1) {
       if (hintStartRef.current === null) hintStartRef.current = time;
       const reveal = reducedMotion
         ? 1
         : Math.min(1, (time - hintStartRef.current) / HINT_DRAW_MS);
-      const reached = reveal * (hintPath.length - 1);
+
+      // Compare grid nodes only: portal hops and rewind history add cells that
+      // the solution does not contain, and they must not look like a detour.
+      const walked = currentPath.filter(point => nodeKeys.has(pointKey(point)));
+      let shared = 0;
+      while (
+        shared < walked.length
+        && shared < hintPath.length
+        && walked[shared].x === hintPath[shared].x
+        && walked[shared].y === hintPath[shared].y
+      ) shared += 1;
+      const offTrack = shared < walked.length;
+      const resume = offTrack ? Math.max(0, shared - 1) : Math.max(0, walked.length - 1);
+      const remaining = hintPath.slice(resume);
+      const accentColor = offTrack ? HINT_REWIND_COLOR : colors.secondary;
+      const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
+
+      const reached = reveal * (remaining.length - 1);
       const whole = Math.floor(reached);
       const part = reached - whole;
-      const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
 
       context.save();
       context.globalAlpha = 0.6;
-      context.strokeStyle = colors.secondary;
+      context.strokeStyle = accentColor;
       context.lineWidth = Math.min(6, Math.max(2, cell * 0.06));
       context.lineCap = "round";
       context.setLineDash([cell * 0.18, cell * 0.12]);
       context.beginPath();
-      hintPath.slice(0, whole + 1).forEach((point, index) => {
+      remaining.slice(0, whole + 1).forEach((point, index) => {
         const [x, y] = center(point);
         if (index === 0) context.moveTo(x, y);
         else context.lineTo(x, y);
       });
-      if (whole < hintPath.length - 1) {
-        const [fromX, fromY] = center(hintPath[whole]);
-        const [toX, toY] = center(hintPath[whole + 1]);
+      if (whole < remaining.length - 1) {
+        const [fromX, fromY] = center(remaining[whole]);
+        const [toX, toY] = center(remaining[whole + 1]);
         context.lineTo(fromX + (toX - fromX) * part, fromY + (toY - fromY) * part);
       }
       context.stroke();
       context.setLineDash([]);
+
+      // Step numbers are relative to the head, so "1" is always the next move.
       context.font = `${Math.max(9, cell * 0.14)}px 'Exo 2', Arial, sans-serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
-      context.fillStyle = colors.secondary;
-      hintPath.forEach((point, index) => {
+      context.fillStyle = accentColor;
+      remaining.forEach((point, index) => {
         if (index === 0 || index > whole) return;
         const [x, y] = center(point);
         context.fillText(String(index), x, y);
       });
       context.restore();
+
+      // The next move pulses so it never has to be counted out.
+      const nextPoint = remaining[1];
+      if (nextPoint && !offTrack) {
+        const [x, y] = center(nextPoint);
+        const pulse = reducedMotion ? 0.5 : (Math.sin(time / 220) + 1) / 2;
+        context.save();
+        context.globalAlpha = 0.5 + pulse * 0.45;
+        context.strokeStyle = colors.secondary;
+        context.lineWidth = Math.max(2, cell * 0.045);
+        context.beginPath();
+        context.arc(x, y, cell * (0.26 + pulse * 0.09), 0, Math.PI * 2);
+        context.stroke();
+        context.restore();
+      }
+
+      // Off the solution: the head is the problem, and the number is how many
+      // steps must be undone before the hint makes sense again.
+      if (offTrack && head) {
+        const [x, y] = center(head);
+        const stepsBack = Math.max(1, walked.length - 1 - resume);
+        const pulse = reducedMotion ? 0.6 : (Math.sin(time / 200) + 1) / 2;
+        context.save();
+        context.strokeStyle = HINT_REWIND_COLOR;
+        context.fillStyle = HINT_REWIND_COLOR;
+        context.lineWidth = Math.max(2, cell * 0.05);
+        context.globalAlpha = 0.65 + pulse * 0.35;
+        context.beginPath();
+        context.arc(x, y, cell * (0.3 + pulse * 0.07), 0, Math.PI * 2);
+        context.stroke();
+        context.font = `bold ${Math.max(10, cell * 0.2)}px 'Exo 2', Arial, sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(`\u21b6${stepsBack}`, x, y);
+        context.restore();
+      }
     } else {
       hintStartRef.current = null;
     }
@@ -813,15 +936,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [render, reducedMotion, paused]);
+  }, [render, reducedMotion, paused, zoom]);
 
   const getGridPos = useCallback((clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
-    const cell = metricsRef.current.cellSize;
+    // The pointer has to be mapped through the zoom camera, not the raw viewport.
+    const { cellSize: cell, offsetX, offsetY } = metricsRef.current;
     if (!canvas || !cell) return null;
     const rect = canvas.getBoundingClientRect();
-    const gridX = Math.floor((clientX - rect.left) / cell);
-    const gridY = Math.floor((clientY - rect.top) / cell);
+    const gridX = Math.floor((clientX - rect.left + offsetX) / cell);
+    const gridY = Math.floor((clientY - rect.top + offsetY) / cell);
 
     if (gridX < 0 || gridY < 0 || gridX >= level.gridSize || gridY >= level.gridSize) {
       return null;

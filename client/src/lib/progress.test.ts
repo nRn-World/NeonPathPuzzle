@@ -16,6 +16,8 @@ import {
   getLevelRecord,
   getTotalScore,
   getTotalStars,
+  GHOST_LEVEL_LIMIT,
+  showsGhost,
 } from "./progress";
 
 test("a completed level creates a record and unlocks the next level", () => {
@@ -173,6 +175,15 @@ test("a 0 ms best time is kept when a slower run follows", () => {
   assert.deepEqual(slower.record.bestPath, fastPath);
 });
 
+test("the ghost is limited to the opening levels", () => {
+  assert.equal(showsGhost(1), true);
+  assert.equal(showsGhost(GHOST_LEVEL_LIMIT), true);
+  // Beyond the opening levels the board must be solved without a route overlay.
+  assert.equal(showsGhost(GHOST_LEVEL_LIMIT + 1), false);
+  assert.equal(showsGhost(200), false);
+  assert.equal(showsGhost(0), false);
+});
+
 test("malformed ghost paths are ignored", () => {
   const applied = applyLevelResult(createEmptyProgress(), {
     levelId: 7,
@@ -311,6 +322,27 @@ test("a crash restarts the run at level 1 but keeps stars, records and completio
   assert.equal(crashed.crashes, 1);
   assert.equal(getContinueLevel(crashed), 1);
   assert.equal(isFrontierLevel(crashed, 2), true);
+});
+
+test("a crash sends the run back to the last finished chapter, not to level 1", () => {
+  let progress = createEmptyProgress();
+  for (let levelId = 1; levelId <= 27; levelId++) progress = win(progress, levelId);
+
+  const crashed = applyCrash(progress);
+  assert.equal(crashed.runCompleted.length, 25, "the finished chapter stays open");
+  assert.equal(getContinueLevel(crashed), 26, "play resumes at the first level of the lost chapter");
+  assert.equal(crashed.completed.length, 27, "records are never dropped");
+  assert.equal(crashed.crashes, 1);
+  assert.equal(isFrontierLevel(crashed, 25), false);
+  assert.equal(isFrontierLevel(crashed, 26), true);
+  assert.equal(getTotalStars(crashed), 81);
+});
+
+test("a crash inside the first chapter still restarts at level 1", () => {
+  const progress = win(win(createEmptyProgress(), 1), 2);
+  const crashed = applyCrash(progress);
+  assert.deepEqual(crashed.runCompleted, []);
+  assert.equal(getContinueLevel(crashed), 1);
 });
 
 test("attempts count up to the limit, only on frontier levels, and clear on a win", () => {

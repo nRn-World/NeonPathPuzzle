@@ -10,6 +10,9 @@ const BASE = ((import.meta.env?.VITE_LEADERBOARD_URL as string | undefined) ?? "
 
 export const leaderboardEnabled = () => BASE !== "";
 
+/** Base URL of the online worker, shared with cloud sync. */
+export const onlineBase = () => BASE;
+
 /** The worker address as a WebSocket URL, for duels. */
 export const duelSocketBase = () => BASE.replace(/^http/, "ws");
 

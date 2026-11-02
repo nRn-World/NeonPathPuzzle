@@ -192,8 +192,9 @@ export function MenuHero({
   const filled = Math.round((solvedCount / totalLevels) * segments);
 
   return (
-    <section className="relative mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-8 py-2 md:py-6 md:grid-cols-[1.05fr_0.95fr] md:gap-12">
-      <div className="text-left">
+    <section className="relative mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-x-8 gap-y-6 py-2 md:py-6 md:grid-cols-[1.05fr_0.95fr] md:gap-x-12 md:gap-y-0">
+      {/* Phones: title and tagline first, then the board, then the play block. */}
+      <div className="text-left md:col-start-1 md:row-start-1">
         <motion.p
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
@@ -227,12 +228,34 @@ export function MenuHero({
         >
           {t("startTagline")}
         </motion.p>
+      </div>
 
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6 }}
+        className="mx-auto w-full max-w-[min(100%,34rem)] md:col-start-2 md:row-span-2 md:row-start-1 md:self-center"
+      >
+        <div className="relative border border-white/10 bg-white/[0.02] p-4 sm:p-6">
+          {/* Corner ticks make the board read as an instrument, not a card. */}
+          <span className="absolute -left-px -top-px h-4 w-4 border-l-2 border-t-2 border-primary" />
+          <span className="absolute -right-px -top-px h-4 w-4 border-r-2 border-t-2 border-primary" />
+          <span className="absolute -bottom-px -left-px h-4 w-4 border-b-2 border-l-2 border-primary" />
+          <span className="absolute -bottom-px -right-px h-4 w-4 border-b-2 border-r-2 border-primary" />
+          <HeroBoard />
+          <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span>{HERO_BOARD.gridSize}×{HERO_BOARD.gridSize} · {HERO_BOARD.solution.length} {t("nodes")}</span>
+            <span>{t("heroBoardCaption")}</span>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="text-left md:col-start-1 md:row-start-2">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="mt-8 max-w-md"
+          className="max-w-md md:mt-8"
         >
           <button
             type="button"
@@ -311,27 +334,7 @@ export function MenuHero({
         </motion.div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6 }}
-        className="mx-auto w-full max-w-[min(100%,34rem)]"
-      >
-        <div className="relative border border-white/10 bg-white/[0.02] p-4 sm:p-6">
-          {/* Corner ticks make the board read as an instrument, not a card. */}
-          <span className="absolute -left-px -top-px h-4 w-4 border-l-2 border-t-2 border-primary" />
-          <span className="absolute -right-px -top-px h-4 w-4 border-r-2 border-t-2 border-primary" />
-          <span className="absolute -bottom-px -left-px h-4 w-4 border-b-2 border-l-2 border-primary" />
-          <span className="absolute -bottom-px -right-px h-4 w-4 border-b-2 border-r-2 border-primary" />
-          <HeroBoard />
-          <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            <span>{HERO_BOARD.gridSize}×{HERO_BOARD.gridSize} · {HERO_BOARD.solution.length} {t("nodes")}</span>
-            <span>{t("heroBoardCaption")}</span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Phones: the secondary actions sit under the board instead of above it. */}
+      {/* Phones: the secondary actions sit under the play block instead of above it. */}
       <div className="flex flex-wrap items-center gap-2 md:hidden">{actions}</div>
 
       <a

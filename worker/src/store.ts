@@ -11,6 +11,32 @@ export interface D1 {
   };
 }
 
+/** The cloud save mirror: one JSON blob per player id. */
+export interface SaveStore {
+  put(playerId: string, data: string, now: number): Promise<void>;
+  get(playerId: string): Promise<{ data: string; updatedAt: number } | null>;
+}
+
+export function d1SaveStore(db: D1): SaveStore {
+  return {
+    async put(playerId, data, now) {
+      await db
+        .prepare(
+          `INSERT INTO saves (player_id, data, updated_at) VALUES (?1, ?2, ?3)
+           ON CONFLICT(player_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+        )
+        .bind(playerId, data, now)
+        .run();
+    },
+    async get(playerId) {
+      return db
+        .prepare("SELECT data, updated_at AS updatedAt FROM saves WHERE player_id = ?1")
+        .bind(playerId)
+        .first<{ data: string; updatedAt: number }>();
+    },
+  };
+}
+
 export function d1Store(db: D1): Store {
   const better = (order: Order) => (order === "low" ? "<" : ">");
   const direction = (order: Order) => (order === "low" ? "ASC" : "DESC");

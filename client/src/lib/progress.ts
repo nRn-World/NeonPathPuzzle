@@ -1,5 +1,6 @@
 import type { Point } from "@shared/schema";
 import { MAX_LEVEL_ID } from "@shared/level-generator";
+import { chapters } from "./chapters";
 import {
   emptyDailyState,
   updateDailyState,
@@ -11,6 +12,13 @@ export const TOTAL_LEVELS = MAX_LEVEL_ID;
 
 /** Tries per campaign level: the first run plus two restarts. */
 export const MAX_ATTEMPTS = 3;
+
+/**
+ * The personal-best ghost only runs on the opening levels, where it works as a
+ * gentle demo of the line. From level 11 on the board is solved from scratch —
+ * no overlay may hand the player a route.
+ */
+export const GHOST_LEVEL_LIMIT = 10;
 
 const STORAGE_PREFIX = "neon_path_progress_v2_";
 const LEGACY_PREFIX = "neon_path_progress_";
@@ -325,6 +333,11 @@ export function importProgress(userId: string, value: unknown): ProgressData {
   return normalized;
 }
 
+/** Cleans untrusted data (a cloud save, an import) without touching storage. */
+export function sanitizeProgress(value: unknown): ProgressData {
+  return normalizeProgress(value);
+}
+
 export function saveProgress(userId: string, progress: ProgressData): void {
   if (!userId) return;
   const normalized = normalizeProgress(progress);
@@ -381,16 +394,34 @@ export function startAttempt(userId: string, levelId: number): number {
 }
 
 /**
- * Three failed attempts on one level: the run starts over from level 1. Stars,
- * records, themes and achievements are kept; only the run is cleared.
+ * The highest chapter that is fully cleared. A crash sends the run back to this
+ * checkpoint, so a finished chapter is never lost twice.
+ */
+export function crashCheckpoint(runCompleted: number[]): number {
+  const cleared = new Set(runCompleted);
+  let checkpoint = 0;
+  for (const chapter of chapters) {
+    for (let levelId = chapter.from; levelId <= chapter.to; levelId++) {
+      if (!cleared.has(levelId)) return checkpoint;
+    }
+    checkpoint = chapter.to;
+  }
+  return checkpoint;
+}
+
+/**
+ * Three failed attempts on one level: the run restarts at the last finished
+ * chapter instead of level 1, so at most the unfinished chapter is locked
+ * again. Stars, records, themes and achievements are always kept.
  */
 export function applyCrash(progress: ProgressData): ProgressData {
+  const checkpoint = crashCheckpoint(progress.runCompleted);
   return {
     ...progress,
-    runCompleted: [],
+    runCompleted: Array.from({ length: checkpoint }, (_, index) => index + 1),
     attempts: {},
     crashes: progress.crashes + 1,
-    lastLevelId: 1,
+    lastLevelId: clampLevel(checkpoint + 1),
   };
 }
 
@@ -410,6 +441,11 @@ export function getTotalScore(progress: ProgressData): number {
 
 export function getLevelRecord(progress: ProgressData, levelId: number): LevelRecord | null {
   return progress.records[String(levelId)] ?? null;
+}
+
+/** Whether this level is allowed to show a ghost at all. */
+export function showsGhost(levelId: number): boolean {
+  return levelId >= 1 && levelId <= GHOST_LEVEL_LIMIT;
 }
 
 export function applyLevelResult(
@@ -495,6 +531,96 @@ export function saveLevelResult(userId: string, input: LevelResultInput): Applie
   const applied = applyLevelResult(progress, input);
   saveProgress(userId, applied.progress);
   return applied;
+}
+
+const minNullable = (a: number | null, b: number | null): number | null => {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.min(a, b);
+};
+
+const maxNullable = (a: number | null, b: number | null): number | null => {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.max(a, b);
+};
+
+/** The ghost of the faster run, so a merge never shows a slower route. */
+function pickBestPath(a: LevelRecord, b: LevelRecord): Point[] | null {
+  if (!a.bestPath) return b.bestPath;
+  if (!b.bestPath) return a.bestPath;
+  return (a.bestTimeMs ?? Number.POSITIVE_INFINITY) <= (b.bestTimeMs ?? Number.POSITIVE_INFINITY)
+    ? a.bestPath
+    : b.bestPath;
+}
+
+/**
+ * Combines two snapshots of the same player (this device and the cloud) without
+ * losing a star, a record or an unlock. Every clash resolves to the better run.
+ */
+export function mergeProgress(local: ProgressData, remote: ProgressData): ProgressData {
+  const completed = Array.from(new Set([...local.completed, ...remote.completed])).sort((a, b) => a - b);
+  const completedSet = new Set(completed);
+  const runCompleted = Array.from(new Set([...local.runCompleted, ...remote.runCompleted]))
+    .filter(levelId => completedSet.has(levelId))
+    .sort((a, b) => a - b);
+  const hints = Array.from(new Set([...local.hints, ...remote.hints])).sort((a, b) => a - b);
+
+  const records: Record<string, LevelRecord> = {};
+  new Set([...Object.keys(local.records), ...Object.keys(remote.records)]).forEach(key => {
+    const mine = local.records[key];
+    const theirs = remote.records[key];
+    if (!mine) {
+      records[key] = theirs;
+      return;
+    }
+    if (!theirs) {
+      records[key] = mine;
+      return;
+    }
+    records[key] = {
+      levelId: mine.levelId,
+      completed: mine.completed || theirs.completed,
+      stars: Math.max(mine.stars, theirs.stars),
+      bestTimeMs: minNullable(mine.bestTimeMs, theirs.bestTimeMs),
+      bestMoves: minNullable(mine.bestMoves, theirs.bestMoves),
+      bestMistakes: minNullable(mine.bestMistakes, theirs.bestMistakes),
+      bestScore: maxNullable(mine.bestScore, theirs.bestScore),
+      bestPath: pickBestPath(mine, theirs),
+      hintsUsed: mine.hintsUsed || theirs.hintsUsed,
+      updatedAt: Math.max(mine.updatedAt, theirs.updatedAt),
+    };
+  });
+
+  // The daily history is a log: keep whichever entry finished later per day.
+  const results: Record<string, DailyResult> = { ...remote.daily.results };
+  Object.entries(local.daily.results).forEach(([dateKey, result]) => {
+    const other = results[dateKey];
+    if (!other || result.completedAt >= other.completedAt) results[dateKey] = result;
+  });
+  // The streak belongs to the device that played most recently.
+  const latestDaily = (local.daily.lastPlayedDate ?? "") >= (remote.daily.lastPlayedDate ?? "")
+    ? local.daily
+    : remote.daily;
+
+  return {
+    version: 2,
+    completed,
+    runCompleted,
+    attempts: { ...remote.attempts, ...local.attempts },
+    crashes: Math.max(local.crashes, remote.crashes),
+    hints,
+    records,
+    lastLevelId: local.completed.length >= remote.completed.length ? local.lastLevelId : remote.lastLevelId,
+    daily: {
+      lastPlayedDate: latestDaily.lastPlayedDate,
+      streak: latestDaily.streak,
+      bestStreak: Math.max(local.daily.bestStreak, remote.daily.bestStreak),
+      results,
+    },
+    tutorialSeen: local.tutorialSeen || remote.tutorialSeen,
+    createdAt: Math.min(local.createdAt, remote.createdAt),
+  };
 }
 
 export function markLevelPlayed(userId: string, levelId: number): void {

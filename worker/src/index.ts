@@ -1,7 +1,7 @@
 import { googleKeys, playerIdForGoogle, verifyAccessToken, verifyGoogleToken } from "./google";
 import { handleSubmit, handleTop } from "./logic";
 import { Arena, Lobby, type RoomEnv } from "./rooms";
-import { d1Store } from "./store";
+import { d1SaveStore, d1Store } from "./store";
 
 export { Arena, Lobby };
 
@@ -66,6 +66,30 @@ export default {
 
     const store = d1Store(env.DB);
     try {
+      // === Cloud saves ===
+      // A signed-in device mirrors its progress here. Read and write are keyed
+      // by the player id the Google token produced, so the same account sees
+      // the same save on every device.
+      if (request.method === "POST" && url.pathname === "/save") {
+        if (Number(request.headers.get("content-length") ?? 0) > 200_000) return json(413, { error: "too large" });
+        if (tooManyPosts(request.headers.get("cf-connecting-ip") ?? "unknown", now.getTime())) return json(429, { error: "slow down" });
+        const body = (await request.json().catch(() => null)) as { playerId?: unknown; data?: unknown } | null;
+        const playerId = typeof body?.playerId === "string" ? body.playerId : "";
+        if (!/^[0-9a-f]{32}$/.test(playerId)) return json(400, { error: "bad player id" });
+        if (!body?.data || typeof body.data !== "object") return json(400, { error: "bad data" });
+        const text = JSON.stringify(body.data);
+        if (text.length > 160_000) return json(413, { error: "too large" });
+        await d1SaveStore(env.DB).put(playerId, text, now.getTime());
+        return json(200, { success: true, updatedAt: now.getTime() });
+      }
+      if (request.method === "GET" && url.pathname === "/save") {
+        const playerId = url.searchParams.get("playerId") ?? "";
+        if (!/^[0-9a-f]{32}$/.test(playerId)) return json(400, { error: "bad player id" });
+        const save = await d1SaveStore(env.DB).get(playerId);
+        if (!save) return json(404, { error: "no save" });
+        return json(200, { data: JSON.parse(save.data), updatedAt: save.updatedAt });
+      }
+
       if (request.method === "POST" && url.pathname === "/score") {
         // A line is at most ~800 points (about 12 KB): refuse anything much larger before parsing it.
         if (Number(request.headers.get("content-length") ?? 0) > 30_000) return json(413, { error: "too large" });

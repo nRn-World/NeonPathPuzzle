@@ -85,7 +85,7 @@ test("elo is symmetric and rewards the underdog more", () => {
   assert.ok(eloDelta(800, 1200, 1) > eloDelta(1200, 800, 1));
 });
 
-test("first to three rounds wins, with equal ratings moving 16 points", () => {
+test("first to five rounds wins, with equal ratings moving 16 points", () => {
   const { clock, humans, results, inbox, last, solve } = setup(false);
   const [a, b] = humans;
   assert.equal(last(a.id, "round")?.round, 1);
@@ -100,7 +100,7 @@ test("first to three rounds wins, with equal ratings moving 16 points", () => {
   assert.equal(last(a.id, "round")?.round, 2);
   clock.advance(COUNTDOWN_MS + 5000);
   solve(b.id); // the second round goes to b: 1-1
-  for (const winner of [a, b, a]) { // 2-1, 2-2, then a takes the fifth: 3-2
+  for (const winner of [a, b, a, b, a, b, a]) { // 2-1 … 4-4, then a takes the ninth: 5-4
     clock.advance(HELP_WINDOW_MS + COUNTDOWN_MS + 5000);
     solve(winner.id);
   }
@@ -152,7 +152,7 @@ test("leaving, or staying away for too long, forfeits the match", () => {
   assert.equal(last(b.id, "matchResult"), undefined, "the dropped player has no socket left");
 });
 
-test("a round nobody solves is void, and five void rounds draw without rating change", () => {
+test("a round nobody solves is void, and nine void rounds draw without rating change", () => {
   const { clock, humans, results, last } = setup(false);
   for (let round = 0; round < MAX_ROUNDS; round++) {
     clock.advance(COUNTDOWN_MS + ROUND_LIMIT_MS);
