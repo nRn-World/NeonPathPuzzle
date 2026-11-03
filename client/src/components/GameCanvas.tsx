@@ -150,7 +150,6 @@ const NODE_POP_MS = 220;
 const NODE_RING_MS = 320;
 /** Trailing segments of the line that glow like a comet. */
 const COMET_SEGMENTS = 4;
-const FLASH_MS = 250;
 const SHAKE_MS = 300;
 const BANNER_MS = 1300;
 const EASE_BACK = 1.70158;
@@ -1085,12 +1084,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
           }
         }
       }
-    }
-
-    // Win flash: a white wash over the board that fades within FLASH_MS.
-    if (!reducedMotion && sinceWin < FLASH_MS) {
-      context.fillStyle = `rgba(255,255,255,${0.35 * (1 - sinceWin / FLASH_MS)})`;
-      context.fillRect(0, 0, boardSize, boardSize);
     }
 
     // Floating flow text rises from the head and fades out.
