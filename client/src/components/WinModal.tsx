@@ -1,8 +1,9 @@
 import { chapters, getChapterForLevel } from "@/lib/chapters";
 import { content } from "@/lib/contentText";
 import { StarIcon } from "@/components/icons/GameIcons";
-import { TOTAL_LEVELS } from "@/lib/progress";
-import { useState } from "react";
+import { CitySkyline } from "@/components/CitySkyline";
+import { getProgress, TOTAL_LEVELS } from "@/lib/progress";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, Home, Play, RotateCcw, Share2, Star, Video } from "lucide-react";
@@ -13,7 +14,17 @@ import { formatDuration, formatResultTime } from "@/lib/scoring";
 import { getDateKey } from "@/lib/daily";
 import { shareResult, type ShareOutcome } from "@/lib/shareCard";
 import type { ClipOutcome } from "@/lib/solveClip";
-import { useI18n, upper } from "@/lib/i18n";
+import { useI18n, upper, type Language } from "@/lib/i18n";
+import { useUserId } from "@/hooks/use-game";
+import { useSettingsStore } from "@/lib/settings";
+
+/** Power-up caption; i18n files are shared, so the city's two short lines live here. */
+const CITY_CAPTION: Record<Language, { block: string; district: string }> = {
+  en: { block: "+1 block lit", district: "DISTRICT ONLINE!" },
+  sv: { block: "+1 kvarter tänt", district: "STADSDEL ONLINE!" },
+  es: { block: "+1 manzana encendida", district: "¡DISTRITO EN LÍNEA!" },
+  tr: { block: "+1 blok aydınlandı", district: "BÖLGE ÇEVRİMİÇİ!" },
+};
 
 interface WinModalProps {
   isOpen: boolean;
@@ -62,7 +73,9 @@ export function WinModal({
   const [codeCopied, setCodeCopied] = useState(false);
   const [shareState, setShareState] = useState<ShareOutcome | null>(null);
   const [clipState, setClipState] = useState<"idle" | "recording" | ClipOutcome>("idle");
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const userId = useUserId();
+  const reducedMotion = useSettingsStore(state => state.reducedMotion);
   const levelCode = generateLevelCode(levelId);
   const showStars = !isZen;
   const isFlawless = flawless;
@@ -125,6 +138,15 @@ export function WinModal({
     ? { chapter, next: chapters.find(item => item.id === chapter.id + 1) }
     : null;
 
+  // City power-up band: campaign levels only, zoomed onto the chapter this level belongs to.
+  const campaignChapter = !isZen && !isDaily && !isWeekly
+    ? chapters.find(item => levelId >= item.from && levelId <= item.to)
+    : undefined;
+  const cityCompleted = useMemo(() => {
+    const done = getProgress(userId).completed;
+    return done.includes(levelId) ? done : [...done, levelId];
+  }, [userId, levelId, isOpen]);
+
   const title = isZen
     ? upper(t("practiceComplete"))
     : isWeekly
@@ -156,6 +178,27 @@ export function WinModal({
           >
 
             <div className="relative z-10 space-y-5 text-center">
+              {campaignChapter && (
+                <div className="relative h-24 overflow-hidden border border-white/10 bg-background/60">
+                  <CitySkyline
+                    completedLevels={cityCompleted}
+                    focusChapterId={campaignChapter.id}
+                    highlightLevel={levelId}
+                  />
+                  <motion.div
+                    initial={reducedMotion ? false : { opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: reducedMotion ? 0 : 0.95 }}
+                    className="absolute left-2 top-1.5 border bg-background/85 px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.15em]"
+                    style={{ borderColor: campaignChapter.accent, color: campaignChapter.accent }}
+                  >
+                    {levelId === campaignChapter.to
+                      ? CITY_CAPTION[language].district
+                      : CITY_CAPTION[language].block}
+                  </motion.div>
+                </div>
+              )}
+
               <div>
                 <motion.h2
                   initial={{ scale: 0.6, opacity: 0 }}

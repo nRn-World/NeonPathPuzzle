@@ -7,6 +7,7 @@ import { HERO_BOARD } from "@/lib/heroBoard";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
 import { useI18n, upper } from "@/lib/i18n";
+import { CitySkyline } from "@/components/CitySkyline";
 
 /** Nodes drawn per second while the line traces itself. */
 const DRAW_SPEED = 13;
@@ -171,6 +172,8 @@ interface MenuHeroProps {
   onDuel: () => void;
   /** Secondary actions: how to play, map, completed, language, theme, settings. */
   actions: ReactNode;
+  /** Cleared level ids, used to light the city band. */
+  completedLevels?: number[];
 }
 
 export function MenuHero({
@@ -185,6 +188,7 @@ export function MenuHero({
   onPlay,
   onDuel,
   actions,
+  completedLevels = [],
 }: MenuHeroProps) {
   const { t } = useI18n();
   const rank = getBrainRank(totalStars);
@@ -336,6 +340,12 @@ export function MenuHero({
 
       {/* Phones: the secondary actions sit under the play block instead of above it. */}
       <div className="flex flex-wrap items-center gap-2 md:hidden">{actions}</div>
+
+      {/* The city band: lights up as levels and chapters are cleared. */}
+      {/* Phones keep the city readable at 720 px wide and swipe through it; chapter 1 sits at the left. */}
+      <div className="mt-6 w-full overflow-x-auto [scrollbar-width:none] md:col-span-2 md:row-start-3 md:mt-10 md:overflow-hidden">
+        <CitySkyline completedLevels={completedLevels} className="min-w-[720px] md:min-w-0" />
+      </div>
 
       <a
         href="#dashboard"

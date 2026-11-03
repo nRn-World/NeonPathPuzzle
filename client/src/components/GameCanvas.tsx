@@ -42,6 +42,10 @@ export interface GameCanvasProps {
   onStuckChange?: (stuck: boolean) => void;
   /** Draws the board larger than the viewport and follows the line's head. */
   zoom?: number;
+  /** Milliseconds per node for the chase stream that runs along the player's line. */
+  chaseMsPerNode?: number;
+  /** Fires once when the chase stream reaches the line's head or the line backs past it. */
+  onShortCircuit?: () => void;
 }
 
 interface Particle {
@@ -53,6 +57,21 @@ interface Particle {
   maxLife: number;
   size: number;
   color: string;
+}
+
+/** A node the line just reached: it pops and throws a ring. */
+interface NodePop {
+  x: number;
+  y: number;
+  at: number;
+}
+
+/** Combo text that floats up from the head. */
+interface FloatingText {
+  text: string;
+  x: number;
+  y: number;
+  at: number;
 }
 
 interface Metrics {
@@ -118,6 +137,40 @@ const HINT_REWIND_COLOR = "#ffb020";
 /** Ghost race pace: milliseconds per grid step, plus the pause before it laps. */
 const GHOST_MS_PER_CELL = 220;
 const GHOST_HOLD_MS = 1200;
+const STREAM_CORE = "#fff7c2";
+const STREAM_GLOW = "#ffe066";
+// Juice. The words are hard-coded until i18n covers them.
+const FLOW_LABEL = "FLOW";
+/** Steps closer together than this continue the flow combo. */
+const FLOW_WINDOW_MS = 350;
+/** Every this many steps of one combo, floating "FLOW x" text rises from the head. */
+const FLOW_COMBO_STEP = 5;
+const FLOW_TEXT_MS = 700;
+const NODE_POP_MS = 220;
+const NODE_RING_MS = 320;
+/** Trailing segments of the line that glow like a comet. */
+const COMET_SEGMENTS = 4;
+const SHAKE_MS = 300;
+const BANNER_MS = 1300;
+/** Win effects stay in neon colours; the default theme's accent is white. */
+const WIN_PINK = "#ff3bd4";
+/** Gap between canvas text and the board's edge. */
+const TEXT_PAD = 6;
+const clamp = (value: number, min: number, max: number) => (min > max ? (min + max) / 2 : Math.min(Math.max(value, min), max));
+const EASE_BACK = 1.70158;
+
+/** Overshoots past 1 and settles back: used for the node pop and the verdict entrance. */
+function easeOutBack(x: number) {
+  const u = x - 1;
+  return 1 + (EASE_BACK + 1) * u * u * u + EASE_BACK * u * u;
+}
+
+/** Node pop over 0..1: swells to 1.35 with an easeOutBack rise, then settles to 1. */
+function popScale(progress: number) {
+  if (progress < 0.45) return 1 + 0.35 * easeOutBack(progress / 0.45);
+  const fall = (progress - 0.45) / 0.55;
+  return 1 + 0.35 * (1 - fall) * (1 - fall);
+}
 
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
@@ -137,6 +190,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     statusText,
     onStuckChange,
     zoom = 1,
+    chaseMsPerNode,
+    onShortCircuit,
   },
   ref,
 ) {
@@ -144,6 +199,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const containerRef = useRef<HTMLDivElement>(null);
   const { getThemeColors, currentTheme } = useTheme();
   const { t } = useI18n();
+  // The render loop reads the win verdict through a ref, so a language switch needs no new loop.
+  const verdictRef = useRef({ perfect: "", clear: "" });
+  verdictRef.current = { perfect: t("winPerfect"), clear: t("winClear") };
   const colorBlind = useSettingsStore(state => state.colorBlind);
 
   const [path, setPath] = useState<Point[]>([level.start]);
@@ -162,9 +220,21 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const slowFramesRef = useRef(0);
   const previousPathLengthRef = useRef(1);
   const celebrateAtRef = useRef<number | null>(null);
+  /** Chase stream: when it was started (first move), when it froze (win), and whether it shorted. */
+  const chaseStartRef = useRef<number | null>(null);
+  const chaseEndRef = useRef<number | null>(null);
+  const shortedRef = useRef(false);
+  /** Juice state: node pops, the flow combo, its floating text, and whether the run is still perfect. */
+  const nodePopsRef = useRef<NodePop[]>([]);
+  const comboRef = useRef(0);
+  const lastStepAtRef = useRef(-Infinity);
+  const flowTextRef = useRef<FloatingText | null>(null);
+  const perfectRef = useRef(true);
+  /** Latest render, so a timer can redraw once static text should have faded (reduced motion). */
+  const renderRef = useRef<(time: number) => void>(() => {});
 
-  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange });
-  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange };
+  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange, onShortCircuit });
+  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange, onShortCircuit };
 
   const nodeKeys = useMemo(() => new Set(level.nodes.map(pointKey)), [level.nodes]);
   const oneWayMap = useMemo(
@@ -215,6 +285,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     particlesRef.current = [];
     previousPathLengthRef.current = 1;
     celebrateAtRef.current = null;
+    chaseStartRef.current = null;
+    chaseEndRef.current = null;
+    shortedRef.current = false;
+    nodePopsRef.current = [];
+    flowTextRef.current = null;
+    comboRef.current = 0;
+    lastStepAtRef.current = -Infinity;
+    perfectRef.current = true;
     callbacksRef.current.onPathChange?.(1, 1);
     callbacksRef.current.onStuckChange?.(false);
   }, [startX, startY]);
@@ -282,7 +360,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const x = head.x * cell + cell / 2;
     const y = head.y * cell + cell / 2;
 
-    for (let index = 0; index < 7; index++) {
+    // Two to four sparks per step.
+    const sparkCount = 2 + Math.floor(Math.random() * 3);
+    for (let index = 0; index < sparkCount; index++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 0.6 + Math.random() * 1.8;
       particlesRef.current.push({
@@ -324,7 +404,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const offsetX = Math.min(Math.max(headCenterX - size / 2, 0), maxOffset);
     const offsetY = Math.min(Math.max(headCenterY - size / 2, 0), maxOffset);
     metricsRef.current = { ...metricsRef.current, offsetX, offsetY };
+    // The visible part of the board: canvas text must stay inside it.
+    const view = Math.min(size, level.gridSize * cell);
+    // Win shake: the drawing jolts for SHAKE_MS and settles (the page itself never moves).
+    const sinceWin = celebrateAtRef.current === null ? Infinity : Math.max(0, time - celebrateAtRef.current);
+    const shakeAmount = !reducedMotion && sinceWin < SHAKE_MS ? 3 * (1 - sinceWin / SHAKE_MS) : 0;
     if (offsetX !== 0 || offsetY !== 0) context.translate(-offsetX, -offsetY);
+    if (shakeAmount > 0) context.translate(Math.sin(sinceWin / 20) * shakeAmount, Math.cos(sinceWin / 14) * shakeAmount);
 
     // Board plate: a glassy panel so the grid reads as a device, not a void.
     const boardSize = level.gridSize * cell;
@@ -435,6 +521,22 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       const centerY = node.y * cell + cell / 2;
       context.save();
       context.globalAlpha = visibility(node);
+
+      // Node pop: the node swells (1 -> 1.35 -> 1) for a moment after the line reaches it.
+      let pop = 1;
+      if (!reducedMotion) {
+        for (const entry of nodePopsRef.current) {
+          const elapsed = time - entry.at;
+          if (entry.x === node.x && entry.y === node.y && elapsed >= 0 && elapsed < NODE_POP_MS) {
+            pop = popScale(elapsed / NODE_POP_MS);
+          }
+        }
+      }
+      if (pop !== 1) {
+        context.translate(centerX, centerY);
+        context.scale(pop, pop);
+        context.translate(-centerX, -centerY);
+      }
 
       // Unvisited nodes breathe out of phase; visited ones light up solid.
       const breathe = reducedMotion ? 0.5 : (Math.sin(time / 520 + node.x * 0.9 + node.y * 1.3) + 1) / 2;
@@ -583,6 +685,20 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.restore();
     });
 
+    // Node pop rings: a thin ring expands from each node the line just reached.
+    if (!reducedMotion) {
+      for (const entry of nodePopsRef.current) {
+        const elapsed = time - entry.at;
+        if (elapsed < 0 || elapsed > NODE_RING_MS) continue;
+        const ringProgress = elapsed / NODE_RING_MS;
+        context.beginPath();
+        context.arc(entry.x * cell + cell / 2, entry.y * cell + cell / 2, cell * (0.2 + ringProgress * 0.45), 0, Math.PI * 2);
+        context.strokeStyle = `${colors.primary}${Math.floor((1 - ringProgress) * 200).toString(16).padStart(2, "0")}`;
+        context.lineWidth = 2;
+        context.stroke();
+      }
+    }
+
     // Personal-best ghost. It runs the saved route at a steady pace, so it
     // reads as a rival racing the line instead of a static overlay.
     if (showGhost && ghostPath && ghostPath.length > 1) {
@@ -699,6 +815,33 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.restore();
     }
 
+    // After a win nothing on the line stays white: the comet goes out and the head turns neon.
+    const won = celebrateAtRef.current !== null;
+
+    // Energy comet: a hot glowing tail over the last few segments, flickering like charged energy.
+    if (!reducedMotion && !won && currentPath.length > 1) {
+      const firstSegment = Math.max(0, currentPath.length - 1 - COMET_SEGMENTS);
+      const segments = currentPath.length - 1 - firstSegment;
+      const flicker = 0.85 + Math.sin(time / 50) * 0.15;
+      context.save();
+      context.lineCap = "round";
+      context.strokeStyle = colors.accent;
+      context.shadowColor = colors.accent;
+      context.shadowBlur = glow(16);
+      for (let index = firstSegment; index < currentPath.length - 1; index++) {
+        const from = currentPath[index];
+        const to = currentPath[index + 1];
+        const strength = (index - firstSegment + 1) / segments;
+        context.globalAlpha = (0.25 + strength * 0.6) * flicker;
+        context.lineWidth = Math.min(cell * 0.22, 30) * (0.35 + strength * 0.65);
+        context.beginPath();
+        context.moveTo(from.x * cell + cell / 2, from.y * cell + cell / 2);
+        context.lineTo(to.x * cell + cell / 2, to.y * cell + cell / 2);
+        context.stroke();
+      }
+      context.restore();
+    }
+
     // Head glow
     if (head) {
       const headX = head.x * cell + cell / 2;
@@ -712,8 +855,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         headY,
         cell * 0.32 + pulse,
       );
-      gradient.addColorStop(0, "rgba(255,255,255,0.95)");
-      gradient.addColorStop(0.35, colors.accent);
+      gradient.addColorStop(0, won ? WIN_PINK : "rgba(255,255,255,0.95)");
+      gradient.addColorStop(0.35, won ? colors.primary : colors.accent);
       gradient.addColorStop(1, "rgba(0,0,0,0)");
       context.beginPath();
       context.arc(headX, headY, cell * 0.3 + pulse, 0, Math.PI * 2);
@@ -729,6 +872,90 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.arc(headX, headY, cell * 0.4, 0, Math.PI * 2);
         context.stroke();
         context.restore();
+      }
+    }
+
+    // Chase stream: a current runs from the start along the player's own line.
+    // Reaching the head (or the line backing up past the front) is a short circuit.
+    const chaseStart = chaseStartRef.current;
+    if (chaseMsPerNode && chaseStart !== null && head) {
+      const streamTime = Math.min(time, chaseEndRef.current ?? Infinity);
+      const front = Math.max(0, (streamTime - chaseStart) / chaseMsPerNode);
+      const headIndex = currentPath.length - 1;
+      if (!wonRef.current && !shortedRef.current && front >= headIndex) {
+        shortedRef.current = true;
+        callbacksRef.current.onShortCircuit?.();
+      }
+
+      if (!shortedRef.current) {
+        const drawTo = Math.min(front, headIndex);
+        const whole = Math.floor(drawTo);
+        const from = currentPath[whole];
+        const to = currentPath[whole + 1];
+        const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
+        const [x0, y0] = center(from);
+        // A portal hop is not a neighbour: the front jumps there instead of cutting across the board.
+        const adjacent = Boolean(to) && Math.abs(to.x - from.x) + Math.abs(to.y - from.y) === 1;
+        const [x1, y1] = adjacent ? center(to) : [x0, y0];
+        const frontX = x0 + (x1 - x0) * (drawTo - whole);
+        const frontY = y0 + (y1 - y0) * (drawTo - whole);
+        const flicker = reducedMotion ? 1 : 0.85 + Math.sin(time / 45) * 0.15;
+
+        const streamPath = () => {
+          context.beginPath();
+          currentPath.slice(0, whole + 1).forEach((point, index) => {
+            const [x, y] = center(point);
+            if (index === 0) context.moveTo(x, y);
+            else context.lineTo(x, y);
+          });
+          context.lineTo(frontX, frontY);
+        };
+
+        context.save();
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.globalAlpha = 0.35 * flicker;
+        context.strokeStyle = STREAM_GLOW;
+        context.lineWidth = Math.min(cell * 0.3, 40);
+        streamPath();
+        context.stroke();
+        context.globalAlpha = flicker;
+        context.shadowColor = STREAM_GLOW;
+        context.shadowBlur = glow(18);
+        context.lineWidth = Math.min(cell * 0.12, 16);
+        streamPath();
+        context.stroke();
+        context.shadowBlur = 0;
+        context.strokeStyle = STREAM_CORE;
+        context.lineWidth = Math.max(1.5, cell * 0.05);
+        streamPath();
+        context.stroke();
+        context.restore();
+
+        // Bright white-hot front with a few flickering sparks (sparks off under reduced motion).
+        const radius = cell * (0.36 + (reducedMotion ? 0 : Math.sin(time / 60) * 0.04));
+        const frontGlow = context.createRadialGradient(frontX, frontY, 0, frontX, frontY, radius);
+        frontGlow.addColorStop(0, "#ffffff");
+        frontGlow.addColorStop(0.3, STREAM_CORE);
+        frontGlow.addColorStop(0.6, `${STREAM_GLOW}88`);
+        frontGlow.addColorStop(1, "rgba(255,224,102,0)");
+        context.beginPath();
+        context.arc(frontX, frontY, radius, 0, Math.PI * 2);
+        context.fillStyle = frontGlow;
+        context.fill();
+        if (!reducedMotion) {
+          context.save();
+          context.fillStyle = STREAM_CORE;
+          for (let spark = 0; spark < 4; spark++) {
+            const angle = time / 70 + spark * 1.57;
+            const reach = cell * (0.18 + 0.12 * Math.abs(Math.sin(time / 90 + spark * 2.3)));
+            context.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(time / 40 + spark));
+            context.beginPath();
+            context.arc(frontX + Math.cos(angle) * reach, frontY + Math.sin(angle) * reach, Math.max(1, cell * 0.03), 0, Math.PI * 2);
+            context.fill();
+          }
+          context.restore();
+        }
       }
     }
 
@@ -835,18 +1062,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Win celebration rings
     if (celebrateAtRef.current !== null) {
       const elapsed = time - celebrateAtRef.current;
-      // A white pulse runs down the finished line from start to end.
-      if (!reducedMotion && elapsed < 1400) {
-        const wave = (elapsed / 700) * currentPath.length;
-        currentPath.forEach((point, index) => {
-          const distance = Math.abs(index - wave);
-          if (distance > 3) return;
-          context.beginPath();
-          context.arc(point.x * cell + cell / 2, point.y * cell + cell / 2, cell * (0.12 + (1 - distance / 3) * 0.14), 0, Math.PI * 2);
-          context.fillStyle = `rgba(255,255,255,${(1 - distance / 3) * 0.85})`;
-          context.fill();
-        });
-      }
       if (elapsed < 1500) {
         const last = currentPath[currentPath.length - 1];
         if (last) {
@@ -867,6 +1082,58 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
           }
         }
       }
+    }
+
+    // Floating flow text rises from the head and fades out.
+    const floating = flowTextRef.current;
+    if (floating) {
+      const age = Math.max(0, time - floating.at);
+      if (age < FLOW_TEXT_MS) {
+        const progress = reducedMotion ? 0 : age / FLOW_TEXT_MS;
+        const rise = (1 - (1 - progress) * (1 - progress)) * cell * 0.9;
+        context.save();
+        context.globalAlpha = 1 - progress;
+        const fontSize = Math.max(12, cell * 0.3);
+        context.font = `bold ${fontSize}px 'Exo 2', Arial, sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.shadowColor = STREAM_GLOW;
+        context.shadowBlur = glow(12);
+        context.fillStyle = STREAM_CORE;
+        // Kept fully inside the visible board, also when the head is on an edge.
+        const halfWidth = context.measureText(floating.text).width / 2 + TEXT_PAD;
+        const halfHeight = fontSize / 2 + TEXT_PAD;
+        const textX = clamp(floating.x * cell + cell / 2, offsetX + halfWidth, offsetX + view - halfWidth);
+        const textY = clamp(floating.y * cell - cell * 0.5 - rise, offsetY + halfHeight, offsetY + view - halfHeight);
+        context.fillText(floating.text, textX, textY);
+        context.restore();
+      }
+    }
+
+    // Win verdict: "perfect" when the line never backed up, KLART! otherwise. Centred on the view.
+    if (sinceWin < BANNER_MS) {
+      const progress = reducedMotion ? 0 : sinceWin / BANNER_MS;
+      const bannerScale = reducedMotion ? 1 : 0.4 + 0.6 * easeOutBack(Math.min(1, progress / 0.15));
+      const bannerAlpha = progress < 0.7 ? 1 : (1 - progress) / 0.3;
+      context.save();
+      context.globalAlpha = bannerAlpha;
+      context.translate(offsetX + view / 2, offsetY + view / 2);
+      context.scale(bannerScale, bannerScale);
+      const verdict = perfectRef.current ? verdictRef.current.perfect : verdictRef.current.clear;
+      let fontSize = Math.max(22, view * 0.13);
+      context.font = `bold ${fontSize}px 'Exo 2', Arial, sans-serif`;
+      // Long translations shrink to fit; the 1.12 covers the pop-in overshoot.
+      const maxWidth = (view * 0.86) / 1.12;
+      const width = context.measureText(verdict).width;
+      if (width > maxWidth) fontSize *= maxWidth / width;
+      context.font = `bold ${fontSize}px 'Exo 2', Arial, sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.shadowColor = WIN_PINK;
+      context.shadowBlur = glow(24);
+      context.fillStyle = colors.primary;
+      context.fillText(verdict, 0, 0);
+      context.restore();
     }
 
     // Particles
@@ -913,11 +1180,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     flipMap,
     nodeKeys,
     mechanics.blackout,
+    chaseMsPerNode,
   ]);
+  renderRef.current = render;
 
   useEffect(() => {
+    // A running chase stream must keep moving even under reduced motion.
+    const streaming = Boolean(chaseMsPerNode) && chaseStartRef.current !== null
+      && !wonRef.current && !shortedRef.current;
     // No animation work while the game is paused or the tab is hidden.
-    if (reducedMotion || paused) {
+    if (paused || (reducedMotion && !streaming)) {
       render(performance.now());
       return;
     }
@@ -936,7 +1208,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [render, reducedMotion, paused, zoom]);
+  }, [render, reducedMotion, paused, zoom, chaseMsPerNode]);
 
   const getGridPos = useCallback((clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
@@ -969,6 +1241,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     pathRef.current = next;
     setPath(next);
     notifyPathChange(next);
+    // A backtrack breaks the flow combo and the perfect run.
+    perfectRef.current = false;
+    comboRef.current = 0;
+    lastStepAtRef.current = -Infinity;
     playBacktrackSound();
     return true;
   }, [countVisitedNodes, disableUndo, mechanics.portals, rules]);
@@ -1002,12 +1278,27 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     pathRef.current = next;
     setPath(next);
     notifyPathChange(next);
+    if (chaseMsPerNode && chaseStartRef.current === null) chaseStartRef.current = performance.now();
+
+    // Flow combo: steps that follow each other within FLOW_WINDOW_MS build a streak.
+    const now = performance.now();
+    const tip = next[next.length - 1];
+    comboRef.current = now - lastStepAtRef.current <= FLOW_WINDOW_MS ? comboRef.current + 1 : 1;
+    lastStepAtRef.current = now;
+    if (comboRef.current % FLOW_COMBO_STEP === 0) {
+      flowTextRef.current = { text: `${FLOW_LABEL} ×${comboRef.current}`, x: tip.x, y: tip.y, at: now };
+      if (reducedMotion) window.setTimeout(() => renderRef.current(performance.now()), FLOW_TEXT_MS);
+    }
+    // The node pop and its ring are motion only.
+    if (!reducedMotion && nodeKeys.has(pointKey(tip))) {
+      nodePopsRef.current = [...nodePopsRef.current.slice(-3), { x: tip.x, y: tip.y, at: now }];
+    }
 
     // Pitch climbs with the level's coverage, so the melody itself shows progress.
     const visited = new Set(next.map(pointKey));
     const covered = level.nodes.filter(node => visited.has(pointKey(node))).length;
     const coverage = level.nodes.length > 0 ? covered / level.nodes.length : 0;
-    playMoveSound(coverage);
+    playMoveSound(coverage, next.length - 1, level.nodes);
     const quarter = (value: number) => Math.floor(value * 4);
     const before = level.nodes.length > 0
       ? (covered - 1) / level.nodes.length
@@ -1016,8 +1307,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     if (level.nodes.every(node => visited.has(pointKey(node)))) {
       wonRef.current = true;
+      chaseEndRef.current = performance.now();
       setIsDragging(false);
       celebrateAtRef.current = performance.now();
+      // Reduced motion draws the verdict once, so redraw it when it should be gone.
+      if (reducedMotion) window.setTimeout(() => renderRef.current(performance.now()), BANNER_MS);
       if (!reducedMotion) {
         const colors = getThemeColors();
         const cell = metricsRef.current.cellSize;
@@ -1033,16 +1327,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
             life: 700 + Math.random() * 600,
             maxLife: 1300,
             size: 1.5 + Math.random() * 3,
-            color: [colors.primary, colors.secondary, colors.accent][index % 3],
+            color: [colors.primary, colors.secondary, WIN_PINK][index % 3],
           });
         }
       }
-      playWinSound();
+      playWinSound(level.nodes);
       callbacksRef.current.onComplete(next.length - 1, next);
     }
 
     return true;
-  }, [disableUndo, getThemeColors, level.nodes, paused, reducedMotion, rules, undoPath]);
+  }, [chaseMsPerNode, disableUndo, getThemeColors, level.nodes, nodeKeys, paused, reducedMotion, rules, undoPath]);
 
   const handleInputStart = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     if (paused) return;

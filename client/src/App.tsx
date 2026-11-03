@@ -18,11 +18,13 @@ import { applyMotionPreference, applyTextPreference, useSettingsStore } from "@/
 import { Suspense, lazy, useEffect } from "react";
 import { useLanguageStore } from "@/lib/i18n";
 import { signalGameReady } from "@/lib/playgama";
+import { setGameplay } from "@/lib/crazygames";
 
 // Loaded on demand: neither page is needed to start playing.
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const Duel = lazy(() => import("@/pages/Duel"));
 const Survival = lazy(() => import("@/pages/Survival"));
+const Chain = lazy(() => import("@/pages/Chain"));
 
 function LevelGame() {
   return <Game />;
@@ -36,7 +38,13 @@ function ZenGame() {
   return <Game mode="zen" />;
 }
 
+// Every route except the menu and the privacy page puts the player on a board.
+const GAMEPLAY_ROUTE = /^\/(play|daily|weekly|zen|rift|duel|survival|chain)\b/;
+
 function AppRouter() {
+  const [location] = useHashLocation();
+  useEffect(() => setGameplay(GAMEPLAY_ROUTE.test(location)), [location]);
+
   return (
     <Router hook={useHashLocation}>
       <Suspense fallback={<div className="h-full w-full bg-background" />}>
@@ -49,6 +57,7 @@ function AppRouter() {
           <Route path="/rift/:id" component={RiftGame} />
           <Route path="/duel" component={Duel} />
           <Route path="/survival" component={Survival} />
+          <Route path="/chain" component={Chain} />
           <Route path="/privacy" component={Privacy} />
           <Route component={NotFound} />
         </Switch>

@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { platformAudioOff } from "./playgama";
 import { useSettingsStore } from "./settings";
+import { layersFor, melodyFor, type Point } from "./melody";
 import { createSynth, type SynthEngine } from "./synth";
 
 let audioCtx: AudioContext | null = null;
@@ -74,14 +75,21 @@ export function resumeAudio() {
   }
 }
 
-export function playMoveSound(progress = 0) {
+/** Each forward step plays the next melody note; `step` is its index in the path. */
+export function playMoveSound(progress = 0, step = 0, nodes?: readonly Point[]) {
   const now = Date.now();
   if (now - lastMoveSoundAt < 25) return;
   lastMoveSoundAt = now;
   if (audioAllowed()) {
     const ctx = getAudioContext();
     if (ctx) resumeIfSuspended(ctx);
-    getEngine()?.playStep(progress);
+    const synth = getEngine();
+    if (synth && nodes && nodes.length > 0) {
+      const melody = melodyFor(nodes);
+      synth.playNote(melody[step % melody.length], layersFor(progress));
+    } else {
+      synth?.playStep(progress);
+    }
   }
   nativeHaptic(() => Haptics.impact({ style: ImpactStyle.Light }), 8);
 }
@@ -113,8 +121,8 @@ export function playLoseLifeSound() {
   nativeHaptic(() => Haptics.notification({ type: NotificationType.Error }), [40, 40, 40]);
 }
 
-export function playWinSound() {
-  if (audioAllowed()) getEngine()?.playWin();
+export function playWinSound(nodes?: readonly Point[]) {
+  if (audioAllowed()) getEngine()?.playWin(nodes && nodes.length > 0 ? melodyFor(nodes) : undefined);
   // A rising run of taps that ends on the success buzz, like a heartbeat speeding up.
   nativeHaptic(async () => {
     for (const delay of [110, 90, 70]) {

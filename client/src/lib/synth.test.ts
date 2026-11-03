@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { STEP_SCALE, createSynth, stepFrequency } from "./synth";
+import { PHRASE_SECONDS, STEP_SCALE, createSynth, stepFrequency } from "./synth";
 
 type ParamEvent = { type: string; value: number; time: number };
 
@@ -164,6 +164,19 @@ test("winning plays an ascending arpeggio", () => {
   assert.equal(frequencies.length, 5);
   assert.deepEqual(frequencies, [...frequencies].sort((a, b) => a - b));
   assert.equal(new Set(frequencies).size, 5);
+});
+
+test("a won melody plays through in about PHRASE_SECONDS", () => {
+  const fake = createFakeContext();
+  const synth = createSynth(fake.ctx);
+  const melody = [0, 3, 5, 7, 0];
+
+  synth.playWin(melody);
+
+  const triangles = fake.oscillators.filter(oscillator => oscillator.type === "triangle");
+  assert.equal(triangles.length, melody.length);
+  const end = Math.max(...triangles.map(oscillator => oscillator.stoppedAt! - 0.03));
+  assert.ok(Math.abs(end - PHRASE_SECONDS) < 0.001, `phrase ends at ${end}`);
 });
 
 test("dispose releases the master bus", () => {

@@ -21,6 +21,8 @@ if (
   && "serviceWorker" in navigator
   && /^https?:$/.test(window.location.protocol)
   && !Capacitor.isNativePlatform()
+  // CrazyGames serves each upload fresh; its build ships without sw.js.
+  && !window.CrazyGames
 ) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {
