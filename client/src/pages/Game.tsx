@@ -1,6 +1,7 @@
 import { content } from "@/lib/contentText";
 import { chapters, getChapterForLevel } from "@/lib/chapters";
 import { getActiveSeason, recordSeasonClear } from "@/lib/seasons";
+import { onPlatformPause, showInterstitial } from "@/lib/playgama";
 import { isRiftLevel, RIFT_LAST_LEVEL } from "@/lib/rift";
 import { readRiftProgress, saveRiftResult } from "@/lib/riftProgress";
 import { submitDaily, submitStars, submitWeekly } from "@/lib/leaderboard";
@@ -143,6 +144,7 @@ export default function Game({ mode = "level" }: GameProps) {
   const [hintUsedThisLevel, setHintUsedThisLevel] = useState(false);
   const [hintPaidWithTokens, setHintPaidWithTokens] = useState(false);
   const [hasWon, setHasWon] = useState(false);
+  const [showWinModal, setShowWinModal] = useState(false);
   const [mistakes, setMistakes] = useState(0);
   const [backtracks, setBacktracks] = useState(0);
   const [canvasKey, setCanvasKey] = useState(0);
@@ -303,7 +305,8 @@ export default function Game({ mode = "level" }: GameProps) {
     }
 
     setIntroLevel((mode === "level" || isRift) && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
-    const openingChapter = mode === "level" ? chapters.find(item => item.from === levelId) : undefined;
+    // Level 1 starts straight away: a new player should be playing, not reading.
+    const openingChapter = mode === "level" && levelId > 1 ? chapters.find(item => item.from === levelId) : undefined;
     setChapterIntro(openingChapter && !hasSeenChapterIntro(openingChapter.id) ? openingChapter.id : null);
 
     if (mode === "level") {
@@ -401,6 +404,23 @@ export default function Game({ mode = "level" }: GameProps) {
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [pauseGame]);
+
+  // Let the finished circuit light up before the result card (and any ad) covers it.
+  useEffect(() => {
+    if (!hasWon) {
+      setShowWinModal(false);
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      showInterstitial();
+      setShowWinModal(true);
+    }, reducedMotion ? 0 : 1_400);
+    return () => window.clearTimeout(timeout);
+  }, [hasWon, reducedMotion]);
+
+  useEffect(() => onPlatformPause(paused => {
+    if (paused) pauseGame("system");
+  }), [pauseGame]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -723,7 +743,7 @@ export default function Game({ mode = "level" }: GameProps) {
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
       if (crash || confirmCrash || introLevel !== null || chapterIntro !== null) return;
 
-      if (event.key === "Escape" || event.key.toLowerCase() === "p") {
+      if (event.key.toLowerCase() === "p") {
         if (!isScored) return;
         event.preventDefault();
         if (pauseReason) resumeGame();
@@ -977,7 +997,7 @@ export default function Game({ mode = "level" }: GameProps) {
       {crashModal}
 
       <WinModal
-        isOpen={hasWon}
+        isOpen={showWinModal}
         levelId={levelId}
         score={score}
         stars={stars}

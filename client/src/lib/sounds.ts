@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
+import { platformAudioOff } from "./playgama";
 import { useSettingsStore } from "./settings";
 import { createSynth, type SynthEngine } from "./synth";
 
@@ -10,7 +11,7 @@ let lastMoveSoundAt = 0;
 let lastBacktrackSoundAt = 0;
 
 function audioAllowed() {
-  return useSettingsStore.getState().soundEnabled;
+  return useSettingsStore.getState().soundEnabled && !platformAudioOff;
 }
 
 function getAudioContext(): AudioContext | null {

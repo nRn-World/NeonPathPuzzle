@@ -17,6 +17,7 @@ import { initAudio, resumeAudio, suspendAudio } from "@/lib/sounds";
 import { applyMotionPreference, applyTextPreference, useSettingsStore } from "@/lib/settings";
 import { Suspense, lazy, useEffect } from "react";
 import { useLanguageStore } from "@/lib/i18n";
+import { signalGameReady } from "@/lib/playgama";
 
 // Loaded on demand: neither page is needed to start playing.
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -67,6 +68,11 @@ function App() {
   useEffect(() => {
     applyMotionPreference(reducedMotion);
   }, [reducedMotion]);
+
+  // First interactive screen (menu) is mounted: the game is playable now.
+  useEffect(() => {
+    signalGameReady();
+  }, []);
 
   // Keeps CSS text-transform and screen readers on the chosen language.
   const language = useLanguageStore(state => state.language);
