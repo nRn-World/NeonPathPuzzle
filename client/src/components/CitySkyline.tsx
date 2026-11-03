@@ -131,16 +131,49 @@ const CITY: District[] = chapters.map((chapter, index) => buildDistrict(chapter,
 
 const roofY = (building: Building) => building.top?.y ?? building.y;
 
+export interface LevelWindow {
+  x: number;
+  y: number;
+  warm: boolean;
+}
+
+/** The windows a level lights up in the SVG coordinate space (empty outside the campaign). */
+export function getLevelWindows(levelId: number): LevelWindow[] {
+  const district = CITY.find(item => levelId >= item.chapter.from && levelId <= item.chapter.to);
+  if (!district) return [];
+  const slot = levelId - district.chapter.from;
+  return district.windows.filter(window => window.slot === slot);
+}
+
 interface CitySkylineProps {
   /** Level ids that have been cleared. */
   completedLevels: number[];
   className?: string;
+  /** Zooms the view onto this chapter's district. */
+  focusChapterId?: number;
+  /** Level whose windows light up. With motion on, a beam drops onto them first. */
+  highlightLevel?: number;
 }
 
-function CitySkylineImpl({ completedLevels, className = "" }: CitySkylineProps) {
+function CitySkylineImpl({ completedLevels, className = "", focusChapterId, highlightLevel }: CitySkylineProps) {
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
   const uid = useId().replace(/:/g, "");
   const done = new Set(completedLevels);
+  const focus = focusChapterId === undefined ? undefined : CITY.find(district => district.chapter.id === focusChapterId);
+  const highlight = highlightLevel === undefined ? [] : getLevelWindows(highlightLevel);
+  const beamOn = highlight.length > 0 && !reducedMotion;
+  // Centre of the level's window cluster; the beam lands on the window nearest to it.
+  const centreX = highlight.reduce((sum, item) => sum + item.x, 0) / (highlight.length || 1);
+  const centreY = highlight.reduce((sum, item) => sum + item.y, 0) / (highlight.length || 1);
+  const beamTarget = highlight.length === 0 ? null : highlight.reduce((best, window) =>
+    Math.hypot(window.x - centreX, window.y - centreY) < Math.hypot(best.x - centreX, best.y - centreY) ? window : best);
+  // Zoomed view: two districts wide, cropped vertically around the lit windows (or the middle of the city).
+  const zoomW = DISTRICT_W * 2;
+  const viewBox = focus
+    ? `${Math.min(Math.max(focus.x0 + DISTRICT_W / 2 - zoomW / 2, 0), VIEW_W - zoomW)} ${(highlight.length ? centreY : 150) - VIEW_H / 2} ${zoomW} ${VIEW_H}`
+    : `0 0 ${VIEW_W} ${VIEW_H}`;
+  const svgFit = focus ? "xMidYMid slice" : "xMidYMax meet";
+  const svgSize = focus ? "h-full w-full" : "h-auto w-full";
   const glowId = `${uid}-glow`;
   const darkId = `${uid}-dark`;
   const hazeId = `${uid}-haze`;
@@ -152,10 +185,10 @@ function CitySkylineImpl({ completedLevels, className = "" }: CitySkylineProps) 
 
   return (
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      preserveAspectRatio="xMidYMax meet"
+      viewBox={viewBox}
+      preserveAspectRatio={svgFit}
       aria-hidden
-      className={`pointer-events-none block h-auto w-full select-none ${className}`}
+      className={`pointer-events-none block select-none ${svgSize} ${className}`}
     >
       <defs>
         <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
@@ -242,30 +275,48 @@ function CitySkylineImpl({ completedLevels, className = "" }: CitySkylineProps) 
       {/* Lit windows and, for finished districts, signs and blinking rooftop beacons. */}
       {CITY.map(district => {
         const complete = isComplete(district.chapter);
-        const lit = district.windows.filter(window => done.has(district.chapter.from + window.slot));
+        const lit = district.windows.filter(window => {
+          const level = district.chapter.from + window.slot;
+          return done.has(level) || level === highlightLevel;
+        });
         return (
           <g key={`lit-${district.chapter.id}`} filter={`url(#${glowId})`}>
-            {lit.map((window, index) => (
-              <rect
-                key={`${window.x}-${window.y}`}
-                x={window.x}
-                y={window.y}
-                width={WINDOW_W}
-                height={WINDOW_H}
-                fill={window.warm ? WARM : district.chapter.accent}
-                opacity={window.warm ? 0.85 : 1}
-              >
-                {!reducedMotion && index % 11 === 0 && (
-                  <animate
-                    attributeName="opacity"
-                    values="0.35;1;0.75;1"
-                    dur={`${3 + (index % 5)}s`}
-                    begin={`-${index % 7}s`}
-                    repeatCount="indefinite"
-                  />
-                )}
-              </rect>
-            ))}
+            {lit.map((window, index) => {
+              const landing = beamOn && district.chapter.from + window.slot === highlightLevel;
+              const base = window.warm ? 0.85 : 1;
+              return (
+                <rect
+                  key={`${window.x}-${window.y}`}
+                  x={window.x}
+                  y={window.y}
+                  width={WINDOW_W}
+                  height={WINDOW_H}
+                  fill={window.warm ? WARM : district.chapter.accent}
+                  opacity={landing ? 0 : base}
+                >
+                  {landing && (
+                    // Dark until the beam hits (0.75 s), then flashes and settles into the lit state.
+                    <animate
+                      attributeName="opacity"
+                      values={`0;1;0.35;1;${base}`}
+                      keyTimes="0;0.25;0.5;0.75;1"
+                      dur="1.3s"
+                      begin="0.75s"
+                      fill="freeze"
+                    />
+                  )}
+                  {!landing && !reducedMotion && index % 11 === 0 && (
+                    <animate
+                      attributeName="opacity"
+                      values="0.35;1;0.75;1"
+                      dur={`${3 + (index % 5)}s`}
+                      begin={`-${index % 7}s`}
+                      repeatCount="indefinite"
+                    />
+                  )}
+                </rect>
+              );
+            })}
 
             {complete && district.signs.map(sign => (
               <rect key={sign.x} x={sign.x} y={sign.y} width={sign.w} height={sign.h} rx={0.6} fill={district.chapter.accent}>
@@ -305,6 +356,23 @@ function CitySkylineImpl({ completedLevels, className = "" }: CitySkylineProps) 
           </line>
         </g>
       ))}
+
+      {/* Power-up: a beam drops onto the level's windows, then a shockwave rings out on impact. */}
+      {beamOn && beamTarget && (
+        <g filter={`url(#${glowId})`}>
+          <line x1={beamTarget.x} y1={beamTarget.y - 90} x2={beamTarget.x} y2={beamTarget.y} stroke="hsl(var(--primary))" strokeWidth={0.8} opacity={0}>
+            <animate attributeName="opacity" values="0;0.9;0.9;0" keyTimes="0;0.15;0.95;1" dur="0.75s" begin="0.1s" fill="freeze" />
+          </line>
+          <circle cx={beamTarget.x} cy={beamTarget.y - 90} r={1.8} fill="hsl(var(--primary))" opacity={0}>
+            <animate attributeName="cy" values={`${beamTarget.y - 90};${beamTarget.y}`} dur="0.65s" begin="0.1s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.55 0 1 0.45" />
+            <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.95;1" dur="0.75s" begin="0.1s" fill="freeze" />
+          </circle>
+          <circle cx={beamTarget.x} cy={beamTarget.y} r={1} fill="none" stroke="hsl(var(--primary))" strokeWidth={0.6} opacity={0}>
+            <animate attributeName="r" values="1;9" dur="0.7s" begin="0.75s" fill="freeze" />
+            <animate attributeName="opacity" values="0.9;0" dur="0.7s" begin="0.75s" fill="freeze" />
+          </circle>
+        </g>
+      )}
     </svg>
   );
 }

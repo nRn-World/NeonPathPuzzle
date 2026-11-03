@@ -415,11 +415,11 @@ export default function Survival() {
                       className={`border-white/10 ${chaseMode ? "text-primary" : "text-muted-foreground"}`}
                     >
                       <Zap className="mr-2 h-4 w-4" />
-                      {`Strömmen jagar: ${chaseMode ? "PÅ" : "AV"}`}
+                      {t("chaseToggle", { state: chaseMode ? t("chaseOn") : t("chaseOff") })}
                     </Button>
                     {chaseMode && (
                       <p className="font-exo text-xs leading-relaxed text-muted-foreground">
-                        Strömmen startar när första draget görs och jagar linjens huvud. Hinner den ikapp, eller backar du förbi den, förlorar du ett liv.
+                        {t("chaseHint")}
                       </p>
                     )}
                     <Button

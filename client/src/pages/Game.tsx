@@ -25,6 +25,7 @@ import { useSettingsStore } from "@/lib/settings";
 import { useHintTokenStore } from "@/lib/hintTokens";
 import { Header } from "@/components/Header";
 import { GameCanvas, MAX_BACKTRACKS, type GameCanvasHandle } from "@/components/GameCanvas";
+import { ChapterAtmosphere } from "@/components/ChapterAtmosphere";
 import { WinModal } from "@/components/WinModal";
 import { Button } from "@/components/ui/button";
 import { powerUps } from "@/lib/powerups";
@@ -900,6 +901,7 @@ export default function Game({ mode = "level" }: GameProps) {
       )}
 
       <main className="relative flex w-full flex-1 items-center justify-center overflow-hidden px-2 py-2 md:px-4 md:py-4">
+        {mode === "level" && <ChapterAtmosphere levelId={levelId} />}
         <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
         {level.gridSize >= 11 && (
           <Button

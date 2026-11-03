@@ -7,6 +7,7 @@ import { EMPTY_MECHANICS } from "@shared/mechanics";
 import type { LevelResponse, Point } from "@shared/schema";
 import { GameCanvas, type GameCanvasHandle } from "@/components/GameCanvas";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { useSettingsStore } from "@/lib/settings";
 import { playDeadEndSound, playWinSound } from "@/lib/sounds";
 
@@ -48,6 +49,7 @@ function toLevel(board: ChainBoard): LevelResponse {
  */
 export default function Chain() {
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
 
   const [phase, setPhase] = useState<Phase>("intro");
@@ -99,7 +101,7 @@ export default function Chain() {
       const next = generateChainBoard(nextChain, { path, gridSize: current.gridSize });
 
       playWinSound();
-      setBanner(`Kedja ${nextChain}`);
+      setBanner(t("chainBanner", { n: nextChain }));
       if (nextChain > best) {
         setBest(nextChain);
         writeBestChain(nextChain);
@@ -113,7 +115,7 @@ export default function Chain() {
         commitBoard(next);
       }, 900);
     },
-    [best, commitBoard],
+    [best, commitBoard, t],
   );
 
   /** One free undo per board in the first place; after that a dead end is stuck. */
@@ -143,7 +145,7 @@ export default function Chain() {
         <header className="flex items-center gap-2 border-b border-primary/20 px-2 py-2 sm:px-4">
           <button
             onClick={() => setLocation("/")}
-            aria-label="Tillbaka"
+            aria-label={t("back")}
             className="p-2 text-primary/70 transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -151,26 +153,26 @@ export default function Chain() {
 
           <div className="min-w-0 flex-1">
             <h1 className="neon-text truncate font-orbitron text-sm font-bold uppercase tracking-[0.2em] text-primary sm:text-lg">
-              Kedjan
+              {t("chainMode")}
             </h1>
             <p className="truncate font-exo text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Din linje blir nästa bana
+              {t("chainSubtitle")}
             </p>
           </div>
 
           {phase === "playing" && (
             <div className="flex h-7 flex-shrink-0 items-center gap-1 border border-primary/30 px-1.5 font-orbitron text-[11px] font-bold tabular-nums text-primary/80">
               <Flame className="h-3 w-3" />
-              Kedja {chain}
+              {t("chainBanner", { n: chain })}
             </div>
           )}
         </header>
 
         <div className="grid grid-cols-4 gap-2 border-b border-white/5 px-2 py-2 text-center sm:px-4">
-          <Stat label="Kedja" value={String(chain)} highlight />
-          <Stat label="Rutnät" value={board ? `${board.gridSize}×${board.gridSize}` : "-"} />
-          <Stat label="Väggar" value={board ? String(board.walls.length) : "-"} />
-          <Stat label="Bäst" value={String(best)} />
+          <Stat label={t("chainStatChain")} value={String(chain)} highlight />
+          <Stat label={t("chainStatGrid")} value={board ? `${board.gridSize}×${board.gridSize}` : "-"} />
+          <Stat label={t("chainStatWalls")} value={board ? String(board.walls.length) : "-"} />
+          <Stat label={t("best")} value={String(best)} />
         </div>
 
         <main className="relative flex min-h-0 flex-1 items-center justify-center px-2 py-2">
@@ -197,7 +199,7 @@ export default function Chain() {
                   reducedMotion={reducedMotion}
                   showGhost={false}
                   gridLabel={`${level.gridSize}×${level.gridSize}`}
-                  statusText={`${level.nodes.length} noder`}
+                  statusText={t("chainNodes", { n: level.nodes.length })}
                 />
               </motion.div>
             )}
@@ -223,12 +225,12 @@ export default function Chain() {
               <Skull className="h-10 w-10 text-destructive" />
               <div className="space-y-1">
                 <h2 className="font-orbitron text-xl font-bold uppercase tracking-wider text-destructive">
-                  Död ände
+                  {t("deadEnd")}
                 </h2>
                 <p className="font-exo text-sm text-muted-foreground">
                   {undosLeft > 0
-                    ? `${undosLeft} ångra kvar på den här banan`
-                    : "Inga ångra kvar. Börja om banan eller kedjan."}
+                    ? t("chainUndosLeft", { count: undosLeft })
+                    : t("chainNoUndos")}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2">
@@ -238,7 +240,7 @@ export default function Chain() {
                     className="bg-primary font-bold text-background hover:bg-primary/90"
                   >
                     <Undo2 className="mr-2 h-4 w-4" />
-                    Ångra
+                    {t("undo")}
                   </Button>
                 )}
                 <Button
@@ -250,10 +252,10 @@ export default function Chain() {
                   className="border-white/10"
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Banan
+                  {t("chainRestartBoard")}
                 </Button>
                 <Button variant="outline" onClick={startRun} className="border-rose-500/40 text-rose-300 hover:bg-rose-500/10">
-                  Kedjan
+                  {t("chainMode")}
                 </Button>
               </div>
             </div>
@@ -272,15 +274,14 @@ export default function Chain() {
                 <div className="w-full max-w-md space-y-5 border border-primary/25 border-t-[3px] border-t-primary bg-background/95 p-6 text-center shadow-[0_0_60px_rgba(0,0,0,0.6)]">
                   <Flame className="mx-auto h-10 w-10 text-primary" />
                   <div className="space-y-2">
-                    <h2 className="font-orbitron text-2xl font-black uppercase tracking-wide text-white">Kedjan</h2>
+                    <h2 className="font-orbitron text-2xl font-black uppercase tracking-wide text-white">{t("chainMode")}</h2>
                     <p className="font-exo text-sm leading-relaxed text-muted-foreground">
-                      Lös banan. Linjen du ritade blir väggar i nästa bana, och varje klar bana förlänger kedjan.
-                      Rutnätet växer långsamt.
+                      {t("chainIntro")}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 border border-white/10 bg-background/60 p-3">
-                    <Stat label="Bäst" value={String(best)} highlight />
-                    <Stat label="Rutnät" value="4×4" />
+                    <Stat label={t("best")} value={String(best)} highlight />
+                    <Stat label={t("chainStatGrid")} value="4×4" />
                   </div>
                   <div className="flex flex-col gap-2">
                     <Button
@@ -289,11 +290,11 @@ export default function Chain() {
                       className="h-12 w-full bg-primary text-lg font-bold text-background shadow-[0_0_20px_rgba(0,243,255,0.4)] hover:bg-primary/90"
                     >
                       <Play className="mr-2 h-5 w-5" />
-                      Starta
+                      {t("chainStart")}
                     </Button>
                     <Button variant="outline" onClick={() => setLocation("/")} className="border-white/10">
                       <Home className="mr-2 h-4 w-4" />
-                      Meny
+                      {t("menu")}
                     </Button>
                   </div>
                 </div>

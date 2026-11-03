@@ -59,6 +59,21 @@ interface Particle {
   color: string;
 }
 
+/** A node the line just reached: it pops and throws a ring. */
+interface NodePop {
+  x: number;
+  y: number;
+  at: number;
+}
+
+/** Combo text that floats up from the head. */
+interface FloatingText {
+  text: string;
+  x: number;
+  y: number;
+  at: number;
+}
+
 interface Metrics {
   cellSize: number;
   dpr: number;
@@ -124,6 +139,36 @@ const GHOST_MS_PER_CELL = 220;
 const GHOST_HOLD_MS = 1200;
 const STREAM_CORE = "#fff7c2";
 const STREAM_GLOW = "#ffe066";
+// Juice. The words are hard-coded until i18n covers them.
+const FLOW_LABEL = "FLOW";
+const PERFECT_TEXT = "PERFEKT!";
+const CLEAR_TEXT = "KLART!";
+/** Steps closer together than this continue the flow combo. */
+const FLOW_WINDOW_MS = 350;
+/** Every this many steps of one combo, floating "FLOW x" text rises from the head. */
+const FLOW_COMBO_STEP = 5;
+const FLOW_TEXT_MS = 700;
+const NODE_POP_MS = 220;
+const NODE_RING_MS = 320;
+/** Trailing segments of the line that glow like a comet. */
+const COMET_SEGMENTS = 4;
+const FLASH_MS = 250;
+const SHAKE_MS = 300;
+const BANNER_MS = 1300;
+const EASE_BACK = 1.70158;
+
+/** Overshoots past 1 and settles back: used for the node pop and the verdict entrance. */
+function easeOutBack(x: number) {
+  const u = x - 1;
+  return 1 + (EASE_BACK + 1) * u * u * u + EASE_BACK * u * u;
+}
+
+/** Node pop over 0..1: swells to 1.35 with an easeOutBack rise, then settles to 1. */
+function popScale(progress: number) {
+  if (progress < 0.45) return 1 + 0.35 * easeOutBack(progress / 0.45);
+  const fall = (progress - 0.45) / 0.55;
+  return 1 + 0.35 * (1 - fall) * (1 - fall);
+}
 
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
@@ -174,6 +219,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const chaseStartRef = useRef<number | null>(null);
   const chaseEndRef = useRef<number | null>(null);
   const shortedRef = useRef(false);
+  /** Juice state: node pops, the flow combo, its floating text, and whether the run is still perfect. */
+  const nodePopsRef = useRef<NodePop[]>([]);
+  const comboRef = useRef(0);
+  const lastStepAtRef = useRef(-Infinity);
+  const flowTextRef = useRef<FloatingText | null>(null);
+  const perfectRef = useRef(true);
+  /** Latest render, so a timer can redraw once static text should have faded (reduced motion). */
+  const renderRef = useRef<(time: number) => void>(() => {});
 
   const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange, onShortCircuit });
   callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange, onShortCircuit };
@@ -230,6 +283,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     chaseStartRef.current = null;
     chaseEndRef.current = null;
     shortedRef.current = false;
+    nodePopsRef.current = [];
+    flowTextRef.current = null;
+    comboRef.current = 0;
+    lastStepAtRef.current = -Infinity;
+    perfectRef.current = true;
     callbacksRef.current.onPathChange?.(1, 1);
     callbacksRef.current.onStuckChange?.(false);
   }, [startX, startY]);
@@ -297,7 +355,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const x = head.x * cell + cell / 2;
     const y = head.y * cell + cell / 2;
 
-    for (let index = 0; index < 7; index++) {
+    // Two to four sparks per step.
+    const sparkCount = 2 + Math.floor(Math.random() * 3);
+    for (let index = 0; index < sparkCount; index++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 0.6 + Math.random() * 1.8;
       particlesRef.current.push({
@@ -339,7 +399,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const offsetX = Math.min(Math.max(headCenterX - size / 2, 0), maxOffset);
     const offsetY = Math.min(Math.max(headCenterY - size / 2, 0), maxOffset);
     metricsRef.current = { ...metricsRef.current, offsetX, offsetY };
+    // Win shake: the drawing jolts for SHAKE_MS and settles (the page itself never moves).
+    const sinceWin = celebrateAtRef.current === null ? Infinity : Math.max(0, time - celebrateAtRef.current);
+    const shakeAmount = !reducedMotion && sinceWin < SHAKE_MS ? 3 * (1 - sinceWin / SHAKE_MS) : 0;
     if (offsetX !== 0 || offsetY !== 0) context.translate(-offsetX, -offsetY);
+    if (shakeAmount > 0) context.translate(Math.sin(sinceWin / 20) * shakeAmount, Math.cos(sinceWin / 14) * shakeAmount);
 
     // Board plate: a glassy panel so the grid reads as a device, not a void.
     const boardSize = level.gridSize * cell;
@@ -450,6 +514,22 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       const centerY = node.y * cell + cell / 2;
       context.save();
       context.globalAlpha = visibility(node);
+
+      // Node pop: the node swells (1 -> 1.35 -> 1) for a moment after the line reaches it.
+      let pop = 1;
+      if (!reducedMotion) {
+        for (const entry of nodePopsRef.current) {
+          const elapsed = time - entry.at;
+          if (entry.x === node.x && entry.y === node.y && elapsed >= 0 && elapsed < NODE_POP_MS) {
+            pop = popScale(elapsed / NODE_POP_MS);
+          }
+        }
+      }
+      if (pop !== 1) {
+        context.translate(centerX, centerY);
+        context.scale(pop, pop);
+        context.translate(-centerX, -centerY);
+      }
 
       // Unvisited nodes breathe out of phase; visited ones light up solid.
       const breathe = reducedMotion ? 0.5 : (Math.sin(time / 520 + node.x * 0.9 + node.y * 1.3) + 1) / 2;
@@ -598,6 +678,20 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.restore();
     });
 
+    // Node pop rings: a thin ring expands from each node the line just reached.
+    if (!reducedMotion) {
+      for (const entry of nodePopsRef.current) {
+        const elapsed = time - entry.at;
+        if (elapsed < 0 || elapsed > NODE_RING_MS) continue;
+        const ringProgress = elapsed / NODE_RING_MS;
+        context.beginPath();
+        context.arc(entry.x * cell + cell / 2, entry.y * cell + cell / 2, cell * (0.2 + ringProgress * 0.45), 0, Math.PI * 2);
+        context.strokeStyle = `${colors.primary}${Math.floor((1 - ringProgress) * 200).toString(16).padStart(2, "0")}`;
+        context.lineWidth = 2;
+        context.stroke();
+      }
+    }
+
     // Personal-best ghost. It runs the saved route at a steady pace, so it
     // reads as a rival racing the line instead of a static overlay.
     if (showGhost && ghostPath && ghostPath.length > 1) {
@@ -711,6 +805,30 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       trace();
       context.stroke();
       context.setLineDash([]);
+      context.restore();
+    }
+
+    // Energy comet: a hot glowing tail over the last few segments, flickering like charged energy.
+    if (!reducedMotion && currentPath.length > 1) {
+      const firstSegment = Math.max(0, currentPath.length - 1 - COMET_SEGMENTS);
+      const segments = currentPath.length - 1 - firstSegment;
+      const flicker = 0.85 + Math.sin(time / 50) * 0.15;
+      context.save();
+      context.lineCap = "round";
+      context.strokeStyle = colors.accent;
+      context.shadowColor = colors.accent;
+      context.shadowBlur = glow(16);
+      for (let index = firstSegment; index < currentPath.length - 1; index++) {
+        const from = currentPath[index];
+        const to = currentPath[index + 1];
+        const strength = (index - firstSegment + 1) / segments;
+        context.globalAlpha = (0.25 + strength * 0.6) * flicker;
+        context.lineWidth = Math.min(cell * 0.22, 30) * (0.35 + strength * 0.65);
+        context.beginPath();
+        context.moveTo(from.x * cell + cell / 2, from.y * cell + cell / 2);
+        context.lineTo(to.x * cell + cell / 2, to.y * cell + cell / 2);
+        context.stroke();
+      }
       context.restore();
     }
 
@@ -968,6 +1086,51 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
+    // Win flash: a white wash over the board that fades within FLASH_MS.
+    if (!reducedMotion && sinceWin < FLASH_MS) {
+      context.fillStyle = `rgba(255,255,255,${0.35 * (1 - sinceWin / FLASH_MS)})`;
+      context.fillRect(0, 0, boardSize, boardSize);
+    }
+
+    // Floating flow text rises from the head and fades out.
+    const floating = flowTextRef.current;
+    if (floating) {
+      const age = Math.max(0, time - floating.at);
+      if (age < FLOW_TEXT_MS) {
+        const progress = reducedMotion ? 0 : age / FLOW_TEXT_MS;
+        const rise = (1 - (1 - progress) * (1 - progress)) * cell * 0.9;
+        context.save();
+        context.globalAlpha = 1 - progress;
+        context.font = `bold ${Math.max(12, cell * 0.3)}px 'Exo 2', Arial, sans-serif`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.shadowColor = STREAM_GLOW;
+        context.shadowBlur = glow(12);
+        context.fillStyle = STREAM_CORE;
+        context.fillText(floating.text, floating.x * cell + cell / 2, floating.y * cell - cell * 0.5 - rise);
+        context.restore();
+      }
+    }
+
+    // Win verdict: PERFEKT! when the line never backed up, KLART! otherwise. Centred on the view.
+    if (sinceWin < BANNER_MS) {
+      const progress = reducedMotion ? 0 : sinceWin / BANNER_MS;
+      const bannerScale = reducedMotion ? 1 : 0.4 + 0.6 * easeOutBack(Math.min(1, progress / 0.15));
+      const bannerAlpha = progress < 0.7 ? 1 : (1 - progress) / 0.3;
+      context.save();
+      context.globalAlpha = bannerAlpha;
+      context.translate(offsetX + size / 2, offsetY + size / 2);
+      context.scale(bannerScale, bannerScale);
+      context.font = `bold ${Math.max(22, size * 0.13)}px 'Exo 2', Arial, sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.shadowColor = colors.primary;
+      context.shadowBlur = glow(24);
+      context.fillStyle = "#ffffff";
+      context.fillText(perfectRef.current ? PERFECT_TEXT : CLEAR_TEXT, 0, 0);
+      context.restore();
+    }
+
     // Particles
     if (!reducedMotion && particlesRef.current.length > 0) {
       context.globalCompositeOperation = "lighter";
@@ -1014,6 +1177,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     mechanics.blackout,
     chaseMsPerNode,
   ]);
+  renderRef.current = render;
 
   useEffect(() => {
     // A running chase stream must keep moving even under reduced motion.
@@ -1072,6 +1236,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     pathRef.current = next;
     setPath(next);
     notifyPathChange(next);
+    // A backtrack breaks the flow combo and the perfect run.
+    perfectRef.current = false;
+    comboRef.current = 0;
+    lastStepAtRef.current = -Infinity;
     playBacktrackSound();
     return true;
   }, [countVisitedNodes, disableUndo, mechanics.portals, rules]);
@@ -1107,6 +1275,20 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     notifyPathChange(next);
     if (chaseMsPerNode && chaseStartRef.current === null) chaseStartRef.current = performance.now();
 
+    // Flow combo: steps that follow each other within FLOW_WINDOW_MS build a streak.
+    const now = performance.now();
+    const tip = next[next.length - 1];
+    comboRef.current = now - lastStepAtRef.current <= FLOW_WINDOW_MS ? comboRef.current + 1 : 1;
+    lastStepAtRef.current = now;
+    if (comboRef.current % FLOW_COMBO_STEP === 0) {
+      flowTextRef.current = { text: `${FLOW_LABEL} ×${comboRef.current}`, x: tip.x, y: tip.y, at: now };
+      if (reducedMotion) window.setTimeout(() => renderRef.current(performance.now()), FLOW_TEXT_MS);
+    }
+    // The node pop and its ring are motion only.
+    if (!reducedMotion && nodeKeys.has(pointKey(tip))) {
+      nodePopsRef.current = [...nodePopsRef.current.slice(-3), { x: tip.x, y: tip.y, at: now }];
+    }
+
     // Pitch climbs with the level's coverage, so the melody itself shows progress.
     const visited = new Set(next.map(pointKey));
     const covered = level.nodes.filter(node => visited.has(pointKey(node))).length;
@@ -1123,6 +1305,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       chaseEndRef.current = performance.now();
       setIsDragging(false);
       celebrateAtRef.current = performance.now();
+      // Reduced motion draws the verdict once, so redraw it when it should be gone.
+      if (reducedMotion) window.setTimeout(() => renderRef.current(performance.now()), BANNER_MS);
       if (!reducedMotion) {
         const colors = getThemeColors();
         const cell = metricsRef.current.cellSize;
@@ -1147,7 +1331,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     }
 
     return true;
-  }, [chaseMsPerNode, disableUndo, getThemeColors, level.nodes, paused, reducedMotion, rules, undoPath]);
+  }, [chaseMsPerNode, disableUndo, getThemeColors, level.nodes, nodeKeys, paused, reducedMotion, rules, undoPath]);
 
   const handleInputStart = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     if (paused) return;

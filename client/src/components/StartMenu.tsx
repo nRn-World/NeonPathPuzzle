@@ -184,7 +184,7 @@ export function StartMenu() {
                       />
                       <MenuButton
                         icon={<Flame className="h-4 w-4" />}
-                        label="Kedjan"
+                        label={t("chainMode")}
                         onClick={() => handleButtonClick(() => setLocation("/chain"))}
                       />
                       <MenuButton
