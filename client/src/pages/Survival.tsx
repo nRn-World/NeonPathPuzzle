@@ -59,6 +59,8 @@ export default function Survival() {
   const [timeLeftMs, setTimeLeftMs] = useState(0);
   const [stuck, setStuck] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(null);
+  /** "Strömmen jagar": a current chases the line; ms per node shrinks each cleared round. */
+  const [chaseMode, setChaseMode] = useState(false);
 
   const canvasRef = useRef<GameCanvasHandle>(null);
   const heartsRef = useRef(SURVIVAL_START_HEARTS);
@@ -292,6 +294,8 @@ export default function Survival() {
                   onComplete={handleComplete}
                   onBacktrack={handleBacktrack}
                   onStuckChange={setStuck}
+                  chaseMsPerNode={chaseMode ? Math.max(350, 900 - (round - 1) * 40) : undefined}
+                  onShortCircuit={chaseMode ? loseHeart : undefined}
                   disableUndo={undosLeft <= 0}
                   paused={phase !== "playing"}
                   reducedMotion={reducedMotion}
@@ -404,6 +408,20 @@ export default function Survival() {
                   )}
 
                   <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      aria-pressed={chaseMode}
+                      onClick={() => setChaseMode(on => !on)}
+                      className={`border-white/10 ${chaseMode ? "text-primary" : "text-muted-foreground"}`}
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      {`Strömmen jagar: ${chaseMode ? "PÅ" : "AV"}`}
+                    </Button>
+                    {chaseMode && (
+                      <p className="font-exo text-xs leading-relaxed text-muted-foreground">
+                        Strömmen startar när första draget görs och jagar linjens huvud. Hinner den ikapp, eller backar du förbi den, förlorar du ett liv.
+                      </p>
+                    )}
                     <Button
                       size="lg"
                       onClick={startRun}

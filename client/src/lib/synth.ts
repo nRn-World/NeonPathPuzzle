@@ -16,6 +16,9 @@ const MIN_GAIN = 0.0001;
 
 const STEP_ROOT_HZ = 329.63;
 
+/** Length of the whole melody when a level is won; matches the win animation. */
+export const PHRASE_SECONDS = 1.2;
+
 export interface SynthOptions {
   /** Master volume, 0..1. */
   volume?: number;
@@ -24,8 +27,11 @@ export interface SynthOptions {
 export interface SynthEngine {
   /** Rising note for each connected node; `progress` is 0..1 of the level solved. */
   playStep: (progress: number) => void;
+  /** One melody note (a scale offset in semitones); bass and pulse layers are optional. */
+  playNote: (semitone: number, layers?: { bass?: boolean; pulse?: boolean }) => void;
   playUndo: () => void;
-  playWin: () => void;
+  /** Plays the whole melody (semitones) within PHRASE_SECONDS, or the default arpeggio when omitted. */
+  playWin: (melody?: readonly number[]) => void;
   playClick: () => void;
   /** Master volume, 0..1; takes effect immediately. */
   setVolume: (volume: number) => void;
@@ -36,10 +42,18 @@ export interface SynthEngine {
   dispose: () => void;
 }
 
-export function stepFrequency(progress: number, rootHz = STEP_ROOT_HZ): number {
+export function noteFrequency(semitone: number, rootHz = STEP_ROOT_HZ): number {
+  return rootHz * Math.pow(2, semitone / 12);
+}
+
+function stepSemitone(progress: number): number {
   const clamped = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
   const index = Math.min(STEP_SCALE.length - 1, Math.round(clamped * (STEP_SCALE.length - 1)));
-  return rootHz * Math.pow(2, STEP_SCALE[index] / 12);
+  return STEP_SCALE[index];
+}
+
+export function stepFrequency(progress: number, rootHz = STEP_ROOT_HZ): number {
+  return noteFrequency(stepSemitone(progress), rootHz);
 }
 
 interface VoiceOptions {
@@ -93,18 +107,39 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
   master.gain.setValueAtTime(Math.min(1, Math.max(0, options.volume ?? 0.5)), ctx.currentTime);
   master.connect(ctx.destination);
 
-  return {
+  const engine: SynthEngine = {
     playStep: progress => {
-      const frequency = stepFrequency(progress);
+      engine.playNote(stepSemitone(progress));
+    },
+    playNote: (semitone, layers = {}) => {
+      const frequency = noteFrequency(semitone);
       // A quiet octave-up sine gives the soft triangle note a glassy edge.
       playVoice(ctx, master, { frequency: frequency * 2, type: "sine", duration: 0.1, peak: 0.035, attack: 0.004 });
       playVoice(ctx, master, { frequency, type: "triangle", duration: 0.18, peak: 0.12 });
+      if (layers.bass) {
+        playVoice(ctx, master, { frequency: noteFrequency(semitone, STEP_ROOT_HZ / 2), type: "sine", duration: 0.3, peak: 0.08, attack: 0.04 });
+      }
+      if (layers.pulse) {
+        playVoice(ctx, master, { frequency: noteFrequency(semitone + 7), type: "triangle", duration: 0.12, peak: 0.03 });
+      }
     },
     playUndo: () => {
       playVoice(ctx, master, { frequency: 392, type: "triangle", duration: 0.14, peak: 0.12 });
       playVoice(ctx, master, { frequency: 294, duration: 0.16, peak: 0.1, delay: 0.06 });
     },
-    playWin: () => {
+    playWin: melody => {
+      if (melody && melody.length > 0) {
+        const step = PHRASE_SECONDS / melody.length;
+        melody.forEach((semitone, index) => {
+          const delay = index * step;
+          const frequency = noteFrequency(semitone);
+          // The last note is clamped so the whole phrase ends at PHRASE_SECONDS.
+          const duration = Math.min(step * 1.1, PHRASE_SECONDS - delay);
+          playVoice(ctx, master, { frequency: frequency * 2, type: "sine", duration, peak: 0.04, delay });
+          playVoice(ctx, master, { frequency, type: "triangle", duration, peak: 0.12, delay });
+        });
+        return;
+      }
       WIN_NOTES.forEach((note, index) => {
         const last = index === WIN_NOTES.length - 1;
         const delay = index * 0.085;
@@ -139,4 +174,5 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
       }
     },
   };
+  return engine;
 }

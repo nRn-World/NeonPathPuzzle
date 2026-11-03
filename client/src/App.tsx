@@ -23,6 +23,7 @@ import { signalGameReady } from "@/lib/playgama";
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const Duel = lazy(() => import("@/pages/Duel"));
 const Survival = lazy(() => import("@/pages/Survival"));
+const Chain = lazy(() => import("@/pages/Chain"));
 
 function LevelGame() {
   return <Game />;
@@ -49,6 +50,7 @@ function AppRouter() {
           <Route path="/rift/:id" component={RiftGame} />
           <Route path="/duel" component={Duel} />
           <Route path="/survival" component={Survival} />
+          <Route path="/chain" component={Chain} />
           <Route path="/privacy" component={Privacy} />
           <Route component={NotFound} />
         </Switch>

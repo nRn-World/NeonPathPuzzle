@@ -42,6 +42,10 @@ export interface GameCanvasProps {
   onStuckChange?: (stuck: boolean) => void;
   /** Draws the board larger than the viewport and follows the line's head. */
   zoom?: number;
+  /** Milliseconds per node for the chase stream that runs along the player's line. */
+  chaseMsPerNode?: number;
+  /** Fires once when the chase stream reaches the line's head or the line backs past it. */
+  onShortCircuit?: () => void;
 }
 
 interface Particle {
@@ -118,6 +122,8 @@ const HINT_REWIND_COLOR = "#ffb020";
 /** Ghost race pace: milliseconds per grid step, plus the pause before it laps. */
 const GHOST_MS_PER_CELL = 220;
 const GHOST_HOLD_MS = 1200;
+const STREAM_CORE = "#fff7c2";
+const STREAM_GLOW = "#ffe066";
 
 export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
@@ -137,6 +143,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     statusText,
     onStuckChange,
     zoom = 1,
+    chaseMsPerNode,
+    onShortCircuit,
   },
   ref,
 ) {
@@ -162,9 +170,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const slowFramesRef = useRef(0);
   const previousPathLengthRef = useRef(1);
   const celebrateAtRef = useRef<number | null>(null);
+  /** Chase stream: when it was started (first move), when it froze (win), and whether it shorted. */
+  const chaseStartRef = useRef<number | null>(null);
+  const chaseEndRef = useRef<number | null>(null);
+  const shortedRef = useRef(false);
 
-  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange });
-  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange };
+  const callbacksRef = useRef({ onComplete, onBacktrack, onPathChange, onStuckChange, onShortCircuit });
+  callbacksRef.current = { onComplete, onBacktrack, onPathChange, onStuckChange, onShortCircuit };
 
   const nodeKeys = useMemo(() => new Set(level.nodes.map(pointKey)), [level.nodes]);
   const oneWayMap = useMemo(
@@ -215,6 +227,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     particlesRef.current = [];
     previousPathLengthRef.current = 1;
     celebrateAtRef.current = null;
+    chaseStartRef.current = null;
+    chaseEndRef.current = null;
+    shortedRef.current = false;
     callbacksRef.current.onPathChange?.(1, 1);
     callbacksRef.current.onStuckChange?.(false);
   }, [startX, startY]);
@@ -732,6 +747,90 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
+    // Chase stream: a current runs from the start along the player's own line.
+    // Reaching the head (or the line backing up past the front) is a short circuit.
+    const chaseStart = chaseStartRef.current;
+    if (chaseMsPerNode && chaseStart !== null && head) {
+      const streamTime = Math.min(time, chaseEndRef.current ?? Infinity);
+      const front = Math.max(0, (streamTime - chaseStart) / chaseMsPerNode);
+      const headIndex = currentPath.length - 1;
+      if (!wonRef.current && !shortedRef.current && front >= headIndex) {
+        shortedRef.current = true;
+        callbacksRef.current.onShortCircuit?.();
+      }
+
+      if (!shortedRef.current) {
+        const drawTo = Math.min(front, headIndex);
+        const whole = Math.floor(drawTo);
+        const from = currentPath[whole];
+        const to = currentPath[whole + 1];
+        const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
+        const [x0, y0] = center(from);
+        // A portal hop is not a neighbour: the front jumps there instead of cutting across the board.
+        const adjacent = Boolean(to) && Math.abs(to.x - from.x) + Math.abs(to.y - from.y) === 1;
+        const [x1, y1] = adjacent ? center(to) : [x0, y0];
+        const frontX = x0 + (x1 - x0) * (drawTo - whole);
+        const frontY = y0 + (y1 - y0) * (drawTo - whole);
+        const flicker = reducedMotion ? 1 : 0.85 + Math.sin(time / 45) * 0.15;
+
+        const streamPath = () => {
+          context.beginPath();
+          currentPath.slice(0, whole + 1).forEach((point, index) => {
+            const [x, y] = center(point);
+            if (index === 0) context.moveTo(x, y);
+            else context.lineTo(x, y);
+          });
+          context.lineTo(frontX, frontY);
+        };
+
+        context.save();
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.globalAlpha = 0.35 * flicker;
+        context.strokeStyle = STREAM_GLOW;
+        context.lineWidth = Math.min(cell * 0.3, 40);
+        streamPath();
+        context.stroke();
+        context.globalAlpha = flicker;
+        context.shadowColor = STREAM_GLOW;
+        context.shadowBlur = glow(18);
+        context.lineWidth = Math.min(cell * 0.12, 16);
+        streamPath();
+        context.stroke();
+        context.shadowBlur = 0;
+        context.strokeStyle = STREAM_CORE;
+        context.lineWidth = Math.max(1.5, cell * 0.05);
+        streamPath();
+        context.stroke();
+        context.restore();
+
+        // Bright white-hot front with a few flickering sparks (sparks off under reduced motion).
+        const radius = cell * (0.36 + (reducedMotion ? 0 : Math.sin(time / 60) * 0.04));
+        const frontGlow = context.createRadialGradient(frontX, frontY, 0, frontX, frontY, radius);
+        frontGlow.addColorStop(0, "#ffffff");
+        frontGlow.addColorStop(0.3, STREAM_CORE);
+        frontGlow.addColorStop(0.6, `${STREAM_GLOW}88`);
+        frontGlow.addColorStop(1, "rgba(255,224,102,0)");
+        context.beginPath();
+        context.arc(frontX, frontY, radius, 0, Math.PI * 2);
+        context.fillStyle = frontGlow;
+        context.fill();
+        if (!reducedMotion) {
+          context.save();
+          context.fillStyle = STREAM_CORE;
+          for (let spark = 0; spark < 4; spark++) {
+            const angle = time / 70 + spark * 1.57;
+            const reach = cell * (0.18 + 0.12 * Math.abs(Math.sin(time / 90 + spark * 2.3)));
+            context.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(time / 40 + spark));
+            context.beginPath();
+            context.arc(frontX + Math.cos(angle) * reach, frontY + Math.sin(angle) * reach, Math.max(1, cell * 0.03), 0, Math.PI * 2);
+            context.fill();
+          }
+          context.restore();
+        }
+      }
+    }
+
     // Hint: only the stretch still ahead of the line, not the whole solution.
     // When the line has already left the solution, the hint sends it back to
     // the last shared step instead of pretending everything is fine.
@@ -913,11 +1012,15 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     flipMap,
     nodeKeys,
     mechanics.blackout,
+    chaseMsPerNode,
   ]);
 
   useEffect(() => {
+    // A running chase stream must keep moving even under reduced motion.
+    const streaming = Boolean(chaseMsPerNode) && chaseStartRef.current !== null
+      && !wonRef.current && !shortedRef.current;
     // No animation work while the game is paused or the tab is hidden.
-    if (reducedMotion || paused) {
+    if (paused || (reducedMotion && !streaming)) {
       render(performance.now());
       return;
     }
@@ -936,7 +1039,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [render, reducedMotion, paused, zoom]);
+  }, [render, reducedMotion, paused, zoom, chaseMsPerNode]);
 
   const getGridPos = useCallback((clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
@@ -1002,12 +1105,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     pathRef.current = next;
     setPath(next);
     notifyPathChange(next);
+    if (chaseMsPerNode && chaseStartRef.current === null) chaseStartRef.current = performance.now();
 
     // Pitch climbs with the level's coverage, so the melody itself shows progress.
     const visited = new Set(next.map(pointKey));
     const covered = level.nodes.filter(node => visited.has(pointKey(node))).length;
     const coverage = level.nodes.length > 0 ? covered / level.nodes.length : 0;
-    playMoveSound(coverage);
+    playMoveSound(coverage, next.length - 1, level.nodes);
     const quarter = (value: number) => Math.floor(value * 4);
     const before = level.nodes.length > 0
       ? (covered - 1) / level.nodes.length
@@ -1016,6 +1120,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     if (level.nodes.every(node => visited.has(pointKey(node)))) {
       wonRef.current = true;
+      chaseEndRef.current = performance.now();
       setIsDragging(false);
       celebrateAtRef.current = performance.now();
       if (!reducedMotion) {
@@ -1037,12 +1142,12 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
           });
         }
       }
-      playWinSound();
+      playWinSound(level.nodes);
       callbacksRef.current.onComplete(next.length - 1, next);
     }
 
     return true;
-  }, [disableUndo, getThemeColors, level.nodes, paused, reducedMotion, rules, undoPath]);
+  }, [chaseMsPerNode, disableUndo, getThemeColors, level.nodes, paused, reducedMotion, rules, undoPath]);
 
   const handleInputStart = useCallback((event: React.MouseEvent | React.TouchEvent) => {
     if (paused) return;

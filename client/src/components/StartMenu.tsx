@@ -12,6 +12,7 @@ import {
   Trophy,
   X,
   Zap,
+  Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -166,6 +167,7 @@ export function StartMenu() {
                   maxStars={maxStars}
                   streak={summary?.dailyStreak ?? 0}
                   chapterName={upper(content.chapter(getChapterForLevel(continueLevel)).name)}
+                  completedLevels={completedHistory.map(entry => entry.id)}
                   onPlay={() => handleButtonClick(handleStartClick)}
                   onDuel={() => handleButtonClick(() => setLocation("/duel"))}
                   actions={(
@@ -179,6 +181,11 @@ export function StartMenu() {
                         icon={<Zap className="h-4 w-4" />}
                         label={t("survivalTitle")}
                         onClick={() => handleButtonClick(() => setLocation("/survival"))}
+                      />
+                      <MenuButton
+                        icon={<Flame className="h-4 w-4" />}
+                        label="Kedjan"
+                        onClick={() => handleButtonClick(() => setLocation("/chain"))}
                       />
                       <MenuButton
                         icon={<MapIcon className="h-4 w-4" />}
