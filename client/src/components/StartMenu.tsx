@@ -33,14 +33,13 @@ import { cloudSyncReady, syncProgress, type SyncOutcome } from "@/lib/cloudSync"
 import { getPlayer, PLAYER_EVENT, signInWithGoogle, signOutGoogle } from "@/lib/leaderboard";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ThemeSelector } from "@/components/ThemeSelector";
-import { TutorialOverlay } from "@/components/TutorialOverlay";
 import { getLevelFromCode } from "@/lib/levelCodes";
 import { getLevelMessage } from "@/lib/levelMessages";
 import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { unlockLevelsThroughCode } from "@/lib/sessionLevelUnlock";
-import { getProgress, markTutorialSeen, TOTAL_LEVELS } from "@/lib/progress";
+import { getProgress, TOTAL_LEVELS } from "@/lib/progress";
 import type { TranslationKey } from "@/lib/i18n";
 
 const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
@@ -76,7 +75,6 @@ export function StartMenu() {
   const userId = useUserId();
   const { data: levels, refetch } = useLevels(userId);
   const { data: summary } = useUserProgress(userId);
-  const [tutorialOpen, setTutorialOpen] = useState(() => !getProgress(userId).tutorialSeen);
   /** null until a sync has been attempted in this session. */
   const [syncState, setSyncState] = useState<"syncing" | SyncOutcome | null>(null);
   const syncedOnceRef = useRef(false);
@@ -142,11 +140,6 @@ export function StartMenu() {
     }
     unlockLevelsThroughCode(levelId);
     setLocation(`/play/${levelId}`);
-  };
-
-  const finishTutorial = () => {
-    markTutorialSeen(userId);
-    setTutorialOpen(false);
   };
 
   return (
@@ -524,7 +517,6 @@ export function StartMenu() {
       <LevelPopup ref={popupRef} />
 
       <AnimatePresence>
-        {tutorialOpen && <TutorialOverlay onDone={finishTutorial} />}
       </AnimatePresence>
     </div>
   );
