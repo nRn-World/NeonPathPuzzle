@@ -4,7 +4,7 @@ import { StarIcon } from "@/components/icons/GameIcons";
 import { CitySkyline } from "@/components/CitySkyline";
 import { getProgress, TOTAL_LEVELS } from "@/lib/progress";
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, usePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, Home, Play, RotateCcw, Share2, Star, Video } from "lucide-react";
 import { Link } from "wouter";
@@ -25,6 +25,12 @@ const CITY_CAPTION: Record<Language, { block: string; district: string }> = {
   es: { block: "+1 manzana encendida", district: "¡DISTRITO EN LÍNEA!" },
   tr: { block: "+1 blok aydınlandı", district: "BÖLGE ÇEVRİMİÇİ!" },
 };
+
+/** While the card animates out it must not catch pointer input, or the next board drops its first drag. */
+function ClosingAwareDiv(props: React.ComponentProps<"div">) {
+  const [isPresent] = usePresence();
+  return <div {...props} style={{ ...props.style, pointerEvents: isPresent ? undefined : "none" }} />;
+}
 
 interface WinModalProps {
   isOpen: boolean;
@@ -164,7 +170,7 @@ export function WinModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
+        <ClosingAwareDiv
           role="dialog"
           aria-modal="true"
           aria-label={title}
@@ -173,7 +179,7 @@ export function WinModal({
           <motion.div
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.92, opacity: 0, y: 20 }}
+            exit={{ scale: 0.92, opacity: 0, y: 20, transition: { duration: 0.15 } }}
             className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background/95 p-7 shadow-[0_0_60px_rgba(0,0,0,0.5)]"
           >
 
@@ -387,7 +393,7 @@ export function WinModal({
               </div>
             </div>
           </motion.div>
-        </div>
+        </ClosingAwareDiv>
       )}
     </AnimatePresence>
   );
