@@ -154,6 +154,9 @@ const SHAKE_MS = 300;
 const BANNER_MS = 1300;
 /** Win effects stay in neon colours; the default theme's accent is white. */
 const WIN_PINK = "#ff3bd4";
+/** Gap between canvas text and the board's edge. */
+const TEXT_PAD = 6;
+const clamp = (value: number, min: number, max: number) => (min > max ? (min + max) / 2 : Math.min(Math.max(value, min), max));
 const EASE_BACK = 1.70158;
 
 /** Overshoots past 1 and settles back: used for the node pop and the verdict entrance. */
@@ -401,6 +404,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const offsetX = Math.min(Math.max(headCenterX - size / 2, 0), maxOffset);
     const offsetY = Math.min(Math.max(headCenterY - size / 2, 0), maxOffset);
     metricsRef.current = { ...metricsRef.current, offsetX, offsetY };
+    // The visible part of the board: canvas text must stay inside it.
+    const view = Math.min(size, level.gridSize * cell);
     // Win shake: the drawing jolts for SHAKE_MS and settles (the page itself never moves).
     const sinceWin = celebrateAtRef.current === null ? Infinity : Math.max(0, time - celebrateAtRef.current);
     const shakeAmount = !reducedMotion && sinceWin < SHAKE_MS ? 3 * (1 - sinceWin / SHAKE_MS) : 0;
@@ -1088,13 +1093,19 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         const rise = (1 - (1 - progress) * (1 - progress)) * cell * 0.9;
         context.save();
         context.globalAlpha = 1 - progress;
-        context.font = `bold ${Math.max(12, cell * 0.3)}px 'Exo 2', Arial, sans-serif`;
+        const fontSize = Math.max(12, cell * 0.3);
+        context.font = `bold ${fontSize}px 'Exo 2', Arial, sans-serif`;
         context.textAlign = "center";
         context.textBaseline = "middle";
         context.shadowColor = STREAM_GLOW;
         context.shadowBlur = glow(12);
         context.fillStyle = STREAM_CORE;
-        context.fillText(floating.text, floating.x * cell + cell / 2, floating.y * cell - cell * 0.5 - rise);
+        // Kept fully inside the visible board, also when the head is on an edge.
+        const halfWidth = context.measureText(floating.text).width / 2 + TEXT_PAD;
+        const halfHeight = fontSize / 2 + TEXT_PAD;
+        const textX = clamp(floating.x * cell + cell / 2, offsetX + halfWidth, offsetX + view - halfWidth);
+        const textY = clamp(floating.y * cell - cell * 0.5 - rise, offsetY + halfHeight, offsetY + view - halfHeight);
+        context.fillText(floating.text, textX, textY);
         context.restore();
       }
     }
@@ -1106,15 +1117,22 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       const bannerAlpha = progress < 0.7 ? 1 : (1 - progress) / 0.3;
       context.save();
       context.globalAlpha = bannerAlpha;
-      context.translate(offsetX + size / 2, offsetY + size / 2);
+      context.translate(offsetX + view / 2, offsetY + view / 2);
       context.scale(bannerScale, bannerScale);
-      context.font = `bold ${Math.max(22, size * 0.13)}px 'Exo 2', Arial, sans-serif`;
+      const verdict = perfectRef.current ? verdictRef.current.perfect : verdictRef.current.clear;
+      let fontSize = Math.max(22, view * 0.13);
+      context.font = `bold ${fontSize}px 'Exo 2', Arial, sans-serif`;
+      // Long translations shrink to fit; the 1.12 covers the pop-in overshoot.
+      const maxWidth = (view * 0.86) / 1.12;
+      const width = context.measureText(verdict).width;
+      if (width > maxWidth) fontSize *= maxWidth / width;
+      context.font = `bold ${fontSize}px 'Exo 2', Arial, sans-serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
       context.shadowColor = WIN_PINK;
       context.shadowBlur = glow(24);
       context.fillStyle = colors.primary;
-      context.fillText(perfectRef.current ? verdictRef.current.perfect : verdictRef.current.clear, 0, 0);
+      context.fillText(verdict, 0, 0);
       context.restore();
     }
 
