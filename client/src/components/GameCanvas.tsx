@@ -152,6 +152,8 @@ const NODE_RING_MS = 320;
 const COMET_SEGMENTS = 4;
 const SHAKE_MS = 300;
 const BANNER_MS = 1300;
+/** Win effects stay in neon colours; the default theme's accent is white. */
+const WIN_PINK = "#ff3bd4";
 const EASE_BACK = 1.70158;
 
 /** Overshoots past 1 and settles back: used for the node pop and the verdict entrance. */
@@ -808,8 +810,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.restore();
     }
 
+    // After a win nothing on the line stays white: the comet goes out and the head turns neon.
+    const won = celebrateAtRef.current !== null;
+
     // Energy comet: a hot glowing tail over the last few segments, flickering like charged energy.
-    if (!reducedMotion && currentPath.length > 1) {
+    if (!reducedMotion && !won && currentPath.length > 1) {
       const firstSegment = Math.max(0, currentPath.length - 1 - COMET_SEGMENTS);
       const segments = currentPath.length - 1 - firstSegment;
       const flicker = 0.85 + Math.sin(time / 50) * 0.15;
@@ -845,8 +850,8 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         headY,
         cell * 0.32 + pulse,
       );
-      gradient.addColorStop(0, "rgba(255,255,255,0.95)");
-      gradient.addColorStop(0.35, colors.accent);
+      gradient.addColorStop(0, won ? WIN_PINK : "rgba(255,255,255,0.95)");
+      gradient.addColorStop(0.35, won ? colors.primary : colors.accent);
       gradient.addColorStop(1, "rgba(0,0,0,0)");
       context.beginPath();
       context.arc(headX, headY, cell * 0.3 + pulse, 0, Math.PI * 2);
@@ -1052,7 +1057,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Win celebration rings
     if (celebrateAtRef.current !== null) {
       const elapsed = time - celebrateAtRef.current;
-      // A white pulse runs down the finished line from start to end.
+      // A pink pulse runs down the finished line from start to end.
       if (!reducedMotion && elapsed < 1400) {
         const wave = (elapsed / 700) * currentPath.length;
         currentPath.forEach((point, index) => {
@@ -1060,8 +1065,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
           if (distance > 3) return;
           context.beginPath();
           context.arc(point.x * cell + cell / 2, point.y * cell + cell / 2, cell * (0.12 + (1 - distance / 3) * 0.14), 0, Math.PI * 2);
-          context.fillStyle = `rgba(255,255,255,${(1 - distance / 3) * 0.85})`;
+          context.globalAlpha = (1 - distance / 3) * 0.85;
+          context.fillStyle = WIN_PINK;
           context.fill();
+          context.globalAlpha = 1;
         });
       }
       if (elapsed < 1500) {
@@ -1118,9 +1125,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.font = `bold ${Math.max(22, size * 0.13)}px 'Exo 2', Arial, sans-serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
-      context.shadowColor = colors.primary;
+      context.shadowColor = WIN_PINK;
       context.shadowBlur = glow(24);
-      context.fillStyle = "#ffffff";
+      context.fillStyle = colors.primary;
       context.fillText(perfectRef.current ? verdictRef.current.perfect : verdictRef.current.clear, 0, 0);
       context.restore();
     }
@@ -1316,7 +1323,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
             life: 700 + Math.random() * 600,
             maxLife: 1300,
             size: 1.5 + Math.random() * 3,
-            color: [colors.primary, colors.secondary, colors.accent][index % 3],
+            color: [colors.primary, colors.secondary, WIN_PINK][index % 3],
           });
         }
       }

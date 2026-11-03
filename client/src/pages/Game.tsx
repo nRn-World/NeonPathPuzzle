@@ -650,7 +650,8 @@ export default function Game({ mode = "level" }: GameProps) {
         particleCount: 110,
         spread: 75,
         origin: { y: 0.6 },
-        colors: colors.neon,
+        // No white pieces: the win stays in neon colours.
+        colors: [...colors.neon.filter(color => color.toLowerCase() !== "#ffffff"), "#ff3bd4"],
       });
     }
   }, [
