@@ -1057,20 +1057,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Win celebration rings
     if (celebrateAtRef.current !== null) {
       const elapsed = time - celebrateAtRef.current;
-      // A pink pulse runs down the finished line from start to end.
-      if (!reducedMotion && elapsed < 1400) {
-        const wave = (elapsed / 700) * currentPath.length;
-        currentPath.forEach((point, index) => {
-          const distance = Math.abs(index - wave);
-          if (distance > 3) return;
-          context.beginPath();
-          context.arc(point.x * cell + cell / 2, point.y * cell + cell / 2, cell * (0.12 + (1 - distance / 3) * 0.14), 0, Math.PI * 2);
-          context.globalAlpha = (1 - distance / 3) * 0.85;
-          context.fillStyle = WIN_PINK;
-          context.fill();
-          context.globalAlpha = 1;
-        });
-      }
       if (elapsed < 1500) {
         const last = currentPath[currentPath.length - 1];
         if (last) {
