@@ -342,8 +342,9 @@ export function MenuHero({
       <div className="flex flex-wrap items-center gap-2 md:hidden">{actions}</div>
 
       {/* The city band: lights up as levels and chapters are cleared. */}
-      <div className="mt-6 w-full overflow-hidden md:col-span-2 md:row-start-3 md:mt-10">
-        <CitySkyline completedLevels={completedLevels} />
+      {/* Phones keep the city readable at 720 px wide and swipe through it; chapter 1 sits at the left. */}
+      <div className="mt-6 w-full overflow-x-auto [scrollbar-width:none] md:col-span-2 md:row-start-3 md:mt-10 md:overflow-hidden">
+        <CitySkyline completedLevels={completedLevels} className="min-w-[720px] md:min-w-0" />
       </div>
 
       <a
