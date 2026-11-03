@@ -401,5 +401,7 @@ export const tr: Record<TranslationKey, string> = {
   chaseToggle: "Akıntı kovalıyor: {state}",
   chaseOn: "AÇIK",
   chaseOff: "KAPALI",
+  winPerfect: "MÜKEMMEL!",
+  winClear: "TAMAM!",
   chaseHint: "Akıntı ilk hamlede başlar ve çizginin başını kovalar. Yetişirse ya da onu geçecek kadar geri gidersen bir can kaybedersin.",
 };

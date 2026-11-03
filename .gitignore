@@ -64,3 +64,9 @@ Neon-Path-Puzzle/
 brag-output/
 nul
 *.zip
+
+# Trailer recordings (scripts are tracked, media is not)
+trailer/node_modules/
+trailer/frames/
+trailer/*.mp4
+crazygames-upload/

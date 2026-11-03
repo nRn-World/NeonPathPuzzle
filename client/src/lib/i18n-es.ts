@@ -401,5 +401,7 @@ export const es: Record<TranslationKey, string> = {
   chaseToggle: "Corriente persigue: {state}",
   chaseOn: "SÍ",
   chaseOff: "NO",
+  winPerfect: "¡PERFECTO!",
+  winClear: "¡HECHO!",
   chaseHint: "La corriente empieza con el primer movimiento y persigue la cabeza de la línea. Si la alcanza, o retrocedes más allá de ella, pierdes una vida.",
 };

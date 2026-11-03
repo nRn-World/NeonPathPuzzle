@@ -416,6 +416,8 @@ const en = {
   chaseToggle: "Current chase: {state}",
   chaseOn: "On",
   chaseOff: "Off",
+  winPerfect: "PERFECT!",
+  winClear: "CLEARED!",
   chaseHint: "The current starts when the first move is made and chases the line's head. If it catches up, or you back past it, you lose a heart.",
 } as const;
 
@@ -822,6 +824,8 @@ const sv: Record<TranslationKey, string> = {
   chaseToggle: "Strömmen jagar: {state}",
   chaseOn: "PÅ",
   chaseOff: "AV",
+  winPerfect: "PERFEKT!",
+  winClear: "KLART!",
   chaseHint: "Strömmen startar när första draget görs och jagar linjens huvud. Hinner den ikapp, eller backar du förbi den, förlorar du ett liv.",
 };
 

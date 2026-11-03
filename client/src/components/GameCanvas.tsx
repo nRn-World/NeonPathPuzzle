@@ -141,8 +141,6 @@ const STREAM_CORE = "#fff7c2";
 const STREAM_GLOW = "#ffe066";
 // Juice. The words are hard-coded until i18n covers them.
 const FLOW_LABEL = "FLOW";
-const PERFECT_TEXT = "PERFEKT!";
-const CLEAR_TEXT = "KLART!";
 /** Steps closer together than this continue the flow combo. */
 const FLOW_WINDOW_MS = 350;
 /** Every this many steps of one combo, floating "FLOW x" text rises from the head. */
@@ -197,6 +195,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   const containerRef = useRef<HTMLDivElement>(null);
   const { getThemeColors, currentTheme } = useTheme();
   const { t } = useI18n();
+  // The render loop reads the win verdict through a ref, so a language switch needs no new loop.
+  const verdictRef = useRef({ perfect: "", clear: "" });
+  verdictRef.current = { perfect: t("winPerfect"), clear: t("winClear") };
   const colorBlind = useSettingsStore(state => state.colorBlind);
 
   const [path, setPath] = useState<Point[]>([level.start]);
@@ -1112,7 +1113,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
-    // Win verdict: PERFEKT! when the line never backed up, KLART! otherwise. Centred on the view.
+    // Win verdict: "perfect" when the line never backed up, KLART! otherwise. Centred on the view.
     if (sinceWin < BANNER_MS) {
       const progress = reducedMotion ? 0 : sinceWin / BANNER_MS;
       const bannerScale = reducedMotion ? 1 : 0.4 + 0.6 * easeOutBack(Math.min(1, progress / 0.15));
@@ -1127,7 +1128,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       context.shadowColor = colors.primary;
       context.shadowBlur = glow(24);
       context.fillStyle = "#ffffff";
-      context.fillText(perfectRef.current ? PERFECT_TEXT : CLEAR_TEXT, 0, 0);
+      context.fillText(perfectRef.current ? verdictRef.current.perfect : verdictRef.current.clear, 0, 0);
       context.restore();
     }
 
