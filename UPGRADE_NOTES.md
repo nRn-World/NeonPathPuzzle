@@ -170,3 +170,18 @@ These need dedicated design/backend work and were left out rather than half-impl
 - The PWA was verified over localhost HTTP; the native install prompt and iOS Add-to-Home-Screen flow were not exercised.
 - Localization covers navigation, HUD, result flows, settings, daily/weekly and the editor. Tutorial copy, achievement and power-up names, level flavor messages and the privacy page remain English.
 - Progress remains local-first. Use Settings → Export save before clearing site/app storage; level codes are still level jumps, not backups.
+
+---
+
+## Round 5 — premium features (4 November 2026)
+
+Seven additional features were added after the ten improvement tips: cinematic
+power surge, per-chapter audio identity, Circuit Lab with player-drawn boards,
+no-server rival ghosts, a daily ritual with 30-day calendar and streak shields,
+real boss set pieces with their own rule combos, and pro polish (axe E2E scans,
+visual-regression screenshots, an install prompt, a diagnostics page and this
+CHANGELOG). See `CHANGELOG.md` and `GAME_DESIGN.md` for the full rationale.
+
+The dark-next-level bug was fixed in this round: the win backdrop now uses
+`useIsPresent()` rather than `usePresence()` and closes synchronously. An E2E
+regression asserts the next board is both dialog-free and bright enough to see.

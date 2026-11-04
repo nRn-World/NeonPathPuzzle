@@ -5,6 +5,10 @@ A small Cloudflare Worker + D1 database behind the game's **Ranking** tab. The g
 ## What it stores
 `board, player_id, name, value, updated_at`, one row per player and board. Boards: `stars` (total stars, highest wins), `daily:<date>` and `weekly:<week>` (time in ms, lowest wins). Only the best value per player is kept.
 
+Opt-in diagnostics land in the `telemetry` table as `day, event, level_id, count` — aggregate counters only, with no player id, session id or free text. Re-run `schema.sql` (it uses `CREATE TABLE IF NOT EXISTS`) after deploying an updated worker; `/telemetry` is best effort, so an older database simply ignores counters instead of failing the game.
+
+Daily and weekly boards are now rebuilt from the shared challenge spec (`shared/challenges.ts`) rather than a campaign level id, so the client and the worker must be deployed together.
+
 ## Anti-cheat
 Daily and weekly submissions must include the line that was drawn. The worker rebuilds the level with the same shared generator and rules (`shared/`), rejects any line that doesn't solve it, and rejects times shorter than 40 ms per node. Star totals can't be verified server-side (they are capped at 900).
 

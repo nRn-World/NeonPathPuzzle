@@ -183,6 +183,7 @@ function normalizeDaily(value: unknown): DailyState {
     lastPlayedDate: typeof daily.lastPlayedDate === "string" ? daily.lastPlayedDate : null,
     streak: Math.max(0, Math.trunc(Number(daily.streak) || 0)),
     bestStreak: Math.max(0, Math.trunc(Number(daily.bestStreak) || 0)),
+    shields: Math.max(0, Math.min(3, Math.trunc(Number(daily.shields) || 0))),
     results,
   };
 }
@@ -616,6 +617,7 @@ export function mergeProgress(local: ProgressData, remote: ProgressData): Progre
       lastPlayedDate: latestDaily.lastPlayedDate,
       streak: latestDaily.streak,
       bestStreak: Math.max(local.daily.bestStreak, remote.daily.bestStreak),
+      shields: Math.max(local.daily.shields ?? 0, remote.daily.shields ?? 0),
       results,
     },
     tutorialSeen: local.tutorialSeen || remote.tutorialSeen,

@@ -3,23 +3,27 @@ export type StarCount = 1 | 2 | 3;
 export interface StarInput {
   mistakes: number;
   hintsUsed: boolean;
-  timeMs: number;
-  parTimeMs: number;
+  /** Times the line ran out of legal moves — a planning mistake, not a speed issue. */
+  deadEnds?: number;
+  /** Kept for callers and score displays; stars no longer punish thinking time. */
+  timeMs?: number;
+  parTimeMs?: number;
 }
 
 /**
- * Par time is generous enough to reward planning, not just speed. A perfect
- * run needs no hints, no backtracks, and a finish under par.
+ * Par time is still shown in the HUD and drives the score's speed bonus, but
+ * stars reward *planning*: no hints, no backtracks and no dead ends. A 13x13
+ * blackout board should be a puzzle, not a stopwatch test.
  */
 export function getParTimeMs(nodeCount: number): number {
   return Math.max(15_000, nodeCount * 1_100 + 4_000);
 }
 
-export function calculateStars({ mistakes, hintsUsed, timeMs, parTimeMs }: StarInput): StarCount {
+export function calculateStars({ mistakes, hintsUsed, deadEnds = 0 }: StarInput): StarCount {
   let stars = 3;
   if (hintsUsed) stars -= 1;
   if (mistakes > 0) stars -= 1;
-  if (timeMs > parTimeMs) stars -= 1;
+  if (deadEnds > 0) stars -= 1;
   return Math.max(1, Math.min(3, stars)) as StarCount;
 }
 

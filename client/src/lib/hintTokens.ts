@@ -7,6 +7,7 @@ interface HintTokenState {
   earned: number;
   addTokens: (amount?: number) => void;
   spendToken: () => boolean;
+  spendTokens: (amount: number) => boolean;
 }
 
 export const useHintTokenStore = create<HintTokenState>()(
@@ -19,9 +20,12 @@ export const useHintTokenStore = create<HintTokenState>()(
         tokens: state.tokens + Math.max(0, Math.trunc(amount)),
         earned: state.earned + Math.max(0, Math.trunc(amount)),
       })),
-      spendToken: () => {
-        if (get().tokens <= 0) return false;
-        set(state => ({ tokens: state.tokens - 1, spent: state.spent + 1 }));
+      spendToken: () => get().spendTokens(1),
+      spendTokens: (amount) => {
+        const cost = Math.max(0, Math.trunc(amount));
+        if (cost === 0) return true;
+        if (get().tokens < cost) return false;
+        set(state => ({ tokens: state.tokens - cost, spent: state.spent + cost }));
         return true;
       },
     }),

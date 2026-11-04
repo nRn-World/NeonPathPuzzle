@@ -8,6 +8,8 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Game from "@/pages/Game";
@@ -25,6 +27,9 @@ const Privacy = lazy(() => import("@/pages/Privacy"));
 const Duel = lazy(() => import("@/pages/Duel"));
 const Survival = lazy(() => import("@/pages/Survival"));
 const Chain = lazy(() => import("@/pages/Chain"));
+const Lab = lazy(() => import("@/pages/Lab"));
+const Rival = lazy(() => import("@/pages/Rival"));
+const Insights = lazy(() => import("@/pages/Insights"));
 
 function LevelGame() {
   return <Game />;
@@ -39,7 +44,7 @@ function ZenGame() {
 }
 
 // Every route except the menu and the privacy page puts the player on a board.
-const GAMEPLAY_ROUTE = /^\/(play|daily|weekly|zen|rift|duel|survival|chain)\b/;
+const GAMEPLAY_ROUTE = /^\/(play|daily|weekly|zen|rift|duel|survival|chain|lab|rival)\b/;
 
 function AppRouter() {
   const [location] = useHashLocation();
@@ -59,9 +64,14 @@ function AppRouter() {
           <Route path="/survival" component={Survival} />
           <Route path="/chain" component={Chain} />
           <Route path="/privacy" component={Privacy} />
+          <Route path="/lab" component={Lab} />
+          <Route path="/lab/:code" component={Lab} />
+          <Route path="/rival/:code" component={Rival} />
+          <Route path="/insights" component={Insights} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
+      <InstallPrompt />
     </Router>
   );
 }
@@ -133,7 +143,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <AppRouter />
+          <ErrorBoundary>
+            <AppRouter />
+          </ErrorBoundary>
         </TooltipProvider>
       </QueryClientProvider>
     </div>

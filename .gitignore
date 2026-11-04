@@ -71,3 +71,7 @@ trailer/frames/
 trailer/*.mp4
 crazygames-upload/
 dist-crazygames/
+
+# Playwright reports and traces
+test-results/
+playwright-report/

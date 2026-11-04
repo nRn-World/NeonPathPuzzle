@@ -1,4 +1,4 @@
-import { hashDateKey } from "./daily";
+import { getChallengeSpec, type ChallengeSpec } from "../../../shared/challenges";
 import type { TranslationKey } from "./i18n";
 
 export type WeeklyModifier = "mirror" | "no-undo" | "time-attack" | "no-hints";
@@ -41,6 +41,8 @@ const MAX_STORED_WEEKS = 52;
 export interface WeeklyChallenge {
   weekKey: string;
   levelId: number;
+  /** Dedicated challenge board: a rotated/mirrored unique-solution layout. */
+  spec: ChallengeSpec;
   modifier: WeeklyModifier;
   startsAt: number;
   endsAt: number;
@@ -91,9 +93,11 @@ export function getWeeklyChallenge(date: Date = new Date()): WeeklyChallenge {
   const endsAt = new Date(monday);
   endsAt.setDate(endsAt.getDate() + 7);
 
+  const spec = getChallengeSpec("weekly", weekKey);
   return {
     weekKey,
-    levelId: (hashDateKey(`weekly-${weekKey}`) % 200) + 1,
+    levelId: spec.levelId,
+    spec,
     modifier: MODIFIERS[(weekNumber - 1) % MODIFIERS.length],
     startsAt: monday.getTime(),
     endsAt: endsAt.getTime(),

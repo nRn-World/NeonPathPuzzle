@@ -11,30 +11,22 @@ import {
 
 const par = 60_000;
 
-test("a clean fast run earns three stars", () => {
+test("a clean run earns three stars regardless of how long thinking took", () => {
   assert.equal(
-    calculateStars({ mistakes: 0, hintsUsed: false, timeMs: 30_000, parTimeMs: par }),
+    calculateStars({ mistakes: 0, hintsUsed: false, deadEnds: 0, timeMs: 30_000, parTimeMs: par }),
+    3,
+  );
+  assert.equal(
+    calculateStars({ mistakes: 0, hintsUsed: false, deadEnds: 0, timeMs: 10 * 60_000, parTimeMs: par }),
     3,
   );
 });
 
-test("hints, backtracks and overtime each remove one star", () => {
-  assert.equal(
-    calculateStars({ mistakes: 0, hintsUsed: true, timeMs: 30_000, parTimeMs: par }),
-    2,
-  );
-  assert.equal(
-    calculateStars({ mistakes: 2, hintsUsed: false, timeMs: 30_000, parTimeMs: par }),
-    2,
-  );
-  assert.equal(
-    calculateStars({ mistakes: 0, hintsUsed: false, timeMs: 61_000, parTimeMs: par }),
-    2,
-  );
-  assert.equal(
-    calculateStars({ mistakes: 3, hintsUsed: true, timeMs: 61_000, parTimeMs: par }),
-    1,
-  );
+test("hints, backtracks and dead ends each remove one star", () => {
+  assert.equal(calculateStars({ mistakes: 0, hintsUsed: true, deadEnds: 0 }), 2);
+  assert.equal(calculateStars({ mistakes: 2, hintsUsed: false, deadEnds: 0 }), 2);
+  assert.equal(calculateStars({ mistakes: 0, hintsUsed: false, deadEnds: 1 }), 2);
+  assert.equal(calculateStars({ mistakes: 3, hintsUsed: true, deadEnds: 2 }), 1);
 });
 
 test("par time grows with the number of nodes and has a floor", () => {

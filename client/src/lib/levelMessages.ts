@@ -1,3 +1,6 @@
+import type { Language } from "./i18n";
+import { localizedLevelMessages } from "./levelMessages.localized";
+
 export const levelMessages: { [key: number]: string } = {
   1: "You make a positive difference just by being you.",
   2: "Your kindness is a gift to everyone around you.",
@@ -201,6 +204,10 @@ export const levelMessages: { [key: number]: string } = {
   200: "You are a living reminder that growth is beautiful.",
 };
 
-export function getLevelMessage(levelId: number): string {
-  return levelMessages[levelId] || "You are amazing!";
+/** A per-level affirmation in the player's language; English keeps all 200 originals. */
+export function getLevelMessage(levelId: number, language: Language = "en"): string {
+  if (language === "en") return levelMessages[levelId] || "You are amazing!";
+  const pack = localizedLevelMessages[language];
+  const index = Math.max(0, Math.trunc(levelId) - 1) % pack.length;
+  return pack[index];
 }

@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+    <!-- Zoom is intentionally allowed: WCAG 1.4.4 requires it, and the board
+         already handles its own touch gestures with touch-action: none. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0f1e" />
     <meta name="color-scheme" content="dark" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -18,7 +20,8 @@
     <meta property="og:description" content="One continuous line, 300 circuits. Train your brain." />
     <meta property="og:image" content="https://nrn-world.github.io/NeonPathPuzzle/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+    <!-- Portal SDKs are injected at runtime for the matching build only;
+         the plain web/PWA build loads no third-party script. -->
   </head>
   <body>
     <!-- Shown until React mounts, so a slow first load is never a blank screen. -->

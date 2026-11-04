@@ -34,14 +34,21 @@ function levelSeed(nodes: readonly Point[]): number {
   return hash >>> 0;
 }
 
-const cache = new WeakMap<readonly Point[], number[]>();
+/** One cache per node array, keyed by the scale so chapters cannot share a tune by accident. */
+const cache = new WeakMap<readonly Point[], Map<string, number[]>>();
 
 /**
  * One melody note per node, as semitone offsets from the step root. The tune
  * walks stepwise through the scale and resolves on the tonic at the end.
  */
-export function melodyFor(nodes: readonly Point[]): number[] {
-  const cached = cache.get(nodes);
+export function melodyFor(nodes: readonly Point[], scale: readonly number[] = STEP_SCALE): number[] {
+  const scaleKey = scale.join(",");
+  let perScale = cache.get(nodes);
+  if (!perScale) {
+    perScale = new Map<string, number[]>();
+    cache.set(nodes, perScale);
+  }
+  const cached = perScale.get(scaleKey);
   if (cached) return cached;
 
   const random = seededRandom(levelSeed(nodes));
@@ -55,7 +62,7 @@ export function melodyFor(nodes: readonly Point[]): number[] {
   }
   degrees[degrees.length - 1] = 0;
 
-  const melody = degrees.map(d => STEP_SCALE[d]);
-  cache.set(nodes, melody);
+  const melody = degrees.map(d => scale[d] ?? 0);
+  perScale.set(scaleKey, melody);
   return melody;
 }

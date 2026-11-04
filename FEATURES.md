@@ -14,8 +14,8 @@
   - Move only up, down, left, or right
   - The path may not cross or repeat itself
 - **Three backtracks per level**: Drag backwards, press Backspace / Ctrl+Z, or use the undo button — up to three times per level. Backtracks cost a star.
-- **Three attempts per new level**: The first try plus two restarts. An attempt starts with the first move, so opening and studying a board is free. Leaving mid-attempt does not refund it.
-- **System crash**: Fail the third attempt and the run crashes back to level 1. Stars, best times, records, themes and achievements are kept; only the run's unlocks reset. Restarting on the last attempt asks for confirmation first. Cleared levels can be replayed freely.
+- **Unlimited attempts by default**: A bad run never relocks levels, and leaving mid-attempt costs nothing. The three-attempt system crash is now an opt-in **Hardcore** setting; in that mode an attempt starts with the first move and an abandoned third try ends the run.
+- **Hardcore system crash**: Only with Hardcore enabled, failing the third attempt resets the run to the last finished chapter checkpoint (not level 1). Stars, best times, records, themes and achievements are always kept. Cleared levels can be replayed freely.
 - **Dead-end detection**: When the line has no legal move left, a banner offers an undo; with no undos left the attempt ends with a short circuit.
 - **Timer**: Starts on the first move. Time Freeze pauses it, and the clock stops automatically when the tab or app goes to the background.
 - **Par time**: The header shows the live time against par, so the three-star window is always visible.
@@ -35,7 +35,7 @@ Mechanics are derived from each level's canonical solution, so every level stays
 - **Blackout** — only a pool of light around the line's head is lit; the rest of the board fades to near-black (from level 251)
 - **First-encounter intros** — each new mechanic is introduced with a card the first time it appears
 - All move rules live in one shared function (`createMoveRules`), and a test plays every level's canonical solution through it, so all 300 levels are proven solvable
-- **Boss levels** — every 25th level gets a crown, a 15% longer par and a denser layout
+- **Boss set pieces** — every 25th level gets a crown, a 15% longer par, a denser layout, a chapter-coloured briefing card listing its rule combo, a pulsing board frame and a chapter-coloured win surge. The combo escalates: walls → one-way nodes → ordered pairs → portals → sync nodes → phase nodes, introduced 25–100 levels earlier than usual
 - **Fast swipes**: Pointer samples are interpolated, so fast mobile drags do not skip nodes.
 
 ---
@@ -48,7 +48,7 @@ Each level awards 1–3 stars:
 |-------------|--------|
 | Use no hint | Keeps one star |
 | Make no backtrack | Keeps one star |
-| Finish under par time | Keeps one star |
+| Reach no dead end | Keeps one star |
 
 - Best time, best score, fewest moves, and fewest mistakes are stored per level
 - Score is calculated from nodes, stars, speed, and active Score Boost
@@ -114,6 +114,38 @@ Each level awards 1–3 stars:
 - Codes remain compatible with all previously released values
 
 
+---
+
+## Circuit Lab, Ghost Races & Daily Ritual
+
+### Circuit Lab (`#/lab`)
+
+- Draw a board cell by cell; click a lit node in "Starting node" mode to move the start
+- Grid size from 3×3 to 9×9, plus **Surprise me** (a proven unique campaign board) and **Clear**
+- Live solver feedback: **Exactly one solution**, `{n} solutions — keep editing`, **No solution from this start** or **Too complex to prove**
+- A 0–100 difficulty score derived from the DFS search effort (uncached, so every edit is honest)
+- Play the board in place, then copy a short checksum-protected link. The entire board lives in the URL fragment; no server, no account, works offline
+- Tampered, truncated or wrong-kind codes are rejected
+
+### Rival ghost (`#/rival/<code>`)
+
+- The win card offers **Challenge a friend**: the link encodes the board, your drawn line and your time
+- The ghost runs once from the race start at your pace (not a looping animation), with a live `+/-s` pace delta
+- Result card says who won, shows both times, and offers a rematch or a new link
+- A QR code generated on the device lets another phone scan and open the same challenge
+
+### Daily ritual
+
+- Full-screen once-per-day reveal with a paused preview of the exact board
+- 30-day calendar, live countdown to the next board, streak and shield counters
+- **Streak shields**: earn one every seventh consecutive day (max 3); one shield bridges a missed day instead of resetting the streak. They survive save merges and appear on the menu card
+
+### Bosses, sound and the win moment
+
+- Cinematic **power surge**: slow camera push, a bright pulse travelling backwards along the finished line, a chapter-coloured shockwave, a heavy haptic thud and a resolve chord before the result card
+- **12 chapter audio profiles**: roots through the circle of fifths, minor/major/suspended/Kumoi pentatonic scales, distinct resolve chords and phrase lengths. Dead ends add a dissonant swell
+
+
 ## Power-ups
 
 | Power-up | Description |
@@ -125,7 +157,7 @@ Each level awards 1–3 stars:
 
 - A power-up is awarded every fifth new level
 - Achievements also grant power-ups and hint tokens
-- Hints reveal the path for 1.5 seconds and cost one **hint token**, not a star
+- Hints are progressive: next step (free), next three steps (1 token), full path (2 tokens). The solver continues your current line, so hints work after a detour
 - Tokens: start with 3, earn one from each daily/weekly clear, every tenth new level and each achievement
 
 ### Personal Best Ghost
@@ -153,7 +185,7 @@ Each level awards 1–3 stars:
 - Reduced motion disables particles, pulses, animated trails, and confetti
 - Export and restore a save file (progress, achievements, power-ups, hint tokens, theme, weekly results, custom levels) from Settings
 - Restores are validated before anything is overwritten
-- English, Swedish, Turkish and Spanish UI (menus, HUD, results, settings, tutorial). English is the default on every device; the player's choice is stored on that device and kept until changed. Flag pickers on the title screen and in Settings
+- English, Swedish, Turkish and Spanish UI (menus, HUD, results, settings, tutorial), level affirmations and privacy page. English is the default on every device; the player's choice is stored on that device and kept until changed.
 
 ---
 
@@ -171,9 +203,12 @@ Each level awards 1–3 stars:
 ## Accessibility
 
 - Keyboard controls with visible focus states and a shortcut reference dialog
+- Pinch zoom allowed (WCAG 1.4.4), a DOM description of node coordinates by row, and a live announcement of the line's head position
+- Pair order and sync steps are numbers and shapes, not colour alone
 - ARIA application label, live node-count announcement, and an accessible progress bar
 - Pause overlay keeps the timer honest without losing the run
 - Screen-reader friendly dialogs and settings
+- Playwright runs an axe WCAG 2.1 A/AA scan on the menu, Lab, ghost race, diagnostics and privacy pages on both desktop and a 390 px mobile viewport; critical/serious findings (including text contrast) fail CI
 - Reduced-motion preference respected automatically
 - Color-independent star and progress feedback
 
@@ -186,7 +221,9 @@ Each level awards 1–3 stars:
 - Zustand stores for power-ups, achievements, themes, and settings
 - React Query for level data
 - Local-first progress with versioned migration
-- Additive mechanics generator with 300-level solvability tests
+- Additive mechanics generator with 300-level solvability tests and a Hamiltonian-path solver for uniqueness audits and hints
+- Opt-in, player-less aggregate diagnostics with a React error boundary
+- CI: unit tests, uniqueness audit, privacy drift check, bundle budget and Playwright smoke tests
 - Procedural Web Audio sound layer: each connected node plays the next note of a pentatonic scale, so the melody tracks progress
 - PWA manifest and service worker for installable, offline play (hashed assets cache-first, shell stale-while-revalidate, registered in production builds only)
 - Lightweight i18n store with Swedish and English dictionaries

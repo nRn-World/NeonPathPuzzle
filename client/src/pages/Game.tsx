@@ -23,6 +23,8 @@ import { useTheme } from "@/hooks/use-theme";
 import { useToast } from "@/hooks/use-toast";
 import { useSettingsStore } from "@/lib/settings";
 import { useHintTokenStore } from "@/lib/hintTokens";
+import { buildHint, MAX_HINT_TIER } from "@/lib/hints";
+import { track } from "@/lib/telemetry";
 import { Header } from "@/components/Header";
 import { GameCanvas, MAX_BACKTRACKS, type GameCanvasHandle } from "@/components/GameCanvas";
 import { ChapterAtmosphere } from "@/components/ChapterAtmosphere";
@@ -30,15 +32,21 @@ import { WinModal } from "@/components/WinModal";
 import { Button } from "@/components/ui/button";
 import { powerUps } from "@/lib/powerups";
 import { calculateScore, calculateStars, getParTimeMs, type StarCount } from "@/lib/scoring";
-import { getDailyLevelId, getDateKey } from "@/lib/daily";
+import { chapterAccentForLevel } from "@/lib/chapterAudio";
+import { encodeRivalRun } from "@shared/labBoards";
+import { absoluteHashUrl, rivalRoute } from "@/lib/shareLinks";
+import { setAudioChapter } from "@/lib/sounds";
+import { getDailyLevelId, getDailySpec, getDateKey } from "@/lib/daily";
+import { buildChallengeLevel, challengeScore, type ChallengeSpec } from "@shared/challenges";
 import { getWeeklyChallenge, getWeeklyResult, saveWeeklyResult, weeklyModifierKeys } from "@/lib/weekly";
-import { useI18n, upper } from "@/lib/i18n";
+import { useI18n, upper, type TranslationKey } from "@/lib/i18n";
 import { createRunClock, elapsedAt, pauseClock, resumeClock, setFrozen, startRun } from "@/lib/runClock";
 import { shareSolveClip, type ClipOutcome } from "@/lib/solveClip";
 import { scheduleProgressPush } from "@/lib/cloudSync";
 import { playCrashSound, playDeadEndSound } from "@/lib/sounds";
 import { CrashModal, DeadEndOverlay, LastAttemptConfirm } from "@/components/AttemptOverlays";
 import { ChapterIntro } from "@/components/ChapterIntro";
+import { BossIntro, hasSeenBossIntro, markBossIntroSeen } from "@/components/BossIntro";
 import { hasSeenChapterIntro, markChapterIntroSeen } from "@/lib/story";
 import { hasSeenIntro, markIntroSeen, MechanicIntro, MECHANIC_INTROS } from "@/components/MechanicIntro";
 import {
@@ -74,6 +82,7 @@ export default function Game({ mode = "level" }: GameProps) {
   // puzzle (and reset the board) under the player's line.
   const dailyKey = useMemo(() => getDateKey(), []);
   const dailyLevelId = useMemo(() => getDailyLevelId(dailyKey), [dailyKey]);
+  const dailySpec = useMemo(() => getDailySpec(dailyKey), [dailyKey]);
   const weeklyChallenge = useMemo(() => getWeeklyChallenge(), []);
 
   const parsedId = mode === "zen" ? Number(zenParams?.id) : mode === "rift" ? Number(riftParams?.id) : Number(playParams?.id);
@@ -91,8 +100,9 @@ export default function Game({ mode = "level" }: GameProps) {
   const { t } = useI18n();
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
   const showGhost = useSettingsStore(state => state.showGhost);
+  const hardcore = useSettingsStore(state => state.hardcore);
   const hintTokens = useHintTokenStore(state => state.tokens);
-  const spendToken = useHintTokenStore(state => state.spendToken);
+  const spendTokens = useHintTokenStore(state => state.spendTokens);
   const addTokens = useHintTokenStore(state => state.addTokens);
 
   const isZen = mode === "zen";
@@ -112,16 +122,42 @@ export default function Game({ mode = "level" }: GameProps) {
   const noHints = weeklyModifier === "no-hints";
   const noUndo = weeklyModifier === "no-undo";
 
+  // Daily and weekly runs use their own dedicated board, not a recycled
+  // campaign level. The worker rebuilds the same board from the same spec.
+  const challengeSpec: ChallengeSpec | null = isDaily
+    ? dailySpec
+    : isWeekly ? weeklyChallenge.spec : null;
+
   const generated = useMemo(
     () => (Number.isInteger(levelId) && levelId >= 1 && (levelId <= TOTAL_LEVELS || (isRift && isRiftLevel(levelId)))
-      ? generateLevel(levelId)
+      ? challengeSpec
+        ? buildChallengeLevel(challengeSpec, { mirrored })
+        : generateLevel(levelId)
       : null),
-    [levelId],
+    [challengeSpec, isRift, levelId, mirrored],
   );
 
   const variant = useMemo(() => {
+    if (!generated) return null;
+    if (challengeSpec && "level" in generated) {
+      const level = {
+        ...generated.level,
+        isLocked: false,
+        isCompleted: false,
+        stars: 0,
+        bestTimeMs: null,
+        bestMoves: null,
+        bestScore: null,
+        bestPath: null,
+      };
+      return {
+        level,
+        solution: generated.solution,
+        mechanics: getLevelMechanics(generated.level, generated.solution),
+      };
+    }
     const raw = levelQuery.data;
-    if (!raw || !generated) return null;
+    if (!raw) return null;
     const source = mirrored
       ? mirrorLevel(raw, generated.solution)
       : { level: raw, solution: generated.solution };
@@ -130,7 +166,7 @@ export default function Game({ mode = "level" }: GameProps) {
       solution: source.solution,
       mechanics: getLevelMechanics(source.level, source.solution),
     };
-  }, [generated, levelQuery.data, mirrored]);
+  }, [challengeSpec, generated, levelQuery.data, mirrored]);
 
   const level = variant?.level;
   const mechanics = variant?.mechanics ?? EMPTY_MECHANICS;
@@ -141,13 +177,19 @@ export default function Game({ mode = "level" }: GameProps) {
   const clockRef = useRef(createRunClock());
   const backtracksRef = useRef(0);
 
+  const [tutorialDismissed, setTutorialDismissed] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  /** Progressive hints: 0 = one step, 1 = three steps, 2 = the whole line. */
+  const [hintTier, setHintTier] = useState(0);
+  const [hintDisplayPath, setHintDisplayPath] = useState<Point[] | null>(null);
+  const [hintDurationMs, setHintDurationMs] = useState(1_500);
   const [hintUsedThisLevel, setHintUsedThisLevel] = useState(false);
   const [hintPaidWithTokens, setHintPaidWithTokens] = useState(false);
   const [hasWon, setHasWon] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
   const [mistakes, setMistakes] = useState(0);
   const [backtracks, setBacktracks] = useState(0);
+  const [deadEnds, setDeadEnds] = useState(0);
   const [canvasKey, setCanvasKey] = useState(0);
   /** False until the first reset has run: the fresh board needs no remount. */
   const hasResetOnceRef = useRef(false);
@@ -170,6 +212,18 @@ export default function Game({ mode = "level" }: GameProps) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [dailyStreak, setDailyStreak] = useState(0);
 
+  /** A no-server ghost race: the exact board, line and time live in the link. */
+  const rivalShareUrl = useMemo(() => {
+    const timeMs = finalTimeMs || elapsedMs;
+    if (!level || winPath.length < 4 || timeMs <= 0) return undefined;
+    const code = encodeRivalRun({
+      board: { gridSize: level.gridSize, start: level.start, nodes: level.nodes },
+      path: winPath,
+      timeMs,
+    });
+    return code ? absoluteHashUrl(rivalRoute(code)) : undefined;
+  }, [level, winPath, finalTimeMs, elapsedMs]);
+
   // Attempt limit: frontier campaign levels allow three tries (two restarts);
   // failing the third crashes the run back to level 1.
   const [frontier, setFrontier] = useState(false);
@@ -184,7 +238,10 @@ export default function Game({ mode = "level" }: GameProps) {
   const [bigBoardOverride, setBigBoardOverride] = useState<boolean | null>(null);
   const [introLevel, setIntroLevel] = useState<number | null>(null);
   const [chapterIntro, setChapterIntro] = useState<number | null>(null);
-  const limited = mode === "level" && frontier;
+  const [bossIntro, setBossIntro] = useState<number | null>(null);
+  // Three-attempt "system crash" is now an opt-in difficulty mode, not the
+  // default. Normal play never loses unlocked levels after a bad run.
+  const limited = mode === "level" && frontier && hardcore;
   const attemptNumber = attemptStarted ? attemptsUsed : Math.min(MAX_ATTEMPTS, attemptsUsed + 1);
 
   const parTimeMs = level
@@ -194,6 +251,9 @@ export default function Game({ mode = "level" }: GameProps) {
       * (timeAttack ? 0.75 : 1),
     )
     : 0;
+  // Challenge pace uses the board's own solver-adjusted par, not the campaign
+  // par (which includes power-up and time-attack multipliers).
+  const challengeParMs = challengeSpec && generated && "parMs" in generated ? generated.parMs : null;
 
   const freezeEffect = activeEffects.find(effect => effect.type === "time_freeze");
   const freezeEndAt = freezeEffect?.endTime ?? null;
@@ -224,13 +284,20 @@ export default function Game({ mode = "level" }: GameProps) {
   const resetTransientState = useCallback(() => {
     wonRef.current = false;
     clockRef.current = createRunClock();
+    // Close the result card synchronously when the level changes. Leaving it
+    // to the hasWon effect makes it linger over the next board for a frame.
+    setShowWinModal(false);
     setShowHint(false);
+    setHintTier(0);
+    setHintDisplayPath(null);
+    setHintDurationMs(1_500);
     setHintUsedThisLevel(false);
     setHintPaidWithTokens(false);
     setHasWon(false);
     setMistakes(0);
     backtracksRef.current = 0;
     setBacktracks(0);
+    setDeadEnds(0);
     setElapsedMs(0);
     setFinalTimeMs(0);
     setScore(0);
@@ -247,6 +314,7 @@ export default function Game({ mode = "level" }: GameProps) {
     attemptStartedRef.current = false;
     setAttemptStarted(false);
     setStuck(false);
+    stuckRef.current = false;
     setConfirmCrash(false);
     // A brand-new canvas already opens on a clean path, so remounting it here
     // would only throw that board away and make the level fade in twice.
@@ -264,6 +332,7 @@ export default function Game({ mode = "level" }: GameProps) {
     const crashed = crashRun(userId);
     const lost = Math.max(0, clearedBefore - crashed.runCompleted.length);
     playCrashSound();
+    track("crash", { levelId, mode });
     frontierRef.current = true;
     setFrontier(true);
     setAttemptsUsed(0);
@@ -274,6 +343,11 @@ export default function Game({ mode = "level" }: GameProps) {
     void queryClient.invalidateQueries({ queryKey: [api.progress.get.path] });
     void queryClient.invalidateQueries({ queryKey: [api.levels.list.path] });
   }, [levelId, queryClient, userId]);
+
+  // Each chapter gets its own key, scale and resolve chord.
+  useEffect(() => {
+    setAudioChapter(mode === "level" ? levelId : 0);
+  }, [levelId, mode]);
 
   useEffect(() => {
     resetTransientState();
@@ -294,18 +368,21 @@ export default function Game({ mode = "level" }: GameProps) {
     );
     setBestScore(isDaily || isWeekly ? null : record?.bestScore ?? null);
 
-    const isFrontier = mode === "level" && isFrontierLevel(progress, levelId);
+    // Attempts and the crash only exist in the opt-in hardcore mode.
+    const isFrontier = mode === "level" && hardcore && isFrontierLevel(progress, levelId);
     const used = isFrontier ? getAttemptsUsed(progress, levelId) : 0;
     frontierRef.current = isFrontier;
     setFrontier(isFrontier);
     setAttemptsUsed(used);
-    // Leaving mid-attempt does not refund it: an abandoned third try is a crash.
+    // Hardcore only: an abandoned last attempt ends the run. Normal play is
+    // never punished for closing the app or switching levels.
     if (isFrontier && used >= MAX_ATTEMPTS) {
       crashNow();
       return;
     }
 
     setIntroLevel((mode === "level" || isRift) && MECHANIC_INTROS[levelId] && !hasSeenIntro(levelId) ? levelId : null);
+    setBossIntro(mode === "level" && levelId % 25 === 0 && !hasSeenBossIntro(levelId) ? levelId : null);
     // Level 1 starts straight away: a new player should be playing, not reading.
     const openingChapter = mode === "level" && levelId > 1 ? chapters.find(item => item.from === levelId) : undefined;
     setChapterIntro(openingChapter && !hasSeenChapterIntro(openingChapter.id) ? openingChapter.id : null);
@@ -317,6 +394,7 @@ export default function Game({ mode = "level" }: GameProps) {
   }, [
     crashNow,
     dailyKey,
+    hardcore,
     isDaily,
     isRift,
     isWeekly,
@@ -394,9 +472,9 @@ export default function Game({ mode = "level" }: GameProps) {
 
   useEffect(() => {
     if (!showHint || pathRevealActive) return;
-    const timeout = window.setTimeout(() => setShowHint(false), 1_500);
+    const timeout = window.setTimeout(() => setShowHint(false), hintDurationMs);
     return () => window.clearTimeout(timeout);
-  }, [pathRevealActive, showHint]);
+  }, [hintDurationMs, pathRevealActive, showHint]);
 
   useEffect(() => {
     const onVisibilityChange = () => {
@@ -439,15 +517,16 @@ export default function Game({ mode = "level" }: GameProps) {
     if (pathLength > 1 && clockRef.current.startedAt === null) {
       clockRef.current = startRun(clockRef.current, Date.now(), isTimeFrozen());
       setTimerRunning(true);
+      track("first_move", { levelId, mode });
     }
     // The first move of an attempt is what spends it, so opening a level and
-    // looking at it is free.
-    if (pathLength > 1 && frontierRef.current && !attemptStartedRef.current && userId) {
+    // looking at it is free. Only hardcore runs consume attempts at all.
+    if (pathLength > 1 && hardcore && frontierRef.current && !attemptStartedRef.current && userId) {
       attemptStartedRef.current = true;
       setAttemptStarted(true);
       setAttemptsUsed(startAttempt(userId, levelId));
     }
-  }, [isTimeFrozen, levelId, userId]);
+  }, [hardcore, isTimeFrozen, levelId, mode, userId]);
 
   const handleBacktrack = useCallback((): boolean => {
     if (hasWon || backtracksRef.current >= MAX_BACKTRACKS) return false;
@@ -459,44 +538,81 @@ export default function Game({ mode = "level" }: GameProps) {
       return true;
     }
     setMistakes(current => current + 1);
+    track("backtrack", { levelId, mode });
     return true;
-  }, [hasActiveEffect, hasWon]);
+  }, [hasActiveEffect, hasWon, levelId, mode]);
 
   const canOfferHint = !noHints;
 
   const handleHint = useCallback(() => {
-    if (!canOfferHint || showHint || hintUsedThisLevel || !hintPath?.length) return;
+    if (!canOfferHint || showHint || hintTier >= MAX_HINT_TIER || !level || !hintPath?.length) return;
+    const currentPath = canvasRef.current?.getPath() ?? [level.start];
+    const hint = buildHint(level, mechanics, currentPath, hintPath, hintTier);
+    if (!hint) return;
 
-    if (!isZen) {
-      if (hintTokens <= 0) {
+    if (!isZen && hint.tokenCost > 0) {
+      if (hintTokens < hint.tokenCost) {
         toast({
           title: t("hintTokenEmpty"),
           description: t("hintTokenEmptyDesc"),
         });
         return;
       }
-      if (!spendToken()) return;
+      if (!spendTokens(hint.tokenCost)) return;
+      setHintPaidWithTokens(true);
+    } else if (!isZen) {
+      // The first one-step nudge is free and does not cost a star.
       setHintPaidWithTokens(true);
     }
 
-    setShowHint(true);
+    setHintDisplayPath(hint.path);
+    setHintDurationMs(hint.durationMs);
+    setHintTier(hintTier + 1);
     setHintUsedThisLevel(true);
+    setShowHint(true);
+    const tierKeys: TranslationKey[] = ["hintTier1", "hintTier2", "hintTier3"];
+    toast({ title: t(tierKeys[Math.min(2, hintTier)]) });
+    track("hint", { levelId, mode });
   }, [
     canOfferHint,
     hintPath,
+    hintTier,
     hintTokens,
-    hintUsedThisLevel,
     isZen,
+    level,
+    levelId,
+    mechanics,
+    mode,
     showHint,
-    spendToken,
+    spendTokens,
     t,
     toast,
   ]);
+
+  // One start per board and one quit when the player leaves it: the pair
+  // shows exactly where a session ends.
+  useEffect(() => {
+    if (!userId || !Number.isInteger(levelId)) return;
+    track("level_start", { levelId, mode });
+    return () => track("quit", { levelId, mode });
+  }, [levelId, mode, userId]);
+
+  const stuckRef = useRef(false);
+  const handleStuckChange = useCallback((isStuck: boolean) => {
+    setStuck(isStuck);
+    if (isStuck && !stuckRef.current) {
+      stuckRef.current = true;
+      setDeadEnds(count => count + 1);
+      track("dead_end", { levelId, mode });
+    }
+    if (!isStuck) stuckRef.current = false;
+  }, [levelId, mode]);
 
   const handleWin = useCallback((moves: number, completedPath: Point[]) => {
     if (wonRef.current || hasWon || !level || !userId) return;
     wonRef.current = true;
     setHasWon(true);
+    track("win", { levelId, mode });
     setShowHint(false);
     setStuck(false);
     setWinPath(completedPath);
@@ -522,6 +638,7 @@ export default function Game({ mode = "level" }: GameProps) {
       ? calculateStars({
         mistakes,
         hintsUsed: hintUsedThisLevel && !hintPaidWithTokens,
+        deadEnds,
         timeMs: runTime,
         parTimeMs,
       })
@@ -538,7 +655,7 @@ export default function Game({ mode = "level" }: GameProps) {
     if (isScored) {
       if (hintUsedThisLevel && !hintPaidWithTokens) reasons.push(t("usedHint"));
       if (mistakes > 0) reasons.push(t(mistakes === 1 ? "backtrack" : "backtracks", { count: mistakes }));
-      if (runTime > parTimeMs) reasons.push(t("overPar"));
+      if (deadEnds > 0) reasons.push(t("deadEndStar", { count: deadEnds }));
       if (reasons.length === 0 && !hintUsedThisLevel) reasons.push(t("flawless"));
     }
     setFlawlessRun(isScored && reasons.length === 1 && reasons[0] === t("flawless"));
@@ -815,9 +932,28 @@ export default function Game({ mode = "level" }: GameProps) {
     );
   }
 
+  // A DOM description of the board for screen readers: the canvas alone only
+  // announced "N of M nodes", with no way to know where anything was.
+  const boardDescription = level
+    ? t("boardDescription", {
+      size: level.gridSize,
+      startX: level.start.x + 1,
+      startY: level.start.y + 1,
+      rows: Array.from({ length: level.gridSize }, (_, y) => {
+        const xs = level.nodes.filter(node => node.y === y).map(node => node.x + 1).sort((a, b) => a - b);
+        return xs.length ? `${y + 1}: ${xs.join(", ")}` : "";
+      }).filter(Boolean).join("; "),
+    })
+    : undefined;
+  const firstRun = userId ? getProgress(userId).completed.length === 0 : false;
+  const tutorialTipKeys: TranslationKey[] = ["tutorialTip1", "tutorialTip2", "tutorialTip3"];
+  const tutorialText = tutorialTipKeys[Math.min(2, Math.max(0, levelId - 1))];
+  const tutorialTip = mode === "level" && levelId >= 1 && levelId <= 3 && firstRun && !tutorialDismissed;
+
   const potentialStars = calculateStars({
     mistakes,
     hintsUsed: hintUsedThisLevel && !hintPaidWithTokens,
+    deadEnds,
     timeMs: elapsedMs,
     parTimeMs,
   });
@@ -864,7 +1000,7 @@ export default function Game({ mode = "level" }: GameProps) {
         hintTokens={isZen ? -1 : hintTokens}
         hintDisabled={!canOfferHint}
         onHint={handleHint}
-        hintsUsed={hintUsedThisLevel}
+        hintExhausted={hintTier >= MAX_HINT_TIER}
         isHintLoading={false}
         onUndo={() => canvasRef.current?.undo()}
         canUndo={canUndo && !hasWon && !noUndo && backtracks < MAX_BACKTRACKS}
@@ -886,6 +1022,19 @@ export default function Game({ mode = "level" }: GameProps) {
           style={{ width: `${(connectedCount / level.nodes.length) * 100}%` }}
         />
       </div>
+
+      {tutorialTip && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground">
+          <span>{t(tutorialText)}</span>
+          <button
+            type="button"
+            onClick={() => setTutorialDismissed(true)}
+            className="font-orbitron uppercase tracking-wider text-primary hover:underline"
+          >
+            {t("tutorialDismiss")}
+          </button>
+        </div>
+      )}
 
       {(mechanics.oneWays.length > 0 || mechanics.pairs.length > 0 || mechanics.portals.length > 0
         || mechanics.syncNodes.length > 0 || mechanics.phaseNodes.length > 0 || mechanics.flipArrows.length > 0
@@ -928,15 +1077,19 @@ export default function Game({ mode = "level" }: GameProps) {
               disableUndo={noUndo || backtracks >= MAX_BACKTRACKS}
               gridLabel={t("gridLabel", { size: level.gridSize })}
               statusText={t("nodesConnectedStatus", { connected: connectedCount, total: level.nodes.length })}
+              boardDescription={boardDescription}
               onComplete={handleWin}
               showHint={showHint}
-              hintPath={hintPath}
+              hintPath={hintDisplayPath ?? hintPath}
               onBacktrack={handleBacktrack}
               onPathChange={handlePathChange}
-              onStuckChange={setStuck}
+              onStuckChange={handleStuckChange}
               zoom={bigBoard ? 1.8 : 1}
               reducedMotion={reducedMotion}
-              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null || chapterIntro !== null}
+              paused={hasWon || pauseReason !== null || confirmCrash || crash !== null || introLevel !== null || chapterIntro !== null || bossIntro !== null}
+              celebrate={hasWon && !showWinModal}
+              celebrationColor={chapterAccentForLevel(levelId)}
+              boss={mechanics.isBoss}
             />
           </div>
         </div>
@@ -976,6 +1129,14 @@ export default function Game({ mode = "level" }: GameProps) {
           onUndo={() => canvasRef.current?.undo()}
           onRestart={() => (limited && attemptNumber >= MAX_ATTEMPTS ? crashNow() : resetTransientState())}
         />
+        <BossIntro
+          levelId={bossIntro}
+          combo={mechanics.bossCombo}
+          onClose={() => {
+            if (bossIntro !== null) markBossIntroSeen(bossIntro);
+            setBossIntro(null);
+          }}
+        />
         <ChapterIntro
           chapterId={chapterIntro}
           onClose={() => {
@@ -984,7 +1145,7 @@ export default function Game({ mode = "level" }: GameProps) {
           }}
         />
         <MechanicIntro
-          levelId={chapterIntro === null ? introLevel : null}
+          levelId={chapterIntro === null && bossIntro === null ? introLevel : null}
           onClose={() => {
             if (introLevel !== null) markIntroSeen(introLevel);
             setIntroLevel(null);
@@ -1016,9 +1177,11 @@ export default function Game({ mode = "level" }: GameProps) {
         starReasons={starReasons}
         flawless={flawlessRun}
         parTimeMs={parTimeMs}
+        challengePoints={challengeParMs ? challengeScore(finalTimeMs || elapsedMs, challengeParMs) : undefined}
         onNext={handleNext}
         onReplay={resetTransientState}
         onSaveClip={handleSaveClip}
+        shareUrl={rivalShareUrl}
       />
     </div>
   );

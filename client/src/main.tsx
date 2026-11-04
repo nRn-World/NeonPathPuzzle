@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
 import App from "./App";
 import { initPlaygama } from "./lib/playgama";
+import { platform } from "./lib/platform";
 import "@fontsource/exo-2/latin-400.css";
 import "@fontsource/exo-2/latin-500.css";
 import "@fontsource/exo-2/latin-600.css";
@@ -21,8 +22,8 @@ if (
   && "serviceWorker" in navigator
   && /^https?:$/.test(window.location.protocol)
   && !Capacitor.isNativePlatform()
-  // CrazyGames serves each upload fresh; its build ships without sw.js.
-  && !window.CrazyGames
+  // Portal builds serve each upload fresh; caching an old shell breaks them.
+  && platform() === "web"
 ) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {

@@ -1,29 +1,39 @@
 # Privacy Policy for Neon Path Puzzle
 
-Last updated: 22 October 2026
+Last updated: 4 November 2026
 
-Neon Path Puzzle, published by nRn World, does not collect personal data by default and never sells or shares it. The only data that can leave the device is the optional online ranking described below.
+Neon Path Puzzle is playable offline and does not collect personal data by default. Nothing leaves your device until you explicitly turn on one of the optional features below.
 
-## Data stored locally
+## Stored on your device
 
-The game stores level progress, settings, achievements, and an anonymous local player identifier on the user's device. This information never leaves the device. Uninstalling the app or clearing its storage may delete it.
+Level progress, records, settings, achievements, power-ups, themes, your anonymous local player id and (if you enable diagnostics) a capped local event log. Clearing app or browser storage removes them. Use Settings → Export save to keep a copy.
 
-## Optional online ranking
+## Circuit Lab and ghost links
 
-Online rankings and duels are off until the player taps "Join online play". After that, the game sends to the ranking server (a Cloudflare Worker operated by nRn World): a generated public name (players cannot type their own), a random player identifier generated on the device, the player's total star count, the completion time and line drawn for the daily and weekly challenges and for online duels (the line is used only to check that the result is real), and the duel rating and win/loss counts. Duel opponents see only the generated name and rating. No real name, e-mail address, location, device identifier, or advertising identifier is sent. A player can stop sharing at any time by choosing "Stop sharing and go offline", and can ask for their ranking entries to be deleted by e-mail.
+Boards you draw in the Circuit Lab and ghost challenges are encoded entirely inside the link's URL fragment: grid, start, nodes, drawn line and time. A URL fragment is never sent to a server, so these puzzles work offline and need no account. Small local flags remember which daily reveal, boss briefing and install prompt you have already seen; they contain no personal data. The diagnostics page lets you read, export or erase the local event log.
 
-## Permissions and third-party services
+## Optional online rankings and duels
 
-The app may use the device vibration feature to provide gameplay feedback. It does not use advertising, analytics, user accounts, in-app purchases, or third-party tracking services.
+Off until you tap "Join online play". A Cloudflare Worker operated by nRn World then receives a generated public name, a random player id created on your device, your star total, the times and drawn lines of daily, weekly and duel runs (the line only verifies the result), and duel rating and win/loss counts. Opponents see only the generated name and rating. No real name, email, location, device id or advertising id is sent. Stop anytime with "Stop sharing and go offline".
 
-## Children's privacy
+## Optional Google sign-in
 
-Because the app does not collect personal data, it does not knowingly collect personal data from children.
+Signing in lets your ranking follow you between devices. Google confirms only that the sign-in is genuine and provides a stable account number, which the server turns into a one-way hashed player id. Your name, email and profile picture are not read or stored, and the account is never used for advertising.
 
-## Changes
+## Optional diagnostics
 
-If the app's data practices change, this policy and the Google Play Data safety declaration will be updated before a new version is released.
+Off until you enable "Help improve the game" in Settings. Only aggregate counters (event name, level number and date) are recorded, without a player or session id. They stay on your device and are exported only if you ask for the diagnostics file, or sent to the same worker as nameless counters when online play is also enabled. They are never used for advertising.
+
+## Portal builds, ads and permissions
+
+The plain web/PWA/Android build loads no third-party script. Builds made for Playgama or CrazyGames load that portal's SDK, and Playgama builds may show an interstitial after a level clear — only if you consent in Settings, at most once every five clears and with a three-minute gap. The game may use vibration for optional haptic feedback. There are no purchases and no third-party tracking in the standard build.
+
+## Children's privacy and deletion
+
+The game does not knowingly collect personal data from children. You can stop sharing at any time and ask for your ranking entries to be deleted by email.
 
 ## Contact
 
-Questions about this policy can be sent to bynrnworld@gmail.com.
+Questions may be sent to bynrnworld@gmail.com.
+
+Translations of this policy are shown in the game's Privacy page in English, Swedish, Turkish and Spanish.

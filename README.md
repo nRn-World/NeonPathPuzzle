@@ -12,7 +12,7 @@
 
 <img src="docs/hero.gif" alt="The board draws its own solution: one continuous line through every node" width="460">
 
-🔥 **300 Unique Levels** | 💥 **3 Attempts or Crash** | ⭐ **Chapter Map & Stars** | 🗓️ **Daily Challenge** | 🎨 **10 Neon Themes (4 seasonal)** | 📱 **Mobile Ready**
+🔥 **300 Unique Levels** | 💥 **Forgiving by default · opt-in Hardcore** | ⭐ **Chapter Map & Stars** | 🗓️ **Single-solution daily boards** | 🎨 **10 Neon Themes (4 seasonal)** | 📱 **Mobile Ready**
 
 </div>
 
@@ -52,24 +52,31 @@
 - 📈 **Profile** - rank progress, 12-week activity calendar, chapter progress and fastest clears
 - 🎉 **Seasonal events** - spring, summer, Halloween and winter events that earn a permanent theme
 - 🏆 **Online rankings** (optional) - daily, weekly and star boards, results verified by replaying your line
-- ♿ **Accessibility** - colour-blind palette, large text, gamepad support, screen-reader progress, reduced motion
+- ♿ **Accessibility** - colour-blind palette, large text, pinch zoom, gamepad support, a screen-readable board description, reduced motion
 - 📳 **Haptics** - distinct patterns for steps, milestones, wins and crashes
 - 🎯 **300 Unique Levels** - Progressive difficulty across 12 chapters, with walls, one-way nodes, ordered color pairs, portals, sync nodes, blackout boards and boss levels — every one proven solvable by the test suite
-- 💥 **Three Attempts** - Two restarts per new level; fail the third and the system crashes back to level 1 (stars and records are kept)
+- 💥 **Forgiving progression** - Unlimited attempts by default, and closing the app never costs you levels. Turn on **Hardcore** in Settings for three attempts and the classic system crash (stars and records are always kept)
 - 🎵 **Procedural Sound Effects** - Layered step notes that rise with your progress, a win chime, dead-end and crash effects, all synthesised live (no audio files)
-- ⭐ **Stars, best times & best scores** - Chase three-star clears without losing lives
+- ⭐ **Stars, best times & best scores** - Three stars for a clean line: no hints, no backtracks, no dead ends. Time affects score and rankings, not stars
 - 👻 **Personal best ghost** - Race a faint trace of your fastest run
-- 🗓️ **Daily & weekly challenges** - One seeded puzzle per day plus a rotating weekly modifier and shareable cards
+- 🗓️ **Daily & weekly challenges** - Dedicated, provably single-solution boards that never repeat within 72 days/weeks, a rotating weekly modifier, par-normalised pace scores and shareable cards
 - 🧘 **Zen practice** - Replay any unlocked level without a timer or records
-- 💡 **Hint tokens** - Spend a token instead of a star; earn more from challenges and achievements
+- 💡 **Progressive hints** - A free one-step nudge, then three steps, then the full line. Each hint is computed from your current line by a real solver; deeper hints cost tokens
 - 🎨 **5 Unlockable Neon Themes** - Cyberpunk, Retro Wave, Cosmic, Matrix, Neon Sunset
 - ⚡ **4 Strategic Power-ups** - Time Freeze, Path Reveal, Undo Shield, Score Boost
 - 🏆 **Achievement System** - Unlock 10+ achievements as you progress
 - 💾 **Level Code System** - Jump to any level with permanent 4-digit codes
 - ☁️ **Save backup** - Export and restore progress, achievements, power-ups, tokens and themes as JSON
 - ⚙️ **Settings & Accessibility** - Sound, haptics, reduced motion, ghost toggle, keyboard shortcuts, auto-pause
-- 🌍 **English, Svenska, Türkçe and Español** - English by default; your choice is remembered on each device (language picker with flags on the title screen and in Settings)
-- 📲 **Installable & offline** - PWA manifest plus a service worker for offline play
+- 🌍 **English, Svenska, Türkçe and Español** - English by default; UI, level messages and the privacy page are translated. Your choice is remembered on each device
+- 🧪 **Circuit Lab** - Draw your own board, get live proof of *exactly one solution* plus a difficulty score, play it and share a short link. Works offline, no account
+- 👻 **Rival ghost** - Copy a challenge link with your board, line and time; a friend races a real-time ghost with a live pace delta, a verdict and a scannable QR code
+- 🌅 **Daily ritual** - Full-screen board reveal, 30-day calendar, countdown and streak shields that forgive one missed day
+- 👑 **Boss set pieces** - Every 25th level combines rule families early, opens with its own briefing and wears a chapter-coloured frame
+- 🎬 **Cinematic power surge** - Slow camera push, reverse light pulse, chapter shockwave, haptic thud and resolve chord before the result card
+- 🎼 **12 chapter soundtracks** - Each chapter has its own root, scale, chord and phrase length
+- 🔍 **Diagnostics & a11y** - See/export/erase your opt-in local event log; CI runs axe WCAG scans and visual-regression screenshots
+- 📲 **Installable & offline** - PWA manifest plus a service worker, and an "Add to home screen" prompt
 - 📱 **Fully Responsive** - Play on desktop, tablet, or mobile
 
 ---
@@ -85,7 +92,7 @@
 1. **🎯 Objective**: Connect all nodes with a single continuous line
 2. **📍 Rules**: Visit each node exactly once, path cannot cross itself
 3. **↩️ Undo**: Backtracks are free; they only cost a star, never a life
-4. **⭐ Stars**: Finish without hints, without backtracks, and under par time
+4. **⭐ Stars**: Finish without hints, without backtracks and without dead ends — take all the time you need
 5. **🔓 Progression**: Complete levels sequentially or use codes to jump ahead
 
 ---

@@ -42,7 +42,8 @@ interface HeaderProps {
   hintTokens?: number;
   hintDisabled?: boolean;
   onHint: () => void;
-  hintsUsed: boolean;
+  /** True once all progressive hint tiers have been used this level. */
+  hintExhausted: boolean;
   isHintLoading: boolean;
   onUndo: () => void;
   canUndo: boolean;
@@ -73,7 +74,7 @@ export function Header({
   hintTokens = 0,
   hintDisabled = false,
   onHint,
-  hintsUsed,
+  hintExhausted,
   isHintLoading,
   onUndo,
   canUndo,
@@ -88,7 +89,7 @@ export function Header({
   const { t } = useI18n();
   const overPar = parTimeMs !== undefined && timeMs > parTimeMs;
   const usesTokens = hintTokens >= 0;
-  const hintLocked = hintDisabled || hintsUsed || isHintLoading || (usesTokens && hintTokens <= 0);
+  const hintLocked = hintDisabled || hintExhausted || isHintLoading || (usesTokens && hintTokens <= 0);
 
   return (
     <header className="sticky top-0 z-10 flex min-h-14 w-full flex-shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-background/80 px-2 py-2 backdrop-blur-md md:min-h-16 md:px-6 md:py-3">

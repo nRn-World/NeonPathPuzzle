@@ -25,3 +25,13 @@ CREATE TABLE IF NOT EXISTS saves (
   data TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );
+
+-- Opt-in aggregate diagnostics. Only counters (day, event name, level id) land
+-- here; there is no player id, session id or free text.
+CREATE TABLE IF NOT EXISTS telemetry (
+  day TEXT NOT NULL,
+  event TEXT NOT NULL,
+  level_id INTEGER NOT NULL DEFAULT 0,
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, event, level_id)
+);

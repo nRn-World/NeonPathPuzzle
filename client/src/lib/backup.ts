@@ -47,16 +47,36 @@ function getStorage(): Storage | null {
   }
 }
 
-export function createBackup(userId: string): BackupFile {
+/** Reads every persisted Zustand/feature store, for backups and cloud sync. */
+export function readStoreSnapshot(): Record<string, string> {
   const storage = getStorage();
   const stores: Record<string, string> = {};
-
   if (storage) {
     for (const key of BACKUP_STORE_KEYS) {
       const value = storage.getItem(key);
       if (value !== null) stores[key] = value;
     }
   }
+  return stores;
+}
+
+/** Writes a validated store snapshot without touching level progress. */
+export function applyStoreSnapshot(stores: Record<string, string>): void {
+  const storage = getStorage();
+  if (!storage) return;
+  for (const key of BACKUP_STORE_KEYS) {
+    const value = stores[key];
+    if (!isRestorableStoreValue(value)) continue;
+    try {
+      storage.setItem(key, value);
+    } catch {
+      // A blocked or full storage must not abort the sync.
+    }
+  }
+}
+
+export function createBackup(userId: string): BackupFile {
+  const stores = readStoreSnapshot();
 
   return {
     app: BACKUP_APP,

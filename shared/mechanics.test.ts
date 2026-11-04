@@ -161,7 +161,8 @@ test("expansion levels add sync nodes and blackout", () => {
   const dark = getLevelMechanics(generateLevel(280), generateLevel(280).solution);
   assert.equal(dark.blackout, true);
   assert.ok(dark.syncNodes.length >= 3);
-  assert.deepEqual(getLevelMechanics(generateLevel(150), generateLevel(150).solution).syncNodes, []);
+  // 150 is a boss set piece and intentionally borrows sync nodes; 151 is not.
+  assert.deepEqual(getLevelMechanics(generateLevel(151), generateLevel(151).solution).syncNodes, []);
 });
 
 test("a sync node rejects arriving on the wrong step", () => {
@@ -225,4 +226,21 @@ test("a phase node rejects the wrong parity and a flip arrow reverses with it", 
   assert.ok(createMoveRules(level, { ...EMPTY_MECHANICS, flipArrows: [flip] }).step(head, next), "the marked way is open");
   const reversed = createMoveRules(level, { ...EMPTY_MECHANICS, flipArrows: [{ ...flip, parity: (1 - flip.parity) as 0 | 1 }] });
   assert.equal(reversed.step(head, next), null, "the marked way closes on the other parity");
+});
+
+test("boss levels are real set pieces with their own rule combinations", () => {
+  assert.deepEqual(getLevelMechanics(generateLevel(1), generateLevel(1).solution).bossCombo, []);
+  assert.deepEqual(getLevelMechanics(generateLevel(25), generateLevel(25).solution).bossCombo, ["walls", "oneWay"]);
+  assert.deepEqual(
+    getLevelMechanics(generateLevel(50), generateLevel(50).solution).bossCombo,
+    ["walls", "oneWay", "pairs"],
+  );
+  assert.deepEqual(
+    getLevelMechanics(generateLevel(75), generateLevel(75).solution).bossCombo,
+    ["walls", "oneWay", "pairs", "portals"],
+  );
+  const late = getLevelMechanics(generateLevel(150), generateLevel(150).solution);
+  assert.equal(late.isBoss, true);
+  assert.deepEqual(late.bossCombo, ["walls", "oneWay", "pairs", "portals", "sync", "phase"]);
+  assert.ok(late.oneWays.length > 0 && late.pairs.length > 0 && late.syncNodes.length > 0 && late.phaseNodes.length > 0);
 });

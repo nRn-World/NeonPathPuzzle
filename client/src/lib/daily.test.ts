@@ -78,3 +78,22 @@ test("replaying the same day keeps the best result and does not double the strea
   assert.equal(state.results["2026-10-19"].timeMs, 35_000);
   assert.equal(state.results["2026-10-19"].stars, 2);
 });
+
+test("a streak shield is earned every seventh day and bridges one missed day", () => {
+  let state = emptyDailyState();
+  for (let day = 1; day <= 7; day++) {
+    state = updateDailyState(state, `2026-11-${String(day).padStart(2, "0")}`, { levelId: day, timeMs: 20_000, stars: 3 });
+  }
+  assert.equal(state.streak, 7);
+  assert.equal(state.shields, 1);
+
+  // Skip the 8th, play the 9th: the shield keeps the run alive.
+  state = updateDailyState(state, "2026-11-09", { levelId: 9, timeMs: 20_000, stars: 3 });
+  assert.equal(state.streak, 8);
+  assert.equal(state.shields, 0);
+
+  // No shield left: another missed day resets the streak.
+  state = updateDailyState(state, "2026-11-11", { levelId: 11, timeMs: 20_000, stars: 3 });
+  assert.equal(state.streak, 1);
+  assert.equal(state.shields, 0);
+});
