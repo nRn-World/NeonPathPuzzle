@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { DatabaseBackup, Download,  Upload } from "lucide-react";
+import { DatabaseBackup, Download, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GearIcon } from "@/components/icons/GameIcons";
 import { LanguageButtons } from "@/components/LanguageSwitch";
@@ -25,6 +25,8 @@ import { useHintTokenStore } from "@/lib/hintTokens";
 import { GoogleAccount } from "@/components/RankingPanel";
 import { getPlayer } from "@/lib/leaderboard";
 import { googleSignInEnabled } from "@/lib/googleSignIn";
+import { telemetryToJson, flushTelemetry } from "@/lib/telemetry";
+import { cloudSyncReady, syncProgress } from "@/lib/cloudSync";
 
 export function SettingsDialog({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
@@ -49,6 +51,12 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
     setShowGhost,
     setColorBlind,
     setLargeText,
+    telemetryEnabled,
+    hardcore,
+    adsEnabled,
+    setTelemetryEnabled,
+    setHardcore,
+    setAdsEnabled,
   } = useSettingsStore();
 
   const handleExport = () => {
@@ -63,6 +71,25 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 2000);
     toast({ title: t("saveExported"), description: t("saveExportedDesc") });
+  };
+
+  const handleExportDiagnostics = () => {
+    const blob = new Blob([telemetryToJson()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `neon-path-diagnostics-${getDateKey()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
+  const handleSyncNow = () => {
+    void syncProgress(userId).then(() => {
+      void flushTelemetry(true);
+      toast({ title: t("syncNowDone") });
+    });
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +203,24 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             checked={largeText}
             onChange={setLargeText}
           />
+          <SettingRow
+            label={t("hardcore")}
+            description={t("hardcoreDesc")}
+            checked={hardcore}
+            onChange={setHardcore}
+          />
+          <SettingRow
+            label={t("telemetry")}
+            description={t("telemetryDesc")}
+            checked={telemetryEnabled}
+            onChange={setTelemetryEnabled}
+          />
+          <SettingRow
+            label={t("adsEnabled")}
+            description={t("adsEnabledDesc")}
+            checked={adsEnabled}
+            onChange={setAdsEnabled}
+          />
 
           <div className="flex items-center justify-between gap-4 rounded-lg border border-secondary/25 bg-secondary/5 p-3">
             <div className="space-y-1">
@@ -198,6 +243,34 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
               <GoogleAccount player={player} onChange={setPlayer} />
             </div>
           )}
+
+          <div className="space-y-2 rounded-lg border border-white/10 p-3">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">{t("syncNow")}</Label>
+              <p className="text-xs text-muted-foreground">{t("syncNowDesc")}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!cloudSyncReady()}
+              onClick={handleSyncNow}
+              className="border-white/15"
+            >
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              {t("syncNow")}
+            </Button>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-white/10 p-3">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">{t("telemetryExport")}</Label>
+              <p className="text-xs text-muted-foreground">{t("telemetryDesc")}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExportDiagnostics} className="border-white/15">
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {t("telemetryExport")}
+            </Button>
+          </div>
 
           <div className="space-y-3 rounded-lg border border-white/10 p-3">
             <div className="space-y-1">

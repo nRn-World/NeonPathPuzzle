@@ -1,8 +1,12 @@
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
+import { policyDocs } from "@/lib/privacyPolicy";
+import { useI18n } from "@/lib/i18n";
 
 export default function Privacy() {
   const [, setLocation] = useLocation();
+  const { language, t } = useI18n();
+  const doc = policyDocs[language];
 
   return (
     <main className="safe-scroll h-full overflow-y-auto bg-background px-5 py-8 text-foreground">
@@ -12,47 +16,27 @@ export default function Privacy() {
           onClick={() => setLocation("/")}
           className="mb-8 inline-flex min-h-11 items-center gap-2 text-primary transition-colors hover:text-white"
         >
-          <ArrowLeft size={20} /> Back
+          <ArrowLeft size={20} /> {t("back")}
         </button>
 
         <div className="mb-6 flex items-center gap-3">
           <ShieldCheck className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-primary md:text-4xl">PRIVACY POLICY</h1>
+          <h1 className="text-2xl font-bold text-primary md:text-4xl">{doc.title}</h1>
         </div>
 
         <div className="space-y-5 font-exo leading-relaxed text-muted-foreground">
-          <p className="text-sm">Last updated: 24 October 2026</p>
-          <p>
-            Neon Path Puzzle does not collect personal data by default and never sells or shares it. The only data that can leave your device is the optional online ranking described below.
-          </p>
+          <p className="text-sm">{doc.updated}</p>
+          <p>{doc.intro}</p>
+          {doc.sections.map(section => (
+            <div key={section.heading}>
+              <h2 className="mb-2 text-lg font-bold text-foreground">{section.heading}</h2>
+              <p>{section.body}</p>
+            </div>
+          ))}
           <div>
-            <h2 className="mb-2 text-lg font-bold text-foreground">Data stored on your device</h2>
+            <h2 className="mb-2 text-lg font-bold text-foreground">{t("contact")}</h2>
             <p>
-              Level progress, settings, achievements, and your anonymous local player identifier are stored only on your device. Removing the app or clearing its storage may delete this data.
-            </p>
-          </div>
-          <div>
-            <h2 className="mb-2 text-lg font-bold text-foreground">Optional online ranking</h2>
-            <p>
-              Online rankings and duels stay off until you tap "Join online play". After that the game sends a generated public name (you cannot type your own), a random player identifier created on your device, your total star count, the time and line of your daily, weekly and duel runs (the line is only used to check the result is real), and your duel rating and win/loss counts. Opponents see only your generated name and rating. No real name, e-mail address, location, device identifier or advertising identifier is sent. You can stop at any time with "Stop sharing and go offline", and you can ask for your entries to be deleted by e-mail.
-            </p>
-          </div>
-          <div>
-            <h2 className="mb-2 text-lg font-bold text-foreground">Optional Google sign-in</h2>
-            <p>
-              You can sign in with your Google account so your ranking follows you to other devices. Google tells the game only that the sign-in is genuine and gives it a stable account number; the game turns that number into a one-way hashed player identifier on its server and stores nothing else. Your name, e-mail address and profile picture are not read or stored, and your Google account is never used for advertising. Without signing in you play as a guest with a generated name. Signing out returns you to a new guest identity, and you can ask for your ranking entries to be deleted by e-mail.
-            </p>
-          </div>
-          <div>
-            <h2 className="mb-2 text-lg font-bold text-foreground">Permissions and services</h2>
-            <p>
-              The game uses vibration for optional gameplay feedback. It contains no advertising, analytics, purchases, or third-party tracking services. The only third-party service is Google sign-in, and only if you choose it.
-            </p>
-          </div>
-          <div>
-            <h2 className="mb-2 text-lg font-bold text-foreground">Contact</h2>
-            <p>
-              Questions may be sent to <a className="text-primary underline" href="mailto:bynrnworld@gmail.com">bynrnworld@gmail.com</a>.
+              <a className="text-primary underline" href="mailto:bynrnworld@gmail.com">bynrnworld@gmail.com</a>
             </p>
           </div>
         </div>

@@ -4,9 +4,9 @@ import { StarIcon } from "@/components/icons/GameIcons";
 import { CitySkyline } from "@/components/CitySkyline";
 import { getProgress, TOTAL_LEVELS } from "@/lib/progress";
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence, usePresence } from "framer-motion";
+import { motion, AnimatePresence, useIsPresent } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Home, Play, RotateCcw, Share2, Star, Video } from "lucide-react";
+import { Check, Copy, Ghost as GhostIcon, Home, Play, RotateCcw, Share2, Star, Video } from "lucide-react";
 import { Link } from "wouter";
 import { RIFT_LAST_LEVEL } from "@/lib/rift";
 import { generateLevelCode } from "@/lib/levelCodes";
@@ -17,6 +17,7 @@ import type { ClipOutcome } from "@/lib/solveClip";
 import { useI18n, upper, type Language } from "@/lib/i18n";
 import { useUserId } from "@/hooks/use-game";
 import { useSettingsStore } from "@/lib/settings";
+import { copyText } from "@/lib/shareLinks";
 
 /** Power-up caption; i18n files are shared, so the city's two short lines live here. */
 const CITY_CAPTION: Record<Language, { block: string; district: string }> = {
@@ -26,10 +27,34 @@ const CITY_CAPTION: Record<Language, { block: string; district: string }> = {
   tr: { block: "+1 blok aydınlandı", district: "BÖLGE ÇEVRİMİÇİ!" },
 };
 
-/** While the card animates out it must not catch pointer input, or the next board drops its first drag. */
-function ClosingAwareDiv(props: React.ComponentProps<"div">) {
-  const [isPresent] = usePresence();
-  return <div {...props} style={{ ...props.style, pointerEvents: isPresent ? undefined : "none" }} />;
+/**
+ * The backdrop must be a motion component: AnimatePresence only unmounts a
+ * child once every registered presence child reports that its exit finished.
+ * The old plain div used usePresence() but never called safeToRemove(), so the
+ * backdrop stayed mounted forever after "Next level" — an invisible dark,
+ * blurred sheet over the following board.
+ *
+ * While it animates out it must not catch pointer input either, or the next
+ * board drops its first drag. useIsPresent() is read-only, so it does not
+ * register another presence child that would have to be released.
+ */
+function ModalBackdrop({ title, children }: { title: string; children: React.ReactNode }) {
+  const isPresent = useIsPresent();
+  return (
+    <motion.div
+      data-testid="win-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+      style={{ pointerEvents: isPresent ? undefined : "none" }}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 interface WinModalProps {
@@ -49,10 +74,14 @@ interface WinModalProps {
   starReasons?: string[];
   flawless?: boolean;
   parTimeMs?: number;
+  /** Par-normalised pace score, shown for daily/weekly challenges. */
+  challengePoints?: number;
   onNext: () => void;
   onReplay: () => void;
   /** Records a 9:16 clip of this solve. Absent when the board can't be replayed. */
   onSaveClip?: () => Promise<ClipOutcome>;
+  /** Optional ghost-challenge link: the exact board and line just played. */
+  shareUrl?: string;
 }
 
 export function WinModal({
@@ -72,13 +101,16 @@ export function WinModal({
   starReasons = [],
   flawless = false,
   parTimeMs,
+  challengePoints,
   onNext,
   onReplay,
   onSaveClip,
+  shareUrl,
 }: WinModalProps) {
   const [codeCopied, setCodeCopied] = useState(false);
   const [shareState, setShareState] = useState<ShareOutcome | null>(null);
   const [clipState, setClipState] = useState<"idle" | "recording" | ClipOutcome>("idle");
+  const [rivalState, setRivalState] = useState<"idle" | "done" | "failed">("idle");
   const { t, language } = useI18n();
   const userId = useUserId();
   const reducedMotion = useSettingsStore(state => state.reducedMotion);
@@ -170,12 +202,7 @@ export function WinModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <ClosingAwareDiv
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
-        >
+        <ModalBackdrop title={title}>
           <motion.div
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -263,6 +290,12 @@ export function WinModal({
                     <Stat label={upper(t("best"))} value={bestTimeMs !== null ? formatResultTime(bestTimeMs) : "—"} />
                     <Stat label={upper(t("score"))} value={score.toLocaleString()} highlight={isNewBestScore} />
                   </div>
+
+                  {challengePoints !== undefined && (
+                    <p className="font-exo text-xs text-secondary">
+                      {t("challengeScore", { points: challengePoints.toLocaleString() })}
+                    </p>
+                  )}
 
                   {bestScore !== null && bestScore > 0 && !isDaily && !isWeekly && (
                     <p className={`-mt-2 font-exo text-xs ${isNewBestScore ? "text-primary" : "text-muted-foreground"}`}>
@@ -379,6 +412,25 @@ export function WinModal({
                   </Button>
                 )}
 
+                {shareUrl && (
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      const ok = await copyText(shareUrl!);
+                      setRivalState(ok ? "done" : "failed");
+                      window.setTimeout(() => setRivalState("idle"), 2400);
+                    }}
+                    className="border-secondary/40 text-secondary hover:bg-secondary/10"
+                  >
+                    <GhostIcon className="mr-2 h-4 w-4" />
+                    {rivalState === "done"
+                      ? t("rivalShareDone")
+                      : rivalState === "failed"
+                        ? t("rivalShareFail")
+                        : t("rivalShare")}
+                  </Button>
+                )}
+
                 {onSaveClip && (
                   <Button
                     variant="outline"
@@ -393,7 +445,7 @@ export function WinModal({
               </div>
             </div>
           </motion.div>
-        </ClosingAwareDiv>
+        </ModalBackdrop>
       )}
     </AnimatePresence>
   );

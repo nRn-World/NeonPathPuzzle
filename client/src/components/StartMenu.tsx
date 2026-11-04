@@ -13,6 +13,8 @@ import {
   X,
   Zap,
   Flame,
+  Wrench,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +42,8 @@ import { useLevels, useUserProgress, useUserId } from "@/hooks/use-game";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { unlockLevelsThroughCode } from "@/lib/sessionLevelUnlock";
-import { getProgress, TOTAL_LEVELS } from "@/lib/progress";
+import { getProgress, hasSeenTutorial, TOTAL_LEVELS } from "@/lib/progress";
+import { TutorialOverlay } from "@/components/TutorialOverlay";
 import type { TranslationKey } from "@/lib/i18n";
 
 const HOW_TO_PLAY: [TranslationKey, TranslationKey][] = [
@@ -72,8 +75,11 @@ export function StartMenu() {
   const [codeError, setCodeError] = useState("");
   const popupRef = useRef<LevelPopupHandle>(null);
   const [, setLocation] = useLocation();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const userId = useUserId();
+  const [tutorialOpen, setTutorialOpen] = useState(
+    () => Boolean(userId) && !hasSeenTutorial(userId) && getProgress(userId).completed.length === 0,
+  );
   const { data: levels, refetch } = useLevels(userId);
   const { data: summary } = useUserProgress(userId);
   /** null until a sync has been attempted in this session. */
@@ -129,8 +135,8 @@ export function StartMenu() {
 
   // The popup owns its own state, so a tile click re-renders nothing but the popup.
   const handleLevelClick = useCallback((levelId: number) => {
-    popupRef.current?.show(levelId, getLevelMessage(levelId));
-  }, []);
+    popupRef.current?.show(levelId, getLevelMessage(levelId, language));
+  }, [language]);
 
   const handleCodeSubmit = () => {
     setCodeError("");
@@ -145,6 +151,9 @@ export function StartMenu() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#0a0f1e]">
+      {tutorialOpen && userId && (
+        <TutorialOverlay userId={userId} onClose={() => setTutorialOpen(false)} />
+      )}
       <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
 
       <div className="relative z-10 h-full overflow-y-auto safe-scroll">
@@ -186,6 +195,16 @@ export function StartMenu() {
                         icon={<Flame className="h-4 w-4" />}
                         label={t("chainMode")}
                         onClick={() => handleButtonClick(() => setLocation("/chain"))}
+                      />
+                      <MenuButton
+                        icon={<Wrench className="h-4 w-4" />}
+                        label={t("menuLab")}
+                        onClick={() => handleButtonClick(() => setLocation("/lab"))}
+                      />
+                      <MenuButton
+                        icon={<Activity className="h-4 w-4" />}
+                        label={t("menuInsights")}
+                        onClick={() => handleButtonClick(() => setLocation("/insights"))}
                       />
                       <MenuButton
                         icon={<MapIcon className="h-4 w-4" />}

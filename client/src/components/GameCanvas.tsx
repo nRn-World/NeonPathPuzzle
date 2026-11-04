@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -10,7 +11,7 @@ import React, {
 import { type LevelResponse, type Point } from "@shared/schema";
 import { createMoveRules, EMPTY_MECHANICS, type LevelMechanics } from "@shared/mechanics";
 import { motion } from "framer-motion";
-import { playMoveSound, playBacktrackSound, playMilestoneHaptic, playWinSound } from "@/lib/sounds";
+import { playMoveSound, playBacktrackSound, playMilestoneHaptic, playWinSound, playSurgeSound } from "@/lib/sounds";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
 import { useI18n } from "@/lib/i18n";
@@ -21,6 +22,8 @@ export const MAX_BACKTRACKS = 3;
 export interface GameCanvasHandle {
   undo: () => void;
   restart: () => void;
+  /** Snapshot of the line as played, for solver-based progressive hints. */
+  getPath: () => Point[];
 }
 
 export interface GameCanvasProps {
@@ -38,6 +41,8 @@ export interface GameCanvasProps {
   disableUndo?: boolean;
   gridLabel?: string;
   statusText?: string;
+  /** Screen-reader description of the board: rows of node coordinates. */
+  boardDescription?: string;
   /** Fires with true when the line has no legal forward move left. */
   onStuckChange?: (stuck: boolean) => void;
   /** Draws the board larger than the viewport and follows the line's head. */
@@ -46,6 +51,16 @@ export interface GameCanvasProps {
   chaseMsPerNode?: number;
   /** Fires once when the chase stream reaches the line's head or the line backs past it. */
   onShortCircuit?: () => void;
+  /** Keeps the canvas animating during the pre-result "power surge" window. */
+  celebrate?: boolean;
+  /** Chapter accent used by the surge, shockwave and boss frame. */
+  celebrationColor?: string;
+  /** Boss levels get a distinct, slowly pulsing board frame. */
+  boss?: boolean;
+  /** Ghost pace in ms per cell; defaults to the looping personal-best ghost. */
+  ghostPaceMsPerCell?: number;
+  /** performance.now() timestamp when a live ghost race started. */
+  ghostStartAt?: number | null;
 }
 
 interface Particle {
@@ -152,6 +167,8 @@ const NODE_RING_MS = 320;
 const COMET_SEGMENTS = 4;
 const SHAKE_MS = 300;
 const BANNER_MS = 1300;
+/** The cinematic surge lasts exactly as long as the pre-result pause. */
+const SURGE_MS = 1000;
 /** Win effects stay in neon colours; the default theme's accent is white. */
 const WIN_PINK = "#ff3bd4";
 /** Gap between canvas text and the board's edge. */
@@ -188,10 +205,16 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     disableUndo = false,
     gridLabel,
     statusText,
+    boardDescription,
     onStuckChange,
     zoom = 1,
     chaseMsPerNode,
     onShortCircuit,
+    celebrate = false,
+    celebrationColor,
+    boss = false,
+    ghostPaceMsPerCell,
+    ghostStartAt = null,
   },
   ref,
 ) {
@@ -329,6 +352,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
     const cell = (size * zoom) / level.gridSize;
     metricsRef.current = { ...metricsRef.current, cellSize: cell, dpr, size };
+    // A paused board has no animation loop. Repaint once whenever its metrics
+    // change, so static previews (daily reveal) never stay blank after the
+    // container finally gets its size or the device rotates.
+    renderRef.current(performance.now());
   }, [level.gridSize, zoom]);
 
   useEffect(() => {
@@ -408,9 +435,19 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     const view = Math.min(size, level.gridSize * cell);
     // Win shake: the drawing jolts for SHAKE_MS and settles (the page itself never moves).
     const sinceWin = celebrateAtRef.current === null ? Infinity : Math.max(0, time - celebrateAtRef.current);
+    // Boss set pieces get a longer, wider win sequence than a normal clear.
+    const surgeMs = boss ? 1_350 : SURGE_MS;
     const shakeAmount = !reducedMotion && sinceWin < SHAKE_MS ? 3 * (1 - sinceWin / SHAKE_MS) : 0;
     if (offsetX !== 0 || offsetY !== 0) context.translate(-offsetX, -offsetY);
     if (shakeAmount > 0) context.translate(Math.sin(sinceWin / 20) * shakeAmount, Math.cos(sinceWin / 14) * shakeAmount);
+
+    // Cinematic push: the board leans in for a beat when the circuit closes.
+    if (!reducedMotion && sinceWin < surgeMs) {
+      const push = 1 + 0.045 * Math.sin(Math.PI * (sinceWin / surgeMs));
+      context.translate(size / 2, size / 2);
+      context.scale(push, push);
+      context.translate(-size / 2, -size / 2);
+    }
 
     // Board plate: a glassy panel so the grid reads as a device, not a void.
     const boardSize = level.gridSize * cell;
@@ -425,6 +462,30 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     context.strokeStyle = `${colors.primary}33`;
     context.lineWidth = 1.5;
     context.stroke();
+
+    // Boss set pieces wear a pulsing corner frame in the chapter's colour.
+    if (boss) {
+      const accent = celebrationColor ?? colors.primary;
+      const pulse = reducedMotion ? 0.6 : (Math.sin(time / 900) + 1) / 2;
+      const inset = cell * 0.1;
+      const corner = cell * 0.6;
+      const far = boardSize - inset;
+      context.save();
+      context.globalAlpha = 0.35 + pulse * 0.4;
+      context.strokeStyle = accent;
+      context.lineWidth = Math.max(2, cell * 0.035);
+      context.beginPath();
+      for (const [x, y, dx, dy] of [
+        [inset, inset, 1, 1], [far, inset, -1, 1],
+        [inset, far, 1, -1], [far, far, -1, -1],
+      ] as const) {
+        context.moveTo(x, y + dy * corner);
+        context.lineTo(x, y);
+        context.lineTo(x + dx * corner, y);
+      }
+      context.stroke();
+      context.restore();
+    }
 
     // Blackout: the board is dark except for a pool of light around the head.
     const lightX = (head?.x ?? 0) * cell + cell / 2;
@@ -707,9 +768,15 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       const ghostY = (index: number) => ghostPath[index].y * cell + cell / 2;
 
       // Reduced motion parks the ghost at the finish; everyone else watches it run.
-      const lap = total * GHOST_MS_PER_CELL;
-      const phase = reducedMotion ? lap : time % (lap + GHOST_HOLD_MS);
-      const progress = Math.min(total, phase / GHOST_MS_PER_CELL);
+      const pace = ghostPaceMsPerCell && ghostPaceMsPerCell > 0 ? ghostPaceMsPerCell : GHOST_MS_PER_CELL;
+      const lap = total * pace;
+      // A live rival runs once from the race start, not on a repeating lap.
+      const phase = reducedMotion
+        ? lap
+        : ghostStartAt === null
+          ? time % (lap + GHOST_HOLD_MS)
+          : Math.max(0, Math.min(lap, time - ghostStartAt));
+      const progress = Math.min(total, phase / pace);
       const whole = Math.min(total, Math.floor(progress));
       const part = progress - whole;
 
@@ -1081,6 +1148,67 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
             context.stroke();
           }
         }
+
+        // Boss finale: a second, slower shockwave blooms from the board centre
+        // in the chapter colour, on top of the standard surge from the last node.
+        if (boss && !reducedMotion && elapsed < surgeMs) {
+          const bloom = elapsed / surgeMs;
+          context.save();
+          context.globalAlpha = (1 - bloom) * 0.65;
+          context.strokeStyle = celebrationColor ?? colors.primary;
+          context.lineWidth = Math.max(2, cell * 0.09 * (1 - bloom));
+          context.beginPath();
+          context.arc(boardSize / 2, boardSize / 2, cell * (0.5 + bloom * 7), 0, Math.PI * 2);
+          context.stroke();
+          context.restore();
+        }
+
+        // Power surge: a bright pulse runs backwards along the finished line
+        // while a chapter-coloured shockwave washes over the board.
+        if (!reducedMotion && elapsed < surgeMs) {
+          const surge = elapsed / surgeMs;
+          const total = Math.max(1, currentPath.length - 1);
+          const position = (1 - surge) * total;
+          const index = Math.min(currentPath.length - 2, Math.floor(position));
+          const from = currentPath[index];
+          const to = currentPath[index + 1];
+          if (from && to) {
+            const fraction = position - index;
+            const x = (from.x + (to.x - from.x) * fraction) * cell + cell / 2;
+            const y = (from.y + (to.y - from.y) * fraction) * cell + cell / 2;
+            const accent = celebrationColor ?? colors.primary;
+            const halo = context.createRadialGradient(x, y, 0, x, y, cell * 1.15);
+            halo.addColorStop(0, "#ffffff");
+            halo.addColorStop(0.22, accent);
+            halo.addColorStop(1, "rgba(0,0,0,0)");
+            context.save();
+            context.globalCompositeOperation = "lighter";
+            context.globalAlpha = Math.max(0, 1 - surge);
+            context.fillStyle = halo;
+            context.beginPath();
+            context.arc(x, y, cell * 1.15, 0, Math.PI * 2);
+            context.fill();
+            context.restore();
+          }
+          const last = currentPath[currentPath.length - 1];
+          const wave = (elapsed - 220) / (surgeMs - 220);
+          if (last && wave > 0 && wave < 1) {
+            context.save();
+            context.globalAlpha = (1 - wave) * 0.8;
+            context.strokeStyle = celebrationColor ?? colors.primary;
+            context.lineWidth = Math.max(2, cell * 0.07 * (1 - wave));
+            context.beginPath();
+            context.arc(
+              last.x * cell + cell / 2,
+              last.y * cell + cell / 2,
+              cell * (0.4 + wave * 6),
+              0,
+              Math.PI * 2,
+            );
+            context.stroke();
+            context.restore();
+          }
+        }
       }
     }
 
@@ -1139,8 +1267,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // Particles
     if (!reducedMotion && particlesRef.current.length > 0) {
       context.globalCompositeOperation = "lighter";
-      const delta = lastFrameRef.current ? Math.min(50, time - lastFrameRef.current) : 16;
+      const frameDelta = lastFrameRef.current ? Math.min(50, time - lastFrameRef.current) : 16;
       lastFrameRef.current = time;
+      // Slow motion for the first beat of the win: the confetti hangs in the
+      // air while the camera pushes in and the light pulse runs backwards.
+      const delta = sinceWin < surgeMs ? frameDelta * 0.35 : frameDelta;
       particlesRef.current = particlesRef.current.filter(particle => {
         particle.life -= delta;
         if (particle.life <= 0) return false;
@@ -1173,6 +1304,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     mechanics.portals,
     ghostPath,
     showGhost,
+    celebrationColor,
+    boss,
+    ghostPaceMsPerCell,
+    ghostStartAt,
     oneWayMap,
     pairMap,
     syncMap,
@@ -1188,8 +1323,10 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     // A running chase stream must keep moving even under reduced motion.
     const streaming = Boolean(chaseMsPerNode) && chaseStartRef.current !== null
       && !wonRef.current && !shortedRef.current;
-    // No animation work while the game is paused or the tab is hidden.
-    if (paused || (reducedMotion && !streaming)) {
+    // No animation work while paused or hidden — except the win surge, which
+    // must keep painting even though input is already locked.
+    const animate = (!paused || streaming || celebrate) && !(reducedMotion && !streaming);
+    if (!animate) {
       render(performance.now());
       return;
     }
@@ -1208,7 +1345,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [render, reducedMotion, paused, zoom, chaseMsPerNode]);
+  }, [render, reducedMotion, paused, zoom, chaseMsPerNode, celebrate]);
 
   const getGridPos = useCallback((clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
@@ -1255,6 +1392,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       undoPath();
     },
     restart: () => resetPath(),
+    getPath: () => pathRef.current.map(point => ({ ...point })),
   }), [disableUndo, paused, resetPath, undoPath]);
 
   const tryMove = useCallback((target: Point): boolean => {
@@ -1332,6 +1470,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         }
       }
       playWinSound(level.nodes);
+      playSurgeSound();
       callbacksRef.current.onComplete(next.length - 1, next);
     }
 
@@ -1473,12 +1612,15 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
   }, [paused, tryMove, undoPath]);
 
   const visitedCount = countVisitedNodes(path);
+  const descriptionId = useId();
+  const head = path[path.length - 1];
 
   return (
     <div
       ref={containerRef}
       role="application"
       tabIndex={0}
+      aria-describedby={boardDescription ? descriptionId : undefined}
       aria-label={gridLabel ?? `Puzzle grid, ${level.gridSize} by ${level.gridSize}. Drag from the glowing start node through every node, or use the arrow keys.`}
       onKeyDown={handleKeyDown}
       className="relative flex h-full w-full select-none items-center justify-center p-2 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:p-4"
@@ -1492,6 +1634,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       <span className="sr-only" aria-live="polite" role="status">
         {t("nodesVisitedLive", { count: visitedCount, total: level.nodes.length })}
       </span>
+      {boardDescription && (
+        <p id={descriptionId} className="sr-only">{boardDescription}</p>
+      )}
+      {head && (
+        <span className="sr-only" aria-live="polite">
+          {t("headPosition", { x: head.x, y: head.y })}
+        </span>
+      )}
       <motion.canvas
         ref={canvasRef}
         initial={reducedMotion ? false : { opacity: 0, scale: 0.94 }}

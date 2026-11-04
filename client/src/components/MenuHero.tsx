@@ -267,13 +267,13 @@ export function MenuHero({
             className="group flex w-full items-center justify-between bg-primary px-6 py-5 text-left text-background transition-transform [clip-path:polygon(0_0,calc(100%-22px)_0,100%_22px,100%_100%,22px_100%,0_calc(100%-22px))] hover:-translate-y-0.5 active:translate-y-0"
           >
             <span>
-              <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.22em] opacity-70">
+              <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-black/80">
                 {hasProgress ? t("continueGame") : t("startGame")}
               </span>
               <span className="block font-orbitron text-2xl font-black tracking-wide">
                 {upper(t("level"))} {continueLevel}
               </span>
-              <span className="mt-0.5 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">
+              <span className="mt-0.5 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-black/80">
                 {chapterName}
               </span>
             </span>
@@ -343,7 +343,12 @@ export function MenuHero({
 
       {/* The city band: lights up as levels and chapters are cleared. */}
       {/* Phones keep the city readable at 720 px wide and swipe through it; chapter 1 sits at the left. */}
-      <div className="mt-6 w-full overflow-x-auto [scrollbar-width:none] md:col-span-2 md:row-start-3 md:mt-10 md:overflow-hidden">
+      <div
+        role="region"
+        aria-label={t("heroBoardCaption")}
+        tabIndex={0}
+        className="mt-6 w-full overflow-x-auto [scrollbar-width:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/60 md:col-span-2 md:row-start-3 md:mt-10 md:overflow-hidden"
+      >
         <CitySkyline completedLevels={completedLevels} className="min-w-[720px] md:min-w-0" />
       </div>
 

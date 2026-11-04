@@ -108,3 +108,22 @@ export function d1Store(db: D1): Store {
   };
 }
 
+
+/** Aggregate, player-less counters from opted-in clients. */
+export interface TelemetryStore {
+  record(day: string, event: string, levelId: number, count: number): Promise<void>;
+}
+
+export function d1TelemetryStore(db: D1): TelemetryStore {
+  return {
+    async record(day, event, levelId, count) {
+      await db
+        .prepare(
+          `INSERT INTO telemetry (day, event, level_id, count) VALUES (?1, ?2, ?3, ?4)
+           ON CONFLICT(day, event, level_id) DO UPDATE SET count = telemetry.count + excluded.count`,
+        )
+        .bind(day, event, levelId, count)
+        .run();
+    },
+  };
+}

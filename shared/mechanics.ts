@@ -47,6 +47,8 @@ export interface FlipArrow {
 
 export interface LevelMechanics {
   isBoss: boolean;
+  /** Rule families combined by this boss set piece (displayed on its intro card). */
+  bossCombo: string[];
   syncNodes: SyncNode[];
   phaseNodes: PhaseNode[];
   flipArrows: FlipArrow[];
@@ -61,6 +63,7 @@ export interface LevelMechanics {
 
 export const EMPTY_MECHANICS: LevelMechanics = {
   isBoss: false,
+  bossCombo: [],
   syncNodes: [],
   phaseNodes: [],
   flipArrows: [],
@@ -99,6 +102,16 @@ function emptyCells(level: LevelData, solution: Point[]): Point[] {
 export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMechanics {
   const levelId = level.id;
   const isBoss = levelId % 25 === 0;
+  // Every 25th level is a set piece: it combines rule families earlier than
+  // the campaign normally introduces them, and says so on its intro card.
+  const bossTier = isBoss ? Math.floor(levelId / 25) : 0;
+  const bossCombo: string[] = isBoss ? ["walls"] : [];
+  if (bossTier >= 1) bossCombo.push("oneWay");
+  if (bossTier >= 2) bossCombo.push("pairs");
+  if (bossTier >= 3) bossCombo.push("portals");
+  if (bossTier >= 4) bossCombo.push("sync");
+  if (bossTier >= 5) bossCombo.push("phase");
+  const bossPhase = bossTier >= 5;
   const random = seededRandom(levelId * 97 + 13);
   const empty = emptyCells(level, solution);
 
@@ -113,10 +126,10 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
   }
 
   const oneWays: OneWayNode[] = [];
-  if (levelId >= 51 && solution.length > 4) {
+  if ((levelId >= 51 || bossTier >= 1) && solution.length > 4) {
     const fractions = levelId >= 126 ? [0.22, 0.48, 0.74] : [0.3, 0.62];
     fractions.forEach((fraction, index) => {
-      if (index > 0 && levelId < 101) return;
+      if (index > 0 && levelId < 101 && bossTier < 3) return;
       const pathIndex = Math.min(solution.length - 2, Math.max(1, Math.floor(solution.length * fraction)));
       const point = solution[pathIndex];
       const next = solution[pathIndex + 1];
@@ -130,7 +143,7 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
   }
 
   const pairs: ColorPair[] = [];
-  if (levelId >= 76 && solution.length > 8) {
+  if ((levelId >= 76 || bossTier >= 2) && solution.length > 8) {
     const pairCount = levelId >= 126 ? 2 : 1;
     const ranges = [
       [0.2, 0.65],
@@ -152,7 +165,7 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
   }
 
   const portals: PortalPair[] = [];
-  if (levelId >= 101 && empty.length >= 2) {
+  if ((levelId >= 101 || bossTier >= 3) && empty.length >= 2) {
     const usedWalls = new Set(walls.map(key));
     const pool = empty.filter(cell => !usedWalls.has(key(cell)));
     const adjacentToNode = (cell: Point) => level.nodes.some(node =>
@@ -171,7 +184,7 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
   // Sync nodes sit on solution steps no other rule has claimed, so every badge
   // is readable and the canonical solution satisfies all of them at once.
   const syncNodes: SyncNode[] = [];
-  if (levelId >= 201 && solution.length > 12) {
+  if ((levelId >= 201 || bossTier >= 4) && solution.length > 12) {
     const claimed = new Set([
       ...oneWays.map(rule => key(rule.point)),
       ...pairs.flatMap(pair => [key(pair.first), key(pair.second)]),
@@ -189,7 +202,7 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
   // The Rift (levels 301-330): parity rules, derived from the same solution so it stays valid.
   const phaseNodes: PhaseNode[] = [];
   const flipArrows: FlipArrow[] = [];
-  if (levelId >= 301 && solution.length > 12) {
+  if ((levelId >= 301 || bossPhase) && solution.length > 12) {
     const claimed = new Set([
       ...oneWays.map(rule => key(rule.point)),
       ...pairs.flatMap(pair => [key(pair.first), key(pair.second)]),
@@ -202,7 +215,7 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
       return free(step) ? step : null;
     };
 
-    const phaseCount = 3 + Math.floor((levelId - 301) / 8);
+    const phaseCount = Math.max(2, 3 + Math.floor((levelId - 301) / 8));
     for (let index = 0; index < phaseCount; index++) {
       const step = place(solution.length * (index + 0.5) / phaseCount);
       if (step === null) continue;
@@ -228,6 +241,7 @@ export function getLevelMechanics(level: LevelData, solution: Point[]): LevelMec
 
   return {
     isBoss,
+    bossCombo,
     syncNodes,
     phaseNodes,
     flipArrows,

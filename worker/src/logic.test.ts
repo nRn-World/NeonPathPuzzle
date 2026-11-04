@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getDailyLevelId } from "../../client/src/lib/daily";
-import { generateLevel } from "../../shared/level-generator";
+import { getDailySpec } from "../../client/src/lib/daily";
+import { buildChallengeLevel } from "../../shared/challenges";
 import { isGeneratedName, nameFromSeed } from "../../shared/names";
 import { handleSubmit, handleTop, type Order, type Store } from "./logic";
 
@@ -54,7 +54,7 @@ test("only generated names are accepted, and every seed makes one", () => {
 
 test("a real solution is accepted, a fake one is not", async () => {
   const store = memoryStore();
-  const solution = generateLevel(getDailyLevelId(DATE_KEY)).solution;
+  const solution = buildChallengeLevel(getDailySpec(DATE_KEY)).solution;
   const good = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "NeonFox42", value: 90_000, path: solution }, store, NOW);
   assert.equal(good.status, 200);
   const cut = await handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId: PLAYER, name: "NeonFox42", value: 90_000, path: solution.slice(0, 5) }, store, NOW);
@@ -67,7 +67,7 @@ test("a real solution is accepted, a fake one is not", async () => {
 
 test("only the best time is kept and the board is ranked", async () => {
   const store = memoryStore();
-  const solution = generateLevel(getDailyLevelId(DATE_KEY)).solution;
+  const solution = buildChallengeLevel(getDailySpec(DATE_KEY)).solution;
   const submit = (playerId: string, name: string, value: number) =>
     handleSubmit({ kind: "daily", dateKey: DATE_KEY, playerId, name, value, path: solution }, store, NOW);
   await submit(PLAYER, "NeonFox42", 80_000);

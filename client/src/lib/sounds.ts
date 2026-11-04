@@ -4,12 +4,15 @@ import { platformAudioOff } from "./playgama";
 import { useSettingsStore } from "./settings";
 import { layersFor, melodyFor, type Point } from "./melody";
 import { createSynth, type SynthEngine } from "./synth";
+import { CHALLENGE_AUDIO, chapterAudioForLevel, type ChapterAudio } from "./chapterAudio";
 
 let audioCtx: AudioContext | null = null;
 let engine: SynthEngine | null = null;
 let audioInitialized = false;
 let lastMoveSoundAt = 0;
 let lastBacktrackSoundAt = 0;
+/** The current chapter's key, scale and resolve chord. */
+let activeAudio: ChapterAudio = CHALLENGE_AUDIO;
 
 function audioAllowed() {
   return useSettingsStore.getState().soundEnabled && !platformAudioOff;
@@ -31,8 +34,22 @@ function getEngine(): SynthEngine | null {
   if (engine) return engine;
   const ctx = getAudioContext();
   if (!ctx) return null;
-  engine = createSynth(ctx, { volume: useSettingsStore.getState().soundVolume });
+  engine = createSynth(ctx, {
+    volume: useSettingsStore.getState().soundVolume,
+    rootHz: activeAudio.rootHz,
+    scale: activeAudio.scale,
+    phraseSeconds: activeAudio.phraseSeconds,
+  });
   return engine;
+}
+
+/** Switch the soundtrack's key/scale when the player enters another chapter. */
+export function setAudioChapter(levelId: number): void {
+  const next = chapterAudioForLevel(levelId);
+  if (next.id === activeAudio.id) return;
+  activeAudio = next;
+  engine?.dispose();
+  engine = null;
 }
 
 /** Browsers without the native plugin (Android Chrome, installed web app) fall back to a vibration pattern. */
@@ -85,7 +102,7 @@ export function playMoveSound(progress = 0, step = 0, nodes?: readonly Point[]) 
     if (ctx) resumeIfSuspended(ctx);
     const synth = getEngine();
     if (synth && nodes && nodes.length > 0) {
-      const melody = melodyFor(nodes);
+      const melody = melodyFor(nodes, activeAudio.scale);
       synth.playNote(melody[step % melody.length], layersFor(progress));
     } else {
       synth?.playStep(progress);
@@ -122,7 +139,7 @@ export function playLoseLifeSound() {
 }
 
 export function playWinSound(nodes?: readonly Point[]) {
-  if (audioAllowed()) getEngine()?.playWin(nodes && nodes.length > 0 ? melodyFor(nodes) : undefined);
+  if (audioAllowed()) getEngine()?.playWin(nodes && nodes.length > 0 ? melodyFor(nodes, activeAudio.scale) : undefined);
   // A rising run of taps that ends on the success buzz, like a heartbeat speeding up.
   nativeHaptic(async () => {
     for (const delay of [110, 90, 70]) {
@@ -133,13 +150,26 @@ export function playWinSound(nodes?: readonly Point[]) {
   }, [15, 100, 20, 80, 25, 60, 60]);
 }
 
+/** The "power surge" at the last node: a chapter chord and a firm haptic thump. */
+export function playSurgeSound(): void {
+  if (audioAllowed()) getEngine()?.playResolve(activeAudio.chord);
+  nativeHaptic(async () => {
+    await Haptics.impact({ style: ImpactStyle.Heavy });
+    await wait(90);
+    await Haptics.impact({ style: ImpactStyle.Medium });
+  }, [30, 40, 60]);
+}
+
 export function playClickSound() {
   if (audioAllowed()) getEngine()?.playClick();
   nativeHaptic(() => Haptics.selectionStart().then(() => Haptics.selectionEnd()), 6);
 }
 
 export function playDeadEndSound() {
-  if (audioAllowed()) getEngine()?.playAlert();
+  if (audioAllowed()) {
+    getEngine()?.playAlert();
+    getEngine()?.playTension();
+  }
   shakeScreen();
   nativeHaptic(() => Haptics.notification({ type: NotificationType.Warning }), [60, 40, 60]);
 }

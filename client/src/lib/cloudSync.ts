@@ -1,4 +1,5 @@
 import type { Point } from "@shared/schema";
+import { applyStoreSnapshot, readStoreSnapshot } from "@/lib/backup";
 import { getPlayer, leaderboardEnabled, onlineBase } from "@/lib/leaderboard";
 import {
   getProgress,
@@ -82,7 +83,23 @@ export function toCloudPayload(progress: ProgressData): Record<string, unknown> 
     },
     tutorialSeen: progress.tutorialSeen,
     createdAt: progress.createdAt,
+    // Tip: a cloud save used to contain progress only, so achievements, themes,
+    // tokens, weekly/rift results and settings silently stayed behind on the old
+    // device. They ride along now, using the same validated snapshot as backups.
+    stores: readStoreSnapshot(),
+    savedAt: Date.now(),
   };
+}
+
+function remoteStores(data: unknown): Record<string, string> {
+  if (!data || typeof data !== "object") return {};
+  const raw = (data as { stores?: unknown }).stores;
+  if (!raw || typeof raw !== "object") return {};
+  const stores: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string" && value.length < 100_000) stores[key] = value;
+  }
+  return stores;
 }
 
 /** Ghost paths are device-local, so a downloaded save keeps the ones it had. */
@@ -148,8 +165,12 @@ export async function syncProgress(userId: string): Promise<SyncOutcome> {
 
     const merged = reattachGhosts(mergeProgress(local, remoteProgress), local);
     saveProgress(userId, merged);
+    // A fresh device with no local progress adopts the remote settings too;
+    // an established device keeps its own local store values and uploads them.
+    const freshDevice = local.completed.length === 0;
+    if (freshDevice) applyStoreSnapshot(remoteStores(remote.data));
     await pushSave(playerId, merged);
-    return local.completed.length === 0 && remoteProgress.completed.length > 0 ? "pulled" : "synced";
+    return freshDevice && remoteProgress.completed.length > 0 ? "pulled" : "synced";
   } catch {
     return "failed";
   }

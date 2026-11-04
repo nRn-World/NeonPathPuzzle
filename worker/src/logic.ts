@@ -1,4 +1,4 @@
-import { getDailyLevelId } from "../../client/src/lib/daily";
+import { getDailySpec } from "../../client/src/lib/daily";
 import { getWeeklyChallenge } from "../../client/src/lib/weekly";
 import { isGeneratedName } from "../../shared/names";
 import { verifyPlayedPath } from "../../shared/verify";
@@ -55,7 +55,7 @@ export async function handleSubmit(input: unknown, store: Store, now: Date): Pro
     const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     if (day === null || Math.abs(day - today) > 86_400_000) return fail(400, "not today's challenge");
     if (score > MAX_TIME_MS) return fail(400, "invalid value");
-    const problem = verifyPlayedPath(getDailyLevelId(dateKey), body.path, score);
+    const problem = verifyPlayedPath(getDailySpec(dateKey), body.path, score);
     if (problem) return fail(422, problem);
     await store.upsert(`daily:${dateKey}`, body.playerId, name, score, "low", now.getTime());
     return { status: 200, body: { ok: true } };
@@ -65,7 +65,7 @@ export async function handleSubmit(input: unknown, store: Store, now: Date): Pro
     const challenge = getWeeklyChallenge(now);
     if (body.weekKey !== challenge.weekKey) return fail(400, "not this week's challenge");
     if (score > MAX_TIME_MS) return fail(400, "invalid value");
-    const problem = verifyPlayedPath(challenge.levelId, body.path, score, { mirrored: challenge.modifier === "mirror" });
+    const problem = verifyPlayedPath(challenge.spec, body.path, score, { mirrored: challenge.modifier === "mirror" });
     if (problem) return fail(422, problem);
     await store.upsert(`weekly:${challenge.weekKey}`, body.playerId, name, score, "low", now.getTime());
     return { status: 200, body: { ok: true } };

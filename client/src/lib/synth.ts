@@ -22,6 +22,12 @@ export const PHRASE_SECONDS = 1.2;
 export interface SynthOptions {
   /** Master volume, 0..1. */
   volume?: number;
+  /** Chapter root, in Hz. Defaults to the original E4. */
+  rootHz?: number;
+  /** Chapter scale as semitone offsets. Defaults to the minor pentatonic. */
+  scale?: readonly number[];
+  /** Length of the win phrase in seconds. */
+  phraseSeconds?: number;
 }
 
 export interface SynthEngine {
@@ -39,6 +45,10 @@ export interface SynthEngine {
   playAlert: () => void;
   /** A collapsing sawtooth fall and a sub thud: the run has crashed. */
   playCrash: () => void;
+  /** Resolve chord played when the final node connects (the "power surge"). */
+  playResolve: (chord?: readonly number[]) => void;
+  /** A short dissonant swell when the line reaches a dead end. */
+  playTension: () => void;
   dispose: () => void;
 }
 
@@ -46,10 +56,10 @@ export function noteFrequency(semitone: number, rootHz = STEP_ROOT_HZ): number {
   return rootHz * Math.pow(2, semitone / 12);
 }
 
-function stepSemitone(progress: number): number {
+function stepSemitone(progress: number, scale: readonly number[] = STEP_SCALE): number {
   const clamped = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
-  const index = Math.min(STEP_SCALE.length - 1, Math.round(clamped * (STEP_SCALE.length - 1)));
-  return STEP_SCALE[index];
+  const index = Math.min(scale.length - 1, Math.round(clamped * (scale.length - 1)));
+  return scale[index];
 }
 
 export function stepFrequency(progress: number, rootHz = STEP_ROOT_HZ): number {
@@ -103,24 +113,27 @@ function playVoice(ctx: AudioContext, destination: AudioNode, options: VoiceOpti
 }
 
 export function createSynth(ctx: AudioContext, options: SynthOptions = {}): SynthEngine {
+  const root = options.rootHz ?? STEP_ROOT_HZ;
+  const scale = options.scale ?? STEP_SCALE;
+  const phraseSeconds = options.phraseSeconds ?? PHRASE_SECONDS;
   const master = ctx.createGain();
   master.gain.setValueAtTime(Math.min(1, Math.max(0, options.volume ?? 0.5)), ctx.currentTime);
   master.connect(ctx.destination);
 
   const engine: SynthEngine = {
     playStep: progress => {
-      engine.playNote(stepSemitone(progress));
+      engine.playNote(stepSemitone(progress, scale));
     },
     playNote: (semitone, layers = {}) => {
-      const frequency = noteFrequency(semitone);
+      const frequency = noteFrequency(semitone, root);
       // A quiet octave-up sine gives the soft triangle note a glassy edge.
       playVoice(ctx, master, { frequency: frequency * 2, type: "sine", duration: 0.1, peak: 0.035, attack: 0.004 });
       playVoice(ctx, master, { frequency, type: "triangle", duration: 0.18, peak: 0.12 });
       if (layers.bass) {
-        playVoice(ctx, master, { frequency: noteFrequency(semitone, STEP_ROOT_HZ / 2), type: "sine", duration: 0.3, peak: 0.08, attack: 0.04 });
+        playVoice(ctx, master, { frequency: noteFrequency(semitone, root / 2), type: "sine", duration: 0.3, peak: 0.08, attack: 0.04 });
       }
       if (layers.pulse) {
-        playVoice(ctx, master, { frequency: noteFrequency(semitone + 7), type: "triangle", duration: 0.12, peak: 0.03 });
+        playVoice(ctx, master, { frequency: noteFrequency(semitone + 7, root), type: "triangle", duration: 0.12, peak: 0.03 });
       }
     },
     playUndo: () => {
@@ -129,12 +142,12 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
     },
     playWin: melody => {
       if (melody && melody.length > 0) {
-        const step = PHRASE_SECONDS / melody.length;
+        const step = phraseSeconds / melody.length;
         melody.forEach((semitone, index) => {
           const delay = index * step;
-          const frequency = noteFrequency(semitone);
+          const frequency = noteFrequency(semitone, root);
           // The last note is clamped so the whole phrase ends at PHRASE_SECONDS.
-          const duration = Math.min(step * 1.1, PHRASE_SECONDS - delay);
+          const duration = Math.min(step * 1.1, phraseSeconds - delay);
           playVoice(ctx, master, { frequency: frequency * 2, type: "sine", duration, peak: 0.04, delay });
           playVoice(ctx, master, { frequency, type: "triangle", duration, peak: 0.12, delay });
         });
@@ -165,6 +178,19 @@ export function createSynth(ctx: AudioContext, options: SynthOptions = {}): Synt
         playVoice(ctx, master, { frequency, type: "sawtooth", duration: 0.22, peak: 0.08, delay: index * 0.07 });
       });
       playVoice(ctx, master, { frequency: 55, type: "sine", duration: 1.2, peak: 0.3, attack: 0.01, delay: 0.42 });
+    },
+    playResolve: (chord = [0, 7, 12, 19]) => {
+      chord.forEach((semitone, index) => {
+        const frequency = noteFrequency(semitone, root);
+        playVoice(ctx, master, { frequency, type: "triangle", duration: 1.1, peak: 0.1, attack: 0.02, delay: index * 0.045 });
+        playVoice(ctx, master, { frequency: frequency * 2, type: "sine", duration: 0.7, peak: 0.03, delay: index * 0.045 });
+      });
+      // A warm sub-root makes the chord land instead of just ringing.
+      playVoice(ctx, master, { frequency: root / 2, type: "sine", duration: 1.4, peak: 0.12, attack: 0.03, delay: 0.1 });
+    },
+    playTension: () => {
+      playVoice(ctx, master, { frequency: root * 0.94, type: "square", duration: 0.22, peak: 0.05 });
+      playVoice(ctx, master, { frequency: root * 1.06, type: "square", duration: 0.22, peak: 0.05, delay: 0.04 });
     },
     dispose: () => {
       try {

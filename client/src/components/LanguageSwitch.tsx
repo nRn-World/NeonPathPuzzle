@@ -68,7 +68,7 @@ export function LanguageSwitch() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`${t("language")}: ${current.name}`}
+          aria-label={`${current.code} — ${current.name} (${t("language")})`}
           className="flex h-9 items-center gap-2 rounded-none border border-white/15 px-3 font-mono text-[11px] uppercase tracking-wider text-foreground/80 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary"
         >
           <Flag code={current.code} />

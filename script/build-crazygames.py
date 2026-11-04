@@ -8,7 +8,6 @@ Differences from the web build, all required by CrazyGames:
 - no service worker, so a new upload is never hidden behind a cached old one
 """
 import os
-import re
 import shutil
 import subprocess
 import zipfile
@@ -19,13 +18,12 @@ OUT_DIR = ROOT / "dist-crazygames"
 ZIP = ROOT / "crazygames-upload" / "neon-path-puzzle-crazygames.zip"
 SDK = '<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>'
 
-env = {**os.environ, "VITE_GOOGLE_CLIENT_ID": ""}
+env = {**os.environ, "VITE_GOOGLE_CLIENT_ID": "", "VITE_PLATFORM": "crazygames"}
 subprocess.run("npx vite build --outDir ../dist-crazygames --emptyOutDir", cwd=ROOT, env=env, shell=True, check=True)
 
 index = OUT_DIR / "index.html"
 html = index.read_text(encoding="utf-8")
-html, removed = re.subn(r'\s*<script src="https://bridge\.playgama\.com[^"]*"></script>', "", html)
-assert removed == 1, "Playgama bridge tag not found"
+assert "bridge.playgama.com" not in html, "Playgama bridge must not be in the base HTML"
 html = html.replace("</title>", "</title>\n    " + SDK, 1)
 assert SDK in html
 assert "accounts.google.com" not in html, "Google sign-in must stay out"

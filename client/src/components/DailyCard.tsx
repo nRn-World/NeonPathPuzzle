@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { CalendarDays, Check, Flame, Play, Star } from "lucide-react";
+import { CalendarDays, Check, Flame, Play, Shield, Star } from "lucide-react";
 import { getProgress } from "@/lib/progress";
 import {
   formatCountdown,
@@ -8,6 +8,7 @@ import {
   getDailyLevelId,
   getDateKey,
   getRecentDateKeys,
+  getShieldCount,
   getTimeUntilNextDaily,
   hasCompletedDaily,
   type DailyState,
@@ -122,6 +123,14 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
             );
           })}
         </div>
+
+        {getShieldCount(daily) > 0 && (
+          <p className="mt-2 flex items-center gap-1.5 border-t border-white/5 pt-2 font-exo text-[11px] text-violet-300">
+            <Shield className="h-3.5 w-3.5" />
+            {t("dailyShields", { count: getShieldCount(daily) })}
+            <span className="text-muted-foreground">· {t("dailyShieldHint")}</span>
+          </p>
+        )}
       </div>
     </Link>
   );

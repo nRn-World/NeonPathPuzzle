@@ -1,3 +1,5 @@
+import { getChallengeSpec, CHALLENGE_POOL_SIZE, type ChallengeSpec } from "../../../shared/challenges";
+
 export interface DailyResult {
   levelId: number;
   timeMs: number;
@@ -9,10 +11,13 @@ export interface DailyState {
   lastPlayedDate: string | null;
   streak: number;
   bestStreak: number;
+  /** Earned every 7-day streak; one shield bridges a single missed day. */
+  shields?: number;
   results: Record<string, DailyResult>;
 }
 
-export const DAILY_LEVEL_COUNT = 200;
+/** Kept for existing callers; challenges now come from a fixed, unique-solution pool. */
+export const DAILY_LEVEL_COUNT = CHALLENGE_POOL_SIZE;
 const MAX_STORED_RESULTS = 60;
 
 export function emptyDailyState(): DailyState {
@@ -20,6 +25,7 @@ export function emptyDailyState(): DailyState {
     lastPlayedDate: null,
     streak: 0,
     bestStreak: 0,
+    shields: 0,
     results: {},
   };
 }
@@ -73,8 +79,14 @@ export function hashDateKey(dateKey: string): number {
   return hash >>> 0;
 }
 
+/** A stable, dedicated board for this day — never a repeat inside the pool. */
+export function getDailySpec(dateKey: string = getDateKey()): ChallengeSpec {
+  return getChallengeSpec("daily", dateKey);
+}
+
+/** The underlying campaign board id (for records, share cards and old callers). */
 export function getDailyLevelId(dateKey: string = getDateKey()): number {
-  return (hashDateKey(dateKey) % DAILY_LEVEL_COUNT) + 1;
+  return getDailySpec(dateKey).levelId;
 }
 
 /**
@@ -103,11 +115,23 @@ export function updateDailyState(
 
   let streak = state.streak;
   let bestStreak = state.bestStreak;
+  let shields = Math.max(0, Math.min(3, Math.trunc(state.shields ?? 0)));
+  const isNewDay = state.lastPlayedDate !== dateKey;
 
-  if (state.lastPlayedDate !== dateKey) {
+  if (isNewDay) {
     const yesterday = shiftDateKey(dateKey, -1);
-    streak = state.lastPlayedDate === yesterday ? state.streak + 1 : 1;
+    if (state.lastPlayedDate === yesterday) {
+      streak = state.streak + 1;
+    } else if (shields > 0 && state.streak > 0) {
+      // A streak shield bridges one missed day instead of punishing it.
+      shields -= 1;
+      streak = state.streak + 1;
+    } else {
+      streak = 1;
+    }
     bestStreak = Math.max(bestStreak, streak);
+    // Every seventh consecutive day earns one shield, up to three.
+    if (streak % 7 === 0) shields = Math.min(3, shields + 1);
   } else if (streak < 1) {
     streak = 1;
   }
@@ -122,8 +146,13 @@ export function updateDailyState(
     lastPlayedDate: dateKey,
     streak,
     bestStreak: Math.max(bestStreak, streak),
+    shields,
     results: trimmedResults,
   };
+}
+
+export function getShieldCount(state: DailyState): number {
+  return Math.max(0, Math.min(3, Math.trunc(state.shields ?? 0)));
 }
 
 export function hasCompletedDaily(state: DailyState, dateKey: string = getDateKey()): boolean {

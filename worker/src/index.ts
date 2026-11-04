@@ -1,7 +1,7 @@
 import { googleKeys, playerIdForGoogle, verifyAccessToken, verifyGoogleToken } from "./google";
 import { handleSubmit, handleTop } from "./logic";
 import { Arena, Lobby, type RoomEnv } from "./rooms";
-import { d1SaveStore, d1Store } from "./store";
+import { d1SaveStore, d1Store, d1TelemetryStore } from "./store";
 
 export { Arena, Lobby };
 
@@ -88,6 +88,34 @@ export default {
         const save = await d1SaveStore(env.DB).get(playerId);
         if (!save) return json(404, { error: "no save" });
         return json(200, { data: JSON.parse(save.data), updatedAt: save.updatedAt });
+      }
+
+      // Opt-in aggregate diagnostics: only counted event names and level ids.
+      if (request.method === "POST" && url.pathname === "/telemetry") {
+        if (Number(request.headers.get("content-length") ?? 0) > 20_000) return json(413, { error: "too large" });
+        if (tooManyPosts(request.headers.get("cf-connecting-ip") ?? "unknown", now.getTime())) return json(429, { error: "slow down" });
+        const body = (await request.json().catch(() => null)) as {
+          day?: unknown;
+          counters?: { name?: unknown; levelId?: unknown; count?: unknown }[];
+        } | null;
+        const day = typeof body?.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day)
+          ? body.day : now.toISOString().slice(0, 10);
+        const allowed = new Set(["level_start", "first_move", "hint", "backtrack", "dead_end", "crash", "win", "quit", "error"]);
+        const telemetry = d1TelemetryStore(env.DB);
+        const counters = Array.isArray(body?.counters) ? body!.counters!.slice(0, 40) : [];
+        // Best effort: a database that has not run the latest schema.sql yet
+        // must never break the game or produce a server error for opt-in stats.
+        try {
+          for (const entry of counters) {
+            if (!entry || typeof entry.name !== "string" || !allowed.has(entry.name)) continue;
+            const levelId = Number.isInteger(entry.levelId) ? Math.max(0, Math.min(400, entry.levelId as number)) : 0;
+            const count = Number.isInteger(entry.count) ? Math.max(1, Math.min(500, entry.count as number)) : 1;
+            await telemetry.record(day, entry.name, levelId, count);
+          }
+        } catch (error) {
+          console.warn("telemetry unavailable", error);
+        }
+        return json(200, { ok: true });
       }
 
       if (request.method === "POST" && url.pathname === "/score") {

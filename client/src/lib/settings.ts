@@ -11,6 +11,12 @@ interface SettingsState {
   /** Okabe-Ito palette that stays distinguishable for every kind of colour blindness. */
   colorBlind: boolean;
   largeText: boolean;
+  /** Opt-in aggregate diagnostics: off until the player switches it on. */
+  telemetryEnabled: boolean;
+  /** Off by default: three failed attempts no longer reset the campaign. */
+  hardcore: boolean;
+  /** Opt-in for platform interstitials on portal builds. */
+  adsEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
   setSoundVolume: (volume: number) => void;
   setHapticsEnabled: (enabled: boolean) => void;
@@ -18,6 +24,9 @@ interface SettingsState {
   setShowGhost: (enabled: boolean) => void;
   setColorBlind: (enabled: boolean) => void;
   setLargeText: (enabled: boolean) => void;
+  setTelemetryEnabled: (enabled: boolean) => void;
+  setHardcore: (enabled: boolean) => void;
+  setAdsEnabled: (enabled: boolean) => void;
 }
 
 function prefersReducedMotion(): boolean {
@@ -40,6 +49,9 @@ export const useSettingsStore = create<SettingsState>()(
       showGhost: true,
       colorBlind: false,
       largeText: false,
+      telemetryEnabled: false,
+      hardcore: false,
+      adsEnabled: false,
       setSoundEnabled: enabled => set({ soundEnabled: enabled }),
       setSoundVolume: volume => set({ soundVolume: Math.min(1, Math.max(0, volume)) }),
       setHapticsEnabled: enabled => set({ hapticsEnabled: enabled }),
@@ -47,6 +59,9 @@ export const useSettingsStore = create<SettingsState>()(
       setShowGhost: enabled => set({ showGhost: enabled }),
       setColorBlind: enabled => set({ colorBlind: enabled }),
       setLargeText: enabled => set({ largeText: enabled }),
+      setTelemetryEnabled: enabled => set({ telemetryEnabled: enabled }),
+      setHardcore: enabled => set({ hardcore: enabled }),
+      setAdsEnabled: enabled => set({ adsEnabled: enabled }),
     }),
     { name: "neon-path-settings" },
   ),

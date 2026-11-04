@@ -13,12 +13,19 @@
     "test:progress": "tsx --test client/src/lib/scoring.test.ts client/src/lib/daily.test.ts client/src/lib/progress.test.ts client/src/lib/backup.test.ts client/src/lib/weekly.test.ts client/src/lib/runClock.test.ts client/src/lib/undoPath.test.ts client/src/lib/i18n.test.ts client/src/lib/rank.test.ts client/src/lib/stats.test.ts client/src/lib/seasons.test.ts client/src/lib/riftProgress.test.ts client/src/lib/leaderboard.test.ts client/src/lib/cloudSync.test.ts client/src/lib/survival.test.ts client/src/lib/solveClip.test.ts",
     "test:audio": "tsx --test client/src/lib/synth.test.ts client/src/lib/melody.test.ts",
     "test:worker": "tsx --test worker/src/logic.test.ts worker/src/match.test.ts worker/src/google.test.ts",
-    "test": "npm run test:level-codes && npm run test:levels && npm run test:progress && npm run test:audio && npm run test:worker",
+    "test": "npm run test:level-codes && npm run test:levels && npm run test:progress && npm run test:audio && npm run test:worker && npm run test:challenges && npm run test:lab",
     "db:push": "drizzle-kit push",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",
     "android:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File script/android-build.ps1 -Mode Debug",
-    "android:bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File script/android-build.ps1 -Mode Bundle"
+    "android:bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File script/android-build.ps1 -Mode Bundle",
+    "test:challenges": "tsx --test shared/challenges.test.ts shared/solver.test.ts client/src/lib/hints.test.ts client/src/lib/levelMessages.test.ts client/src/lib/telemetry.test.ts",
+    "audit:uniqueness": "tsx script/audit-uniqueness.ts --strict",
+    "privacy:sync": "tsx script/sync-privacy.ts",
+    "privacy:check": "tsx script/sync-privacy.ts --check",
+    "check:bundle": "tsx script/check-bundle.ts",
+    "test:e2e": "playwright test",
+    "test:lab": "tsx --test shared/labBoards.test.ts client/src/lib/chapterAudio.test.ts client/src/lib/shareLinks.test.ts client/src/lib/qr.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",
@@ -81,6 +88,7 @@
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -100,7 +108,9 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@capacitor/cli": "^8.4.2",
+    "@playwright/test": "^1.64.1",
     "@replit/vite-plugin-cartographer": "^0.4.4",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
@@ -112,6 +122,7 @@
     "@types/node": "20.19.27",
     "@types/passport": "^1.0.16",
     "@types/passport-local": "^1.0.38",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
