@@ -211,11 +211,11 @@ export function WinModal({
           >
             {/* Stats scroll, actions stay pinned: on a phone "Next level" must not
                 sit below a screenful of results. */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-3 sm:p-7 sm:pb-4">
+            <div className="safe-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-3 sm:p-7 sm:pb-4">
 
-            <div className="relative z-10 space-y-3 text-center sm:space-y-4">
+            <div className="relative z-10 space-y-2 text-center sm:space-y-4">
               {campaignChapter && (
-                <div className="relative h-20 overflow-hidden border border-white/10 bg-background/60">
+                <div className="relative h-12 overflow-hidden border border-white/10 bg-background/60 sm:h-20">
                   <CitySkyline
                     completedLevels={cityCompleted}
                     focusChapterId={campaignChapter.id}
@@ -239,7 +239,7 @@ export function WinModal({
                 <motion.h2
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="pb-1 font-orbitron text-3xl font-black tracking-wide text-white"
+                  className="pb-1 font-orbitron text-[clamp(1.25rem,6.5vw,1.875rem)] font-black tracking-wide text-white sm:text-3xl"
                 >
                   {title}
                 </motion.h2>
