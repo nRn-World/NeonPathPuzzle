@@ -141,8 +141,8 @@ export default function Lab() {
     : "border-amber-400/30 bg-amber-400/5 text-amber-200";
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 p-4 md:p-6">
+    <div className="h-full overflow-y-auto safe-scroll bg-background text-foreground">
+      <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-4 p-4 md:p-6">
         <header className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="icon" aria-label={t("backToMenu")}>

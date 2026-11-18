@@ -189,7 +189,9 @@ export function MenuHero({
   const filled = Math.round((solvedCount / totalLevels) * segments);
 
   return (
-    <section className="relative mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-x-8 gap-y-4 py-0 sm:gap-y-6 sm:py-2 md:py-6 md:grid-cols-[1.05fr_0.95fr] md:gap-x-12 md:gap-y-0">
+    <section className="relative mx-auto flex w-full max-w-6xl flex-col gap-y-4 py-0 sm:gap-y-6 sm:py-2 md:grid md:min-h-[calc(100svh-4rem)] md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-x-12 md:gap-y-0 md:py-6">
+      {/* Phones: title, board and play share exactly one screen, so the board shrinks instead of pushing the button below it. */}
+      <div className="menu-hero-fit flex min-h-0 flex-col gap-y-4 md:contents">
       {/* Phones: title and tagline first, then the board, then the play block. */}
       <div className="text-left md:col-start-1 md:row-start-1">
         <motion.p
@@ -231,15 +233,17 @@ export function MenuHero({
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
-        className="mx-auto w-full max-w-[min(100%,calc(100svh-23rem))] sm:max-w-[min(100%,34rem)] md:col-start-2 md:row-span-2 md:row-start-1 md:self-center"
+        className="mx-auto flex min-h-0 w-full max-w-[min(100%,34rem)] flex-1 flex-col md:col-start-2 md:row-span-3 md:row-start-1 md:self-center"
       >
-        <div className="relative border border-white/10 bg-white/[0.02] p-4 sm:p-6">
+        <div className="relative flex min-h-0 flex-1 flex-col border border-white/10 bg-white/[0.02] p-4 sm:p-6">
           {/* Corner ticks make the board read as an instrument, not a card. */}
           <span className="absolute -left-px -top-px h-4 w-4 border-l-2 border-t-2 border-primary" />
           <span className="absolute -right-px -top-px h-4 w-4 border-r-2 border-t-2 border-primary" />
           <span className="absolute -bottom-px -left-px h-4 w-4 border-b-2 border-l-2 border-primary" />
           <span className="absolute -bottom-px -right-px h-4 w-4 border-b-2 border-r-2 border-primary" />
-          <HeroBoard />
+          <div className="board-fit flex min-h-0 flex-1 items-center justify-center">
+            <HeroBoard />
+          </div>
           <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             <span>{HERO_BOARD.gridSize}×{HERO_BOARD.gridSize} · {HERO_BOARD.solution.length} {t("nodes")}</span>
             <span>{t("heroBoardCaption")}</span>
@@ -272,9 +276,21 @@ export function MenuHero({
             </span>
             <Play className="h-8 w-8 fill-current transition-transform group-hover:translate-x-1" />
           </button>
+        </motion.div>
+      </div>
+      </div>
+
+      {/* Phones: everything below the level button waits under the fold. */}
+      <div className="text-left md:col-start-1 md:row-start-3">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="max-w-md"
+        >
 
           <div
-            className="mt-4 flex gap-[3px]"
+            className="mt-0 flex gap-[3px] md:mt-4"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={totalLevels}
@@ -340,7 +356,7 @@ export function MenuHero({
         role="region"
         aria-label={t("heroBoardCaption")}
         tabIndex={0}
-        className="mt-6 w-full overflow-x-auto [scrollbar-width:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/60 md:col-span-2 md:row-start-3 md:mt-10 md:overflow-hidden"
+        className="mt-6 w-full overflow-x-auto [scrollbar-width:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/60 md:col-span-2 md:row-start-4 md:mt-10 md:overflow-hidden"
       >
         <CitySkyline completedLevels={completedLevels} className="min-w-[720px] md:min-w-0" />
       </div>

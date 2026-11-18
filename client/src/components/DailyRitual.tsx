@@ -123,6 +123,10 @@ export function DailyRitual({ state, onEnter }: { state: DailyState; onEnter: ()
               <span className="font-mono text-muted-foreground">{t("dailyNextIn", { time: formatCountdown(remaining) })}</span>
             </div>
 
+            <Button onClick={enter} size="lg" className="w-full max-w-xs font-bold text-background" style={{ background: accent }}>
+              {t("dailyRevealEnter")} <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+
             <div className="w-full border border-white/10 bg-white/[0.02] p-3">
               <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 {t("dailyCalendar", { count: 30 })}
@@ -147,10 +151,6 @@ export function DailyRitual({ state, onEnter }: { state: DailyState; onEnter: ()
               </div>
               <p className="mt-2 text-left font-exo text-[11px] text-muted-foreground">{t("dailyShieldHint")}</p>
             </div>
-
-            <Button onClick={enter} size="lg" className="w-full max-w-xs font-bold text-background" style={{ background: accent }}>
-              {t("dailyRevealEnter")} <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
           </motion.div>
         </motion.div>
       )}

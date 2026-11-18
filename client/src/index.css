@@ -66,6 +66,26 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/*
+ * The phone menu's title, board and play button share exactly one screen.
+ * The board gives up height when a translation wraps, so the level button
+ * always stays above the bottom edge.
+ */
+@media (max-width: 767.98px) {
+  .menu-hero-fit {
+    height: calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  .board-fit {
+    container-type: size;
+  }
+
+  .board-fit > canvas {
+    width: min(100cqw, 100cqh);
+    height: auto;
+  }
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Orbitron', sans-serif;
   letter-spacing: 0.05em;

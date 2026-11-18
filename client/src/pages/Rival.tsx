@@ -111,8 +111,8 @@ export default function Rival() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-4xl flex-col gap-4 p-4">
+    <div className="h-full overflow-y-auto safe-scroll bg-background text-foreground">
+      <div className="mx-auto flex min-h-full max-w-4xl flex-col gap-4 p-4">
         <header className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="icon" aria-label={t("backToMenu")}>
