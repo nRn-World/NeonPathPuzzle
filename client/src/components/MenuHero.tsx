@@ -189,13 +189,13 @@ export function MenuHero({
   const filled = Math.round((solvedCount / totalLevels) * segments);
 
   return (
-    <section className="relative mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-x-8 gap-y-6 py-2 md:py-6 md:grid-cols-[1.05fr_0.95fr] md:gap-x-12 md:gap-y-0">
+    <section className="relative mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-x-8 gap-y-4 py-0 sm:gap-y-6 sm:py-2 md:py-6 md:grid-cols-[1.05fr_0.95fr] md:gap-x-12 md:gap-y-0">
       {/* Phones: title and tagline first, then the board, then the play block. */}
       <div className="text-left md:col-start-1 md:row-start-1">
         <motion.p
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
-          className="mb-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-muted-foreground"
+          className="mb-3 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-muted-foreground sm:mb-4"
         >
           <span className="h-px w-8 bg-primary" />
           {t("heroEyebrow", { count: totalLevels })}
@@ -221,7 +221,7 @@ export function MenuHero({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.25 }}
-          className="mt-6 max-w-md font-exo text-lg leading-snug text-foreground/70"
+          className="mt-4 max-w-md font-exo text-lg leading-snug text-foreground/70 sm:mt-6"
         >
           {t("startTagline")}
         </motion.p>
@@ -231,7 +231,7 @@ export function MenuHero({
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
-        className="mx-auto w-full max-w-[min(100%,34rem)] md:col-start-2 md:row-span-2 md:row-start-1 md:self-center"
+        className="mx-auto w-full max-w-[min(100%,calc(100svh-23rem))] sm:max-w-[min(100%,34rem)] md:col-start-2 md:row-span-2 md:row-start-1 md:self-center"
       >
         <div className="relative border border-white/10 bg-white/[0.02] p-4 sm:p-6">
           {/* Corner ticks make the board read as an instrument, not a card. */}

@@ -157,7 +157,7 @@ export function StartMenu() {
       <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
 
       <div className="relative z-10 h-full overflow-y-auto safe-scroll">
-        <div className="flex min-h-full flex-col items-center justify-start px-4 pb-14 pt-8 sm:pt-12">
+        <div className="flex min-h-full flex-col items-center justify-start px-4 pb-14 pt-4 sm:pt-12">
           <AnimatePresence mode="wait">
             {screen === "main" && (
               <motion.div
