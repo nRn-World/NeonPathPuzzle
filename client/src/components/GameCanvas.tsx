@@ -16,6 +16,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
 import { useI18n } from "@/lib/i18n";
 import { undoLastStep } from "@/lib/undoPath";
+import { drawHeadChevron, drawNodeModel } from "@/lib/nodeModel";
 
 export const MAX_BACKTRACKS = 3;
 
@@ -313,6 +314,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     shortedRef.current = false;
     nodePopsRef.current = [];
     flowTextRef.current = null;
+    hintStartRef.current = null;
     comboRef.current = 0;
     lastStepAtRef.current = -Infinity;
     perfectRef.current = true;
@@ -335,7 +337,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     if (!container || !canvas) return;
 
     const rect = container.getBoundingClientRect();
-    const size = Math.max(0, Math.min(rect.width, rect.height) * 0.96);
+    // Cap the board: on a wide screen a 3x3 level would otherwise blow its
+    // cells up to several hundred pixels and stop reading as a board.
+    const size = Math.max(0, Math.min(Math.min(rect.width, rect.height) * 0.96, 820));
     if (size === 0) return;
 
     // Crisp on retina, but cap at 2x to keep large grids cheap to fill.
@@ -462,6 +466,21 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
     context.strokeStyle = `${colors.primary}33`;
     context.lineWidth = 1.5;
     context.stroke();
+
+    // Vignette: the plate darkens towards its edges, so the board reads as a
+    // lit instrument panel instead of a flat rectangle.
+    const vignette = context.createRadialGradient(
+      boardSize / 2,
+      boardSize / 2,
+      boardSize * 0.22,
+      boardSize / 2,
+      boardSize / 2,
+      boardSize * 0.74,
+    );
+    vignette.addColorStop(0, "rgba(0,0,10,0)");
+    vignette.addColorStop(1, "rgba(0,0,10,0.42)");
+    context.fillStyle = vignette;
+    context.fillRect(0, 0, boardSize, boardSize);
 
     // Boss set pieces wear a pulsing corner frame in the chapter's colour.
     if (boss) {
@@ -601,35 +620,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
 
       // Unvisited nodes breathe out of phase; visited ones light up solid.
       const breathe = reducedMotion ? 0.5 : (Math.sin(time / 520 + node.x * 0.9 + node.y * 1.3) + 1) / 2;
-      context.save();
-      if (isVisited) {
-        context.shadowColor = colors.primary;
-        context.shadowBlur = glow(14);
-        context.beginPath();
-        context.arc(centerX, centerY, cell * 0.12, 0, Math.PI * 2);
-        context.fillStyle = colors.primary;
-        context.fill();
-        context.shadowBlur = 0;
-        context.beginPath();
-        context.arc(centerX, centerY, cell * 0.19, 0, Math.PI * 2);
-        context.strokeStyle = `${colors.primary}cc`;
-        context.lineWidth = 2;
-        context.stroke();
-      } else {
-        context.shadowColor = colors.primary;
-        context.shadowBlur = glow(6 + breathe * 10);
-        context.beginPath();
-        context.arc(centerX, centerY, cell * 0.17, 0, Math.PI * 2);
-        context.strokeStyle = `${colors.primary}${Math.round(70 + breathe * 100).toString(16).padStart(2, "0")}`;
-        context.lineWidth = 2;
-        context.stroke();
-        context.shadowBlur = 0;
-        context.beginPath();
-        context.arc(centerX, centerY, cell * (0.055 + breathe * 0.02), 0, Math.PI * 2);
-        context.fillStyle = `${colors.primary}aa`;
-        context.fill();
-      }
-      context.restore();
+      drawNodeModel(context, centerX, centerY, cell, colors, {
+        visited: isVisited,
+        breathe,
+        glow,
+        time,
+        reducedMotion,
+        start: node.x === level.start.x && node.y === level.start.y,
+      });
 
       const pair = pairMap.get(pointKey(node));
       if (pair) {
@@ -832,17 +830,6 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
       }
     }
 
-    // Start marker
-    const startX = level.start.x * cell + cell / 2;
-    const startY = level.start.y * cell + cell / 2;
-    context.beginPath();
-    context.arc(startX, startY, cell * 0.25, 0, Math.PI * 2);
-    context.strokeStyle = `${colors.primary}aa`;
-    context.lineWidth = 2;
-    context.setLineDash([cell * 0.08, cell * 0.07]);
-    context.stroke();
-    context.setLineDash([]);
-
     // Trail
     if (currentPath.length > 1) {
       const trace = () => {
@@ -920,13 +907,14 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         0,
         headX,
         headY,
-        cell * 0.32 + pulse,
+        cell * 0.28 + pulse,
       );
-      gradient.addColorStop(0, won ? WIN_PINK : "rgba(255,255,255,0.95)");
-      gradient.addColorStop(0.35, won ? colors.primary : colors.accent);
+      // Kept just under full white: the node model underneath must stay legible.
+      gradient.addColorStop(0, won ? WIN_PINK : "rgba(255,255,255,0.8)");
+      gradient.addColorStop(0.4, won ? colors.primary : colors.accent);
       gradient.addColorStop(1, "rgba(0,0,0,0)");
       context.beginPath();
-      context.arc(headX, headY, cell * 0.3 + pulse, 0, Math.PI * 2);
+      context.arc(headX, headY, cell * 0.28 + pulse, 0, Math.PI * 2);
       context.fillStyle = gradient;
       context.fill();
       if (!reducedMotion && !wonRef.current) {
@@ -939,6 +927,19 @@ export const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function
         context.arc(headX, headY, cell * 0.4, 0, Math.PI * 2);
         context.stroke();
         context.restore();
+      }
+      // A chevron inside the glow points the way the line is travelling, so the
+      // head reads as a direction, not just a bright dot.
+      if (!wonRef.current) {
+        drawHeadChevron(
+          context,
+          head,
+          currentPath[currentPath.length - 2] ?? null,
+          headX,
+          headY,
+          cell,
+          "rgba(255,255,255,0.92)",
+        );
       }
     }
 

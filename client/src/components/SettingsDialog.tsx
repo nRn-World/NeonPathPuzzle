@@ -309,6 +309,22 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
               {t("restoreReplaces")}
             </p>
           </div>
+
+          {/* Attribution lives next to the settings, where a player looks for it. */}
+          <div className="space-y-1.5 rounded-lg border border-white/10 p-3">
+            <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
+              Credits
+            </Label>
+            <p className="font-exo text-xs leading-relaxed text-muted-foreground">
+              Board art and node models are drawn procedurally in the game itself.
+              Typefaces: <span className="text-foreground">Exo 2</span> by Natanael Gama and{" "}
+              <span className="text-foreground">Orbitron</span> by Matt McInerney, licensed under the{" "}
+              SIL Open Font License. Sound is synthesised live with Web Audio.
+            </p>
+            <p className="font-exo text-[10px] text-muted-foreground/70">
+              No third-party models, textures or audio files are bundled.
+            </p>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

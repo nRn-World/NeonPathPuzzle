@@ -8,6 +8,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/lib/settings";
 import { useI18n, upper } from "@/lib/i18n";
 import { CitySkyline } from "@/components/CitySkyline";
+import { drawNodeModel } from "@/lib/nodeModel";
 
 /** Nodes drawn per second while the line traces itself. */
 const DRAW_SPEED = 13;
@@ -72,20 +73,12 @@ export function AnimatedBoard({
       // Every node of the board, dim until the line has been through it.
       level.solution.forEach((point, index) => {
         const reached = index <= progress;
-        const x = center(point.x);
-        const y = center(point.y);
-        context.beginPath();
-        context.arc(x, y, cell * 0.13, 0, Math.PI * 2);
-        context.strokeStyle = reached ? colors.primary : "rgba(255,255,255,0.22)";
-        context.globalAlpha = reached ? fade : 1;
-        context.lineWidth = Math.max(1.5, cell * 0.035);
-        context.stroke();
-        if (reached) {
-          context.beginPath();
-          context.arc(x, y, cell * 0.06, 0, Math.PI * 2);
-          context.fillStyle = colors.primary;
-          context.fill();
-        }
+        context.globalAlpha = reached ? fade : 0.85;
+        drawNodeModel(context, center(point.x), center(point.y), cell, colors, {
+          visited: reached,
+          breathe: 0.45,
+          glow: amount => (reached ? Math.min(amount, 12) : 0),
+        });
         context.globalAlpha = 1;
       });
 

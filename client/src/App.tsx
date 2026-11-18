@@ -71,7 +71,8 @@ function AppRouter() {
           <Route component={NotFound} />
         </Switch>
       </Suspense>
-      <InstallPrompt />
+      {/* Never over a live board: the install card used to cover the start node. */}
+      {!GAMEPLAY_ROUTE.test(location) && <InstallPrompt />}
     </Router>
   );
 }

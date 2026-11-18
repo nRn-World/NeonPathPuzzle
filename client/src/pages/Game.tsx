@@ -173,6 +173,9 @@ export default function Game({ mode = "level" }: GameProps) {
   const hintPath = variant?.solution;
 
   const canvasRef = useRef<GameCanvasHandle>(null);
+  /** Celebration canvas lives inside the app so the result card can sit above it. */
+  const confettiCanvasRef = useRef<HTMLCanvasElement>(null);
+  const confettiGunRef = useRef<ReturnType<typeof confetti.create> | null>(null);
   const wonRef = useRef(false);
   const clockRef = useRef(createRunClock());
   const backtracksRef = useRef(0);
@@ -763,13 +766,20 @@ export default function Game({ mode = "level" }: GameProps) {
     usePowerUpsStore.getState().removeEffect("path_hint");
 
     if (!reducedMotion && isScored) {
-      confetti({
-        particleCount: 110,
-        spread: 75,
-        origin: { y: 0.6 },
-        // No white pieces: the win stays in neon colours.
-        colors: [...colors.neon.filter(color => color.toLowerCase() !== "#ffffff"), "#ff3bd4"],
-      });
+      const celebration = confettiCanvasRef.current;
+      if (celebration) {
+        // Drawn into the page's own canvas, not the library's body-level one:
+        // the win card is painted after it, so the confetti can never cover the
+        // stats it is celebrating.
+        confettiGunRef.current ??= confetti.create(celebration, { resize: true });
+        void confettiGunRef.current({
+          particleCount: 110,
+          spread: 75,
+          origin: { y: 0.6 },
+          // No white pieces: the win stays in neon colours.
+          colors: [...colors.neon.filter(color => color.toLowerCase() !== "#ffffff"), "#ff3bd4"],
+        });
+      }
     }
   }, [
     addTokens,
@@ -1159,6 +1169,12 @@ export default function Game({ mode = "level" }: GameProps) {
       </main>
 
       {crashModal}
+
+      <canvas
+        ref={confettiCanvasRef}
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-40 h-full w-full"
+      />
 
       <WinModal
         isOpen={showWinModal}

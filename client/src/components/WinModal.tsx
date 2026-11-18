@@ -207,12 +207,12 @@ export function WinModal({
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 20, transition: { duration: 0.15 } }}
-            className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background/95 p-7 shadow-[0_0_60px_rgba(0,0,0,0.5)]"
+            className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)] sm:p-7"
           >
 
-            <div className="relative z-10 space-y-5 text-center">
+            <div className="relative z-10 space-y-4 text-center">
               {campaignChapter && (
-                <div className="relative h-24 overflow-hidden border border-white/10 bg-background/60">
+                <div className="relative h-20 overflow-hidden border border-white/10 bg-background/60">
                   <CitySkyline
                     completedLevels={cityCompleted}
                     focusChapterId={campaignChapter.id}
@@ -276,7 +276,7 @@ export function WinModal({
                     >
                       <StarIcon
                         filled={index < stars}
-                        className={`h-11 w-11 ${index < stars ? "text-primary" : "text-white/15"}`}
+                        className={`h-10 w-10 ${index < stars ? "text-primary" : "text-white/15"}`}
                       />
                     </motion.div>
                   ))}

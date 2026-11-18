@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AnimatedBoard } from "@/components/MenuHero";
 import { Button } from "@/components/ui/button";
-import { HERO_BOARD } from "@/lib/heroBoard";
+import { TUTORIAL_BOARD } from "@/lib/heroBoard";
 import { useI18n, upper, type TranslationKey } from "@/lib/i18n";
 import { markTutorialSeen } from "@/lib/progress";
 import { useSettingsStore } from "@/lib/settings";
@@ -49,8 +49,8 @@ export function TutorialOverlay({ userId, onClose }: { userId: string; onClose: 
           </span>
         </div>
 
-        <div className="mx-auto mb-5 w-40">
-          <AnimatedBoard board={HERO_BOARD} speed={16} />
+        <div className="mx-auto mb-5 w-52">
+          <AnimatedBoard board={TUTORIAL_BOARD} speed={8} />
         </div>
 
         <h2 id="tutorial-title" className="mb-2 font-orbitron text-xl font-bold text-foreground">
