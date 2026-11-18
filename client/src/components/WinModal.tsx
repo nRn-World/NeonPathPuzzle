@@ -207,10 +207,13 @@ export function WinModal({
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 20, transition: { duration: 0.15 } }}
-            className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)] sm:p-7"
+            className="relative flex max-h-[92dvh] w-full max-w-md flex-col rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background shadow-[0_0_60px_rgba(0,0,0,0.5)]"
           >
+            {/* Stats scroll, actions stay pinned: on a phone "Next level" must not
+                sit below a screenful of results. */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-3 sm:p-7 sm:pb-4">
 
-            <div className="relative z-10 space-y-4 text-center">
+            <div className="relative z-10 space-y-3 text-center sm:space-y-4">
               {campaignChapter && (
                 <div className="relative h-20 overflow-hidden border border-white/10 bg-background/60">
                   <CitySkyline
@@ -369,34 +372,6 @@ export function WinModal({
               )}
 
               <div className="flex flex-col gap-2 pt-1">
-                <Button
-                  size="lg"
-                  onClick={onNext}
-                  className="h-12 w-full bg-primary text-lg font-bold text-background shadow-[0_0_20px_rgba(0,243,255,0.4)] hover:bg-primary/90"
-                >
-                  <Play className="mr-2 h-5 w-5" />
-                  {isZen || isDaily || isWeekly
-                    ? t("backToMenu")
-                    : levelId < TOTAL_LEVELS || (levelId > TOTAL_LEVELS && levelId < RIFT_LAST_LEVEL) ? t("nextLevel") : t("finish")}
-                </Button>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={onReplay}
-                    className="border-white/10 hover:bg-white/5"
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    {t("replay")}
-                  </Button>
-                  <Button asChild variant="outline" className="border-white/10 hover:bg-white/5">
-                    <Link href="/">
-                      <Home className="mr-2 h-4 w-4" />
-                      {t("menu")}
-                    </Link>
-                  </Button>
-                </div>
-
                 {canShare && (
                   <Button
                     variant="outline"
@@ -442,6 +417,39 @@ export function WinModal({
                     {clipLabel}
                   </Button>
                 )}
+              </div>
+            </div>
+            </div>
+
+            <div className="shrink-0 border-t border-white/10 bg-background p-4 pt-3 sm:p-7 sm:pt-4">
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="lg"
+                  onClick={onNext}
+                  className="h-12 w-full bg-primary text-lg font-bold text-background shadow-[0_0_20px_rgba(0,243,255,0.4)] hover:bg-primary/90"
+                >
+                  <Play className="mr-2 h-5 w-5" />
+                  {isZen || isDaily || isWeekly
+                    ? t("backToMenu")
+                    : levelId < TOTAL_LEVELS || (levelId > TOTAL_LEVELS && levelId < RIFT_LAST_LEVEL) ? t("nextLevel") : t("finish")}
+                </Button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={onReplay}
+                    className="border-white/10 hover:bg-white/5"
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    {t("replay")}
+                  </Button>
+                  <Button asChild variant="outline" className="border-white/10 hover:bg-white/5">
+                    <Link href="/">
+                      <Home className="mr-2 h-4 w-4" />
+                      {t("menu")}
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </motion.div>
