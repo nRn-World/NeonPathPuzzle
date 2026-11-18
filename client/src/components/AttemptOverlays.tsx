@@ -29,7 +29,7 @@ export function DeadEndOverlay({ open, undoLeft, attemptsLeft, onUndo, onRestart
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
-          className="absolute bottom-4 left-1/2 z-30 flex w-[min(92%,420px)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-amber-400/40 bg-background/90 px-4 py-3 shadow-[0_0_30px_rgba(251,191,36,0.15)] backdrop-blur-md"
+          className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 right-0 z-30 mx-auto flex w-[min(92%,420px)] items-center gap-2.5 rounded-2xl border border-amber-400/40 bg-background/95 px-3 py-2.5 shadow-[0_0_30px_rgba(251,191,36,0.15)] backdrop-blur-md sm:gap-3 sm:px-4 sm:py-3"
           role="status"
         >
           <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-300" />

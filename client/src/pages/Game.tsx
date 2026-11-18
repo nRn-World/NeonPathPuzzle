@@ -917,12 +917,12 @@ export default function Game({ mode = "level" }: GameProps) {
   // A crash on entry (an abandoned last attempt) can lock this level before it
   // ever renders, so the crash screen must not depend on the board.
   if (crash && !level) {
-    return <div className="h-screen w-screen bg-background">{crashModal}</div>;
+    return <div className="h-full w-full bg-background">{crashModal}</div>;
   }
 
   if (levelQuery.isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex h-full w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
@@ -930,7 +930,7 @@ export default function Game({ mode = "level" }: GameProps) {
 
   if (!level) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background text-destructive">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-background text-destructive">
         <h2 className="text-2xl font-bold">{t("levelUnavailable")}</h2>
         <p className="text-muted-foreground">
           {t("levelUnavailableDesc")}
@@ -994,7 +994,7 @@ export default function Game({ mode = "level" }: GameProps) {
   const bigBoard = bigBoardOverride ?? autoBigBoard;
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background">
       <Header
         levelId={levelId}
         isDaily={isDaily}
@@ -1076,7 +1076,7 @@ export default function Game({ mode = "level" }: GameProps) {
           </Button>
         )}
         <div className="relative z-10 flex h-full w-full items-center justify-center">
-          <div className="h-full max-h-[calc(100vh-120px)] w-full max-w-4xl">
+          <div className="h-full max-h-[calc(100dvh-120px)] w-full max-w-4xl">
             <GameCanvas
               key={canvasKey}
               ref={canvasRef}

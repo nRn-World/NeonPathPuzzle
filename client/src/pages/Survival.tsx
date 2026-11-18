@@ -212,7 +212,7 @@ export default function Survival() {
   const urgent = timeLeftMs > 0 && timeLeftMs < 5_000;
 
   return (
-    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#0a0f1e]">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0a0f1e]">
       <div className="menu-grid pointer-events-none absolute inset-0 z-0" />
 
       <div className="relative z-10 flex h-full min-h-0 flex-col">

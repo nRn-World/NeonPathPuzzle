@@ -140,7 +140,7 @@ function App() {
   }, []);
 
   return (
-    <div className="app-shell w-screen h-screen overflow-hidden">
+    <div className="app-shell h-full w-full overflow-hidden">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />

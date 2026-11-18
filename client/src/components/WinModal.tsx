@@ -207,7 +207,7 @@ export function WinModal({
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 20, transition: { duration: 0.15 } }}
-            className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)] sm:p-7"
+            className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-none border border-white/10 border-t-[3px] border-t-primary bg-background p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)] sm:p-7"
           >
 
             <div className="relative z-10 space-y-4 text-center">
