@@ -112,7 +112,10 @@ export const GENERATOR_MAX_LEVEL_ID = 330;
 const DIFFICULTY_CURVE: [number, number][] = [
   [1, 5], [2, 6], [3, 7], [5, 11], [10, 17], [20, 26], [30, 38], [40, 50], [50, 60],
   [75, 86], [100, 112], [125, 138], [150, 164], [175, 190], [190, 206], [200, 236],
-  [250, 284], [290, 322], [300, 352], [330, 390],
+  // The planning rule makes the last boards harder than the original curve:
+  // dense boards that strand a greedy walk score higher, so the finale climbs
+  // to 364 instead of flattening out at 352.
+  [250, 284], [290, 330], [300, 364], [330, 390],
 ];
 
 export function targetDifficulty(levelId: number): number {
@@ -147,14 +150,27 @@ const VARIANT_LIMIT = 192;
 const OPTION_LIMIT = 24;
 /** How many times a single level may grow to clear the difficulty floor. */
 const EXTRA_NODE_LIMIT = 5;
+/**
+ * No silhouette should carry more than a fifth of the campaign. The planning
+ * rule pulls layouts towards the trap-rich families, so once the intended
+ * rotation reaches this share the least-used family takes the next level.
+ */
+const FAMILY_SOFT_CAP = Math.ceil(MAX_LEVEL_ID * 0.18);
+/** Absolute ceiling a single silhouette may reach in the campaign. */
+const FAMILY_HARD_CAP = Math.ceil(MAX_LEVEL_ID * 0.22);
 
 const MASK_WORDS = 6;
 
 type Mask = number[];
 
-/** Most cells a layout may use; the large boards keep a little more air. */
+/**
+ * Most cells a layout may use. Mid-sized boards stay at 70% so the holes stay
+ * large enough to read; the small tutorials and the big endgame boards can run
+ * a little denser. The generator tests enforce the same coverage limits.
+ */
 function capacityFor(size: number) {
-  return Math.floor(size * size * (size >= 12 ? 0.78 : 0.8));
+  const coverage = size >= 12 ? 0.78 : size >= 6 ? 0.7 : 0.8;
+  return Math.floor(size * size * coverage);
 }
 
 function key(point: Point) {
@@ -354,6 +370,21 @@ const familyUsage = new Map<LayoutFamily, number>();
 let lastDifficulty = 0;
 let lastNodes = 0;
 let lastFamily: LayoutFamily | null = null;
+/** Difficulty of every committed level, so the curve can never dip over time. */
+const difficultyHistory: number[] = [];
+
+/**
+ * A level must never be easier than a level three steps before it. The
+ * campaign may wobble by a point or two between neighbours, but the trend
+ * always climbs and nothing late may be a softer board than level N-3.
+ */
+function difficultyFloor(levelId: number): number {
+  let floor = 0;
+  for (let index = 0; index <= levelId - 4; index++) {
+    if (difficultyHistory[index] > floor) floor = difficultyHistory[index];
+  }
+  return floor;
+}
 
 /** Deterministic candidate used by the variant table below and by its tooling. */
 export function createCandidate(levelId: number, variant: number, extraNodes = 0): GeneratedLevel {
@@ -468,7 +499,10 @@ export function countBranchingEdges(path: Point[]): number {
  * cheap player model: layouts full of false corridors defeat it, while wide
  * open boards that can be solved by always taking the nearest step do not.
  */
-function greedySuccessRate(level: GeneratedLevel, runs = 24): number {
+const GREEDY_SAMPLE = 24;
+const greedyCache = new WeakMap<GeneratedLevel, number>();
+
+function greedySuccessRate(level: GeneratedLevel, runs = GREEDY_SAMPLE): number {
   const nodes = new Set(level.nodes.map(key));
   const total = level.nodes.length;
   let wins = 0;
@@ -500,6 +534,96 @@ function greedySuccessRate(level: GeneratedLevel, runs = 24): number {
   return wins / runs;
 }
 
+/** Cached version: the same board is scored and rule-checked in one search step. */
+function greedyRate(level: GeneratedLevel): number {
+  const cached = greedyCache.get(level);
+  if (cached !== undefined) return cached;
+  const value = greedySuccessRate(level);
+  greedyCache.set(level, value);
+  return value;
+}
+
+/**
+ * Fixed tie orders for the deterministic walker. The random walker above is
+ * fine for scoring a board, but it is too luck-dependent to decide whether a
+ * level is *easy*: the same board can be finished by one tie-break and stranded
+ * by another. These orders make the answer repeatable.
+ */
+const GREEDY_DIRECTIONS: readonly (readonly Point[])[] = [
+  [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }],
+  [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }],
+  [{ x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 0 }],
+  [{ x: -1, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }],
+  [{ x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 1 }],
+  [{ x: -1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 0 }, { x: 0, y: -1 }],
+  [{ x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 0 }],
+  [{ x: 0, y: 1 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }],
+];
+
+/** Share of the board one "always take the fewest exits" walk clears. */
+function greedyWalkDepth(level: GeneratedLevel, order: readonly Point[]): number {
+  const nodes = new Set(level.nodes.map(key));
+  const seen = new Set([key(level.start)]);
+  let head = level.start;
+
+  while (seen.size < level.nodes.length) {
+    let best: Point | null = null;
+    let bestOnward = Infinity;
+    for (const direction of order) {
+      const next = { x: head.x + direction.x, y: head.y + direction.y };
+      if (!nodes.has(key(next)) || seen.has(key(next))) continue;
+      const onward = GREEDY_DIRECTIONS[0].filter(({ x, y }) => {
+        const neighbour = { x: next.x + x, y: next.y + y };
+        return nodes.has(key(neighbour)) && !seen.has(key(neighbour));
+      }).length;
+      if (onward < bestOnward) {
+        best = next;
+        bestOnward = onward;
+      }
+    }
+    if (!best) break;
+    seen.add(key(best));
+    head = best;
+  }
+
+  return seen.size / level.nodes.length;
+}
+
+const greedyDepthCache = new WeakMap<GeneratedLevel, number>();
+
+/**
+ * How much of a board local, unplanned play clears, averaged over the eight
+ * deterministic tie orders. Near 1 means the line can be traced along the
+ * obvious route (a snake, spiral or border hug); the lower it is, the earlier
+ * the walk strands itself and the more the player has to think ahead.
+ */
+export function greedyDepth(level: GeneratedLevel): number {
+  const cached = greedyDepthCache.get(level);
+  if (cached !== undefined) return cached;
+  const total = GREEDY_DIRECTIONS.reduce((sum, order) => sum + greedyWalkDepth(level, order), 0);
+  const value = total / GREEDY_DIRECTIONS.length;
+  greedyDepthCache.set(level, value);
+  return value;
+}
+
+/**
+ * Highest greedy depth a level may have. The opening may be traced freely — a
+ * 4×4 board with twelve nodes has no room for a real trap — and from level 41
+ * the allowance drops in steps, so a board that can still be walked along its
+ * own outline, however dense it looks, is never the late "easy level" the
+ * campaign must not contain.
+ */
+export function planningCeiling(levelId: number): number {
+  if (levelId <= 40) return 1;
+  if (levelId <= 150) return 0.96;
+  return 0.94;
+}
+
+/** True when the layout is too easy to trace for its place in the campaign. */
+function requiresPlanning(levelId: number, level: GeneratedLevel): boolean {
+  return greedyDepth(level) <= planningCeiling(levelId);
+}
+
 /**
  * Structural difficulty: more nodes, more junctions, and more traps that a
  * greedy walker falls into all raise it. Node count alone made dense, nearly
@@ -518,7 +642,7 @@ function trapPressure(level: GeneratedLevel): number {
   // Small tutorial boards are not meaningfully harder just because one greedy
   // walk happens to fail; let trap pressure fade in as the boards get larger.
   const ramp = Math.min(1, Math.max(0, (level.id - 25) / 50));
-  return Math.round((1 - greedySuccessRate(level)) * 32 * ramp);
+  return Math.round((1 - greedyRate(level)) * 32 * ramp);
 }
 
 /**
@@ -602,8 +726,12 @@ function meetsRules(levelId: number, level: GeneratedLevel): boolean {
   if (levelId > MAX_LEVEL_ID) return meetsRiftRules(level);
   if (level.nodes.length < lastNodes) return false;
   if (level.family === lastFamily) return false;
+  if ((familyUsage.get(level.family) ?? 0) >= FAMILY_HARD_CAP) return false;
   if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) return false;
-  if (!onCurve(levelId, getLevelDifficulty(level), baseWindow(levelId) + 1)) return false;
+  if (!requiresPlanning(levelId, level)) return false;
+  const difficulty = getLevelDifficulty(level);
+  if (difficulty < difficultyFloor(levelId)) return false;
+  if (!onCurve(levelId, difficulty, baseWindow(levelId) + 1)) return false;
 
   const distance = minLayoutDistance(level, usedMasks.get(level.gridSize));
   return distance > 0 && distance >= requiredDistance(level.nodes.length);
@@ -620,10 +748,15 @@ function meetsRules(levelId: number, level: GeneratedLevel): boolean {
  */
 /** The family this level should use. Consecutive levels always differ. */
 function targetFamily(levelId: number): LayoutFamily {
-  if (levelId >= LATE_FAMILY_FROM) {
-    return LATE_FAMILY_POOL[((levelId - 1) * 5) % LATE_FAMILY_POOL.length];
-  }
-  return LAYOUT_FAMILIES[((levelId - 1) * 5) % FAMILY_COUNT];
+  const pool = levelId >= LATE_FAMILY_FROM ? LATE_FAMILY_POOL : LAYOUT_FAMILIES;
+  const preferred = pool[((levelId - 1) * 5) % pool.length];
+  if ((familyUsage.get(preferred) ?? 0) < FAMILY_SOFT_CAP) return preferred;
+  // The intended family already carries its share, so hand the level to the
+  // least-used one. The search still has every family available.
+  const alternatives = pool
+    .filter(family => family !== lastFamily)
+    .sort((a, b) => (familyUsage.get(a) ?? 0) - (familyUsage.get(b) ?? 0));
+  return alternatives[0] ?? preferred;
 }
 
 function familyAllowed(levelId: number, family: LayoutFamily): boolean {
@@ -650,28 +783,42 @@ function variantOrder(levelId: number): number[] {
   return order;
 }
 
+/** Builds each candidate once per level; the search revisits the same ones. */
+type CandidateFactory = (variant: number, extraNodes: number) => GeneratedLevel;
+
 function collectOptions(
   levelId: number,
   extraNodes: number,
   stored: Mask[],
   furthest: { current: Candidate | null },
   window: number,
-  margin = 0,
+  margin: number,
+  build: CandidateFactory,
 ): Candidate[] {
   const options: Candidate[] = [];
   const needed = Math.max(1, requiredDistance(createLevelLength(levelId, extraNodes)) - margin);
 
+  const perFamily = new Map<LayoutFamily, number>();
+
   for (const variant of variantOrder(levelId)) {
-    const level = createCandidate(levelId, variant, extraNodes);
+    const level = build(variant, extraNodes);
     if (level.nodes.length < lastNodes) continue;
     if (level.family === lastFamily) continue;
+    // A handful of options per silhouette so the final pick really has a
+    // choice between families instead of twenty cuts of the same shape.
+    if ((perFamily.get(level.family) ?? 0) >= 4) continue;
+    // Cheap rules first: the layout comparison runs over every earlier board on
+    // this grid, so a candidate that is too easy to trace never pays for it.
+    if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) continue;
+    if ((familyUsage.get(level.family) ?? 0) >= FAMILY_HARD_CAP) continue;
+    if (!requiresPlanning(levelId, level)) continue;
 
     const structural = structuralDifficulty(level);
     const traps = trapPressure(level);
     const difficulty = structural + traps;
+    if (difficulty < difficultyFloor(levelId)) continue;
     const distance = minLayoutDistance(level, stored);
     if (distance === 0) continue;
-    if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) continue;
 
     const candidate: Candidate = {
       level,
@@ -682,6 +829,8 @@ function collectOptions(
       variant,
       extraNodes,
     };
+    // Kept before the curve filter: if a level has no layout on the difficulty
+    // curve, the search still has a playable board to fall back on.
     if (!furthest.current || distance > furthest.current.distance) {
       furthest.current = candidate;
     }
@@ -690,6 +839,7 @@ function collectOptions(
     if (distance < needed) continue;
 
     options.push(candidate);
+    perFamily.set(level.family, (perFamily.get(level.family) ?? 0) + 1);
     if (options.length >= OPTION_LIMIT) break;
   }
 
@@ -707,8 +857,8 @@ function selectBest(options: Candidate[], levelId: number): Candidate {
   const family = targetFamily(levelId);
   const score = (candidate: Candidate) =>
     Math.abs(candidate.difficulty - target) * 3
-    + (familyUsage.get(candidate.level.family) ?? 0) * 16
-    + (candidate.level.family === family ? 0 : 40);
+    + (familyUsage.get(candidate.level.family) ?? 0) * 200
+    + (candidate.level.family === family ? 0 : 120);
 
   return options.sort((a, b) =>
     score(a) - score(b)
@@ -722,27 +872,101 @@ function selectBest(options: Candidate[], levelId: number): Candidate {
  * When uniqueness leaves nothing inside the window, the window widens step by
  * step and extra nodes are tried, so the campaign always stays complete.
  */
+/** Every candidate for this level, built once and reused by each search pass. */
+function candidateFactory(levelId: number): CandidateFactory {
+  const cache = new Map<number, GeneratedLevel>();
+  return (variant, extraNodes) => {
+    const cacheKey = variant * 16 + extraNodes;
+    let level = cache.get(cacheKey);
+    if (!level) {
+      level = createCandidate(levelId, variant, extraNodes);
+      cache.set(cacheKey, level);
+    }
+    return level;
+  };
+}
+
+/**
+ * Last resort when the rules leave no layout: a playable, visually distinct
+ * board that ignores the difficulty curve and the family cap. Only reached if
+ * a level cannot satisfy every rule at once.
+ */
+function fallbackCandidate(levelId: number, build: CandidateFactory, extraLimit: number): Candidate {
+  const { gridSize } = getLevelShape(levelId);
+  const stored = usedMasks.get(gridSize) ?? [];
+  const floor = difficultyFloor(levelId);
+  let best: Candidate | null = null;
+  let bestAboveFloor: Candidate | null = null;
+  let bestPlanned: Candidate | null = null;
+  let bestAboveFloorPlanned: Candidate | null = null;
+
+  for (let extraNodes = 0; extraNodes <= extraLimit; extraNodes++) {
+    for (const variant of variantOrder(levelId)) {
+      const level = build(variant, extraNodes);
+      if (level.nodes.length < lastNodes) continue;
+      if (level.family === lastFamily) continue;
+      if (levelId > NON_CORRIDOR_FROM && countBranchingEdges(level.solution) < MIN_BRANCHING_EDGES) continue;
+      const distance = minLayoutDistance(level, stored);
+      if (distance === 0) continue;
+      const candidate: Candidate = {
+        level,
+        difficulty: getLevelDifficulty(level),
+        structural: structuralDifficulty(level),
+        traps: trapPressure(level),
+        distance,
+        variant,
+        extraNodes,
+      };
+      if (!best || candidate.distance > best.distance) best = candidate;
+      const planned = requiresPlanning(levelId, level);
+      if (planned
+        && (!bestPlanned || candidate.distance > bestPlanned.distance)) {
+        bestPlanned = candidate;
+      }
+      // The campaign must still climb: prefer a board that clears the floor
+      // over a slightly more distinct one that would make a later level easier.
+      if (candidate.difficulty >= floor
+        && (!bestAboveFloor || candidate.distance > bestAboveFloor.distance)) {
+        bestAboveFloor = candidate;
+      }
+      if (planned && candidate.difficulty >= floor
+        && (!bestAboveFloorPlanned || candidate.distance > bestAboveFloorPlanned.distance)) {
+        bestAboveFloorPlanned = candidate;
+      }
+    }
+  }
+
+  // A board the player can still walk through is the one thing a late level
+  // may never fall back to, so the planning rule outranks everything else.
+  if (bestAboveFloorPlanned) return bestAboveFloorPlanned;
+  if (bestPlanned) return bestPlanned;
+  if (bestAboveFloor) return bestAboveFloor;
+  if (best) return best;
+  throw new Error(`Could not create a layout for level ${levelId}`);
+}
+
 function searchLevel(levelId: number): Candidate {
   if (levelId > MAX_LEVEL_ID) return searchRiftLevel(levelId);
   const { gridSize } = getLevelShape(levelId);
   const stored = usedMasks.get(gridSize) ?? [];
   const furthest: { current: Candidate | null } = { current: null };
   const base = baseWindow(levelId);
+  const build = candidateFactory(levelId);
+  // Seven is the most a packed table entry can carry (three bits); the largest
+  // boards may use it so a new rule never leaves them without a layout.
+  const extraLimit = levelId >= 241 ? 7 : EXTRA_NODE_LIMIT;
 
-  for (const margin of [0, 2]) {
+  for (const margin of [0, 2, 4]) {
     for (const step of WINDOW_STEPS) {
-      for (let extraNodes = 0; extraNodes <= EXTRA_NODE_LIMIT; extraNodes++) {
-        const options = collectOptions(levelId, extraNodes, stored, furthest, base + step, margin);
+      for (let extraNodes = 0; extraNodes <= extraLimit; extraNodes++) {
+        const options = collectOptions(levelId, extraNodes, stored, furthest, base + step, margin, build);
         if (options.length > 0) return selectBest(options, levelId);
       }
     }
   }
 
-  if (!furthest.current || furthest.current.distance === 0) {
-    throw new Error(`Could not create a layout for level ${levelId}`);
-  }
-  // Keep the campaign playable even if one level cannot satisfy every rule.
-  return furthest.current;
+  // Keep the campaign playable even if no layout satisfies every rule at once.
+  return furthest.current ?? fallbackCandidate(levelId, build, extraLimit);
 }
 
 /**
@@ -756,21 +980,21 @@ function searchLevel(levelId: number): Candidate {
 const VARIANT_TABLE: number[] = [
   672, 520, 464, 312, 160, 200, 16, 136, 1088, 152, 1504, 328, 192, 144, 848, 120, 832, 456, 328, 832,
   32, 1208, 1528, 504, 88, 1200, 272, 1176, 928, 40, 1008, 856, 1328, 800, 776, 208, 912, 712, 32, 856,
-  832, 816, 1464, 376, 896, 760, 32, 240, 560, 96, 1424, 616, 208, 752, 48, 1272, 232, 1240, 832, 184,
-  624, 536, 704, 944, 760, 640, 1296, 760, 1280, 616, 993, 617, 256, 1392, 520, 1200, 760, 1520, 432, 928,
-  1089, 65, 809, 1120, 424, 1464, 376, 448, 144, 472, 1504, 752, 520, 368, 1104, 1384, 1080, 848, 832, 944,
-  544, 240, 1288, 280, 808, 336, 80, 424, 1177, 809, 1528, 816, 904, 568, 200, 512, 376, 216, 736, 272,
-  1120, 1040, 664, 1040, 1120, 784, 48, 568, 1248, 320, 1344, 432, 1240, 1384, 1488, 256, 568, 1200, 1024, 1232,
-  832, 232, 1232, 376, 1424, 696, 128, 352, 1040, 360, 608, 1232, 376, 352, 136, 472, 1192, 352, 1088, 1328,
-  1376, 40, 848, 264, 1312, 1384, 664, 1232, 184, 514, 810, 732, 453, 828, 1436, 1467, 762, 1378, 1193, 281,
-  1176, 712, 1120, 520, 456, 520, 1041, 1216, 232, 633, 617, 161, 281, 1288, 256, 280, 944, 1048, 544, 696,
-  760, 352, 617, 1337, 449, 472, 928, 1289, 1312, 1481, 345, 376, 1465, 1121, 848, 600, 1432, 1312, 713, 281,
-  544, 560, 448, 1320, 344, 464, 64, 616, 64, 1336, 1384, 1216, 88, 616, 256, 88, 1120, 857, 616, 280,
-  696, 472, 1464, 1136, 1384, 24, 1528, 1176, 184, 448, 40, 1144, 1504, 1528, 640, 464, 425, 362, 1025, 1338,
-  258, 426, 1329, 185, 731, 331, 546, 1018, 1219, 379, 546, 474, 1314, 1290, 257, 715, 1051, 1027, 475, 523,
-  68, 716, 827, 1339, 451, 861, 140, 380, 1508, 1148, 260, 1292, 1029, 477, 180, 1124, 189, 909, 1045, 925,
-  64, 32, 80, 152, 24, 32, 40, 88, 64, 416, 80, 56, 984, 40, 56, 88, 64, 40, 80, 56,
-  40, 56, 40, 88, 64, 88, 272, 56, 40, 56,
+  464, 816, 280, 712, 816, 1216, 32, 240, 808, 736, 730, 138, 653, 1196, 956, 1483, 531, 1195, 834, 234,
+  353, 537, 704, 328, 760, 640, 1296, 760, 944, 616, 1025, 617, 256, 1392, 232, 1200, 760, 544, 432, 928,
+  1193, 802, 147, 922, 1530, 337, 993, 138, 1218, 914, 898, 186, 546, 153, 1097, 545, 1201, 929, 1193, 1432,
+  544, 40, 65, 281, 808, 336, 1048, 424, 131, 155, 354, 618, 155, 906, 803, 338, 474, 225, 737, 1049,
+  1120, 184, 120, 640, 176, 1376, 48, 568, 944, 320, 1120, 432, 1240, 1384, 184, 256, 568, 1200, 1024, 1528,
+  832, 232, 240, 376, 1424, 832, 432, 352, 1144, 712, 608, 280, 40, 352, 136, 472, 1192, 352, 1088, 1328,
+  1376, 40, 1240, 264, 1312, 1384, 664, 928, 1048, 514, 810, 732, 453, 828, 1436, 1379, 762, 1378, 1193, 353,
+  616, 856, 1120, 520, 1048, 520, 473, 1216, 232, 633, 617, 1120, 187, 1026, 618, 953, 1314, 1465, 833, 696,
+  760, 352, 617, 1337, 449, 472, 928, 1289, 1144, 1312, 328, 376, 1465, 1121, 184, 928, 1432, 1312, 713, 281,
+  544, 40, 633, 1504, 280, 1216, 266, 282, 1386, 65, 1305, 546, 233, 545, 329, 88, 713, 1505, 616, 280,
+  696, 472, 1464, 472, 25, 1145, 1312, 696, 184, 64, 265, 1137, 641, 369, 640, 1528, 425, 545, 185, 1217,
+  251, 1435, 450, 1146, 923, 1003, 546, 1007, 743, 351, 574, 1487, 1535, 1127, 1487, 1343, 911, 1055, 142, 286,
+  622, 735, 622, 382, 1198, 1343, 142, 383, 335, 735, 910, 1214, 1391, 1431, 1247, 831, 607, 1239, 863, 1527,
+  64, 32, 80, 152, 216, 32, 40, 88, 64, 992, 80, 248, 984, 40, 56, 88, 160, 40, 80, 56,
+  64, 56, 40, 88, 64, 88, 176, 56, 64, 56,
 ];
 
 /**
@@ -802,6 +1026,7 @@ function resetGenerator() {
   levelCache.clear();
   usedMasks.clear();
   familyUsage.clear();
+  difficultyHistory.length = 0;
   lastDifficulty = 0;
   lastNodes = 0;
   lastFamily = null;
@@ -813,6 +1038,7 @@ function commitLevel(id: number, candidate: Candidate) {
   levelCache.set(id, level);
   familyUsage.set(level.family, (familyUsage.get(level.family) ?? 0) + 1);
   lastDifficulty = getLevelDifficulty(level);
+  difficultyHistory[id - 1] = lastDifficulty;
   lastNodes = Math.max(lastNodes, level.nodes.length);
   lastFamily = level.family;
 }

@@ -5,9 +5,11 @@ import {
   countBranchingEdges,
   generateLevel,
   getLevelDifficulty,
+  greedyDepth,
   isValidSolutionPath,
   LAYOUT_FAMILIES,
   MAX_LEVEL_ID,
+  planningCeiling,
   targetDifficulty,
   type GeneratedLevel,
 } from "./level-generator";
@@ -231,6 +233,31 @@ test("the closing levels climb one step each", () => {
       `Level ${id} (difficulty ${current}) must be harder than level ${id - 1} (${previous})`,
     );
   }
+});
+
+test("no level after 40 can be traced by greedy play alone", () => {
+  for (const level of levels) {
+    if (level.id <= 40) continue;
+    const depth = greedyDepth(level);
+    assert.ok(
+      depth <= planningCeiling(level.id),
+      `Level ${level.id} can be walked ${(depth * 100).toFixed(0)}% of the way by local play alone (limit ${(planningCeiling(level.id) * 100).toFixed(0)}%)`,
+    );
+  }
+
+  // The allowance really tightens: the late campaign strands a greedy walk
+  // well before the end instead of letting it run along the outline, and the
+  // earliest levels keep a wider allowance so the tutorial stays gentle.
+  for (const level of levels.filter(entry => entry.id >= 241)) {
+    assert.ok(
+      planningCeiling(level.id) < 0.95,
+      `Late level ${level.id} is still allowed to be ${(planningCeiling(level.id) * 100).toFixed(0)}% traceable`,
+    );
+  }
+  assert.ok(
+    planningCeiling(300) < planningCeiling(45),
+    "The late campaign must allow a greedy walk less room than the early one",
+  );
 });
 
 test("campaign levels stop being single-corridor layouts after the tutorial", () => {

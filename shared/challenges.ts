@@ -32,7 +32,7 @@ export interface ChallengeSpec {
 
 /** Levels with exactly one Hamiltonian solution, found by `script/audit-uniqueness.ts`. */
 export const UNIQUE_LEVEL_IDS: readonly number[] = [
-  1, 2, 3, 5, 7, 8, 10, 11, 13, 17, 19, 20, 22, 23, 37, 59, 62, 80,
+  1, 2, 3, 5, 7, 8, 10, 11, 13, 17, 19, 20, 22, 23, 37, 49, 62, 80,
 ];
 export const CHALLENGE_VARIANTS = 4;
 export const CHALLENGE_POOL_SIZE = UNIQUE_LEVEL_IDS.length * CHALLENGE_VARIANTS;
