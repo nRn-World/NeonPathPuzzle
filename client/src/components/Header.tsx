@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Crown } from "lucide-react";
+import { Crown, Palette } from "lucide-react";
 import {
   BackIcon,
   TrophyIcon,
@@ -59,6 +59,9 @@ const iconButton = "h-8 w-[30px] flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&
 const countButton = "h-8 flex-shrink-0 gap-0.5 rounded-none px-1.5 md:h-9 md:gap-1.5 md:px-2.5 [&_svg]:!size-[18px] md:[&_svg]:!size-[22px]";
 const count = "font-mono text-sm font-black leading-none tabular-nums md:text-base";
 
+/** A button for theme switching */
+const themeButton = "h-8 w-[30px] flex-shrink-0 rounded-none p-0 md:h-9 md:w-9 [&_svg]:!size-[18px] md:[&_svg]:!size-[22px]";
+
 export function Header({
   levelId,
   isDaily = false,
@@ -86,10 +89,26 @@ export function Header({
   const [showPowerUps, setShowPowerUps] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showThemes, setShowThemes] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState("cyberpunk");
   const { t } = useI18n();
   const overPar = parTimeMs !== undefined && timeMs > parTimeMs;
   const usesTokens = hintTokens >= 0;
   const hintLocked = hintDisabled || hintExhausted || isHintLoading || (usesTokens && hintTokens <= 0);
+
+  const themes = [
+    { id: "cyberpunk", name: t("cyberpunk") },
+    { id: "retro", name: t("retroWave") },
+    { id: "cosmic", name: t("cosmic") },
+    { id: "matrix", name: t("matrix") },
+    { id: "sunset", name: t("neonSunset") },
+  ];
+
+  const handleThemeChange = (themeId: string) => {
+    setCurrentTheme(themeId);
+    // Here you would typically dispatch an action to change the theme
+    // For example: dispatch({ type: "SET_THEME", payload: themeId });
+  };
 
   return (
     <header className="sticky top-0 z-10 flex min-h-14 w-full flex-shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-background/80 px-2 py-2 backdrop-blur-md md:min-h-16 md:px-6 md:py-3">
