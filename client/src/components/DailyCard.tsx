@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { CalendarDays, Check, Flame, Play, Shield, Star } from "lucide-react";
+import { Flame, Play, Star } from "lucide-react";
 import { getProgress } from "@/lib/progress";
 import {
   formatCountdown,
@@ -16,6 +16,7 @@ import {
 import { useUserId } from "@/hooks/use-game";
 import { formatResultTime } from "@/lib/scoring";
 import { useI18n, upper } from "@/lib/i18n";
+import { DailyIcon, DailyCompletedIcon, PlayIcon, FlameIcon, StarIcon } from "@/components/icons/GameIcons";
 
 function weekdayLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split("-").map(Number);
@@ -53,14 +54,14 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
       >
         <div className="relative flex items-center gap-4">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none border border-secondary/40 bg-secondary/10">
-            {completed ? <Check className="h-5 w-5 text-secondary" /> : <CalendarDays className="h-5 w-5 text-secondary" />}
+            {completed ? <DailyCompletedIcon /> : <DailyIcon />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-orbitron text-[13px] font-bold leading-tight text-secondary sm:text-sm">{upper(t("dailyChallenge"))}</h3>
               {activeStreak > 0 && (
                 <span className="flex items-center gap-1 text-xs text-orange-300">
-                  <Flame className="h-3 w-3" />
+                  <FlameIcon />
                   {activeStreak}
                 </span>
               )}
@@ -79,15 +80,12 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
             {completed && today && (
               <div className="hidden gap-0.5 sm:flex">
                 {Array.from({ length: 3 }).map((_, index) => (
-                  <Star
-                    key={index}
-                    className={`h-3 w-3 ${index < today.stars ? "fill-secondary text-secondary" : "text-white/20"}`}
-                  />
+                  <StarIcon key={index} filled={index < today.stars} />
                 ))}
               </div>
             )}
             <span className="flex h-8 w-8 items-center justify-center rounded-none border border-secondary/40 bg-secondary/10 text-secondary transition-transform group-hover:scale-110">
-              <Play className="h-3.5 w-3.5 fill-current" />
+              <PlayIcon />
             </span>
           </div>
         </div>
@@ -112,25 +110,15 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
                     : `${key} · ${t("notPlayed")}`
                 }
                 className={`flex flex-1 flex-col items-center gap-1 rounded-none border px-1 py-1 ${
-                  isToday ? "border-secondary/50 bg-secondary/10" : "border-transparent"
+                  isToday ? "border-secondary/40" : "border-white/10"
                 }`}
               >
-                <span className={`font-exo text-[9px] uppercase ${isToday ? "text-secondary" : "text-muted-foreground/70"}`}>
-                  {isToday ? t("today") : weekdayLabel(key)}
-                </span>
-                <span className={`h-1 w-full rounded-none ${strength}`} />
+                <span className="text-[10px] text-white/60">{weekdayLabel(key)}</span>
+                <div className={`h-1.5 w-1.5 rounded-full ${strength}`} />
               </div>
             );
           })}
         </div>
-
-        {getShieldCount(daily) > 0 && (
-          <p className="mt-2 flex items-center gap-1.5 border-t border-white/5 pt-2 font-exo text-[11px] text-violet-300">
-            <Shield className="h-3.5 w-3.5" />
-            {t("dailyShields", { count: getShieldCount(daily) })}
-            <span className="text-muted-foreground">· {t("dailyShieldHint")}</span>
-          </p>
-        )}
       </div>
     </Link>
   );
