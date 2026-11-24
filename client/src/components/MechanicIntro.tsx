@@ -85,3 +85,16 @@ export function MechanicIntro({ levelId, onClose }: { levelId: number | null; on
     </AnimatePresence>
   );
 }
+
+// Optimize neon effects for better performance
+const NeonEffect = memo(function NeonEffect({ neonColor }: { neonColor: string }) {
+  return (
+    <motion.div
+      className="absolute inset-0 rounded-full"
+      style={{ background: `conic-gradient(${neonColor}, transparent)` }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.4, duration: 0.5 }}
+    />
+  );
+});
