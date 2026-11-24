@@ -55,3 +55,21 @@ export function SeasonCard() {
     </div>
   );
 }
+
+<style>
+  @keyframes neonPulse {
+    0% {
+      filter: drop-shadow(0 0 5px #00f7ff);
+    }
+    50% {
+      filter: drop-shadow(0 0 15px #ff00ff);
+    }
+    100% {
+      filter: drop-shadow(0 0 5px #ff0000);
+    }
+  }
+
+  .neon-pulse {
+    animation: neonPulse 3s infinite alternate;
+  }
+</style>
