@@ -1,0 +1,67 @@
+/* Neon Theme for Profile Panel */
+.profile-panel.neon-theme {
+  background-color: #1a1a2e;
+  border: 2px solid #0f3460;
+  box-shadow: 0 0 10px #0f3460, 0 0 20px #0f3460, 0 0 30px #0f3460;
+  color: #e94560;
+}
+
+.profile-panel.neon-theme .profile-header {
+  border-bottom: 2px solid #0f3460;
+}
+
+.profile-panel.neon-theme .profile-stats {
+  border-bottom: 2px solid #0f3460;
+}
+
+.profile-panel.neon-theme .profile-achievements {
+  border-bottom: 2px solid #0f3460;
+}
+
+.profile-panel.neon-theme .profile-settings {
+  border-top: 2px solid #0f3460;
+}
+
+.profile-panel.neon-theme .profile-header h2 {
+  color: #e94560;
+  text-shadow: 0 0 5px #e94560, 0 0 10px #e94560;
+}
+
+.profile-panel.neon-theme .profile-stats div {
+  color: #e94560;
+}
+
+.profile-panel.neon-theme .profile-achievements div {
+  color: #e94560;
+}
+
+.profile-panel.neon-theme .profile-settings div {
+  color: #e94560;
+}
+
+.profile-panel.neon-theme .profile-header img {
+  border: 2px solid #0f3460;
+  box-shadow: 0 0 5px #0f3460, 0 0 10px #0f3460;
+}
+
+.profile-panel.neon-theme .profile-stats .stat-value {
+  color: #e94560;
+  text-shadow: 0 0 5px #e94560, 0 0 10px #e94560;
+}
+
+.profile-panel.neon-theme .profile-achievements .achievement {
+  background-color: #1a1a2e;
+  border: 2px solid #0f3460;
+  box-shadow: 0 0 5px #0f3460, 0 0 10px #0f3460;
+}
+
+.profile-panel.neon-theme .profile-settings .setting {
+  background-color: #1a1a2e;
+  border: 2px solid #0f3460;
+  box-shadow: 0 0 5px #0f3460, 0 0 10px #0f3460;
+}
+
+.profile-panel.neon-theme .profile-settings .setting:hover {
+  background-color: #0f3460;
+  color: #e94560;
+}
