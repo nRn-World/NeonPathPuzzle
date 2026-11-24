@@ -74,6 +74,27 @@ const scanlines: SceneFactory = rgb => {
       grad.addColorStop(1, rgba(rgb, 0));
       ctx.fillStyle = grad;
       ctx.fillRect(0, y - h * 0.1, w, h * 0.2);
+
+      // Neon theme animation: pulsing neon lines
+      ctx.strokeStyle = rgba([255, 255, 255], 0.3 + 0.2 * Math.sin(t * 2));
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, (i + 0.5) * h / 5);
+        ctx.lineTo(w, (i + 0.5) * h / 5);
+        ctx.stroke();
+      }
+
+      // Neon theme animation: floating particles
+      ctx.fillStyle = rgba([255, 255, 255], 0.5);
+      for (let i = 0; i < 20; i++) {
+        const x = hash(i) * w;
+        const y = wrap(hash(i + 100) + t * 0.1) * h;
+        const size = 2 + 2 * hash(i + 200);
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     },
   };
 };
