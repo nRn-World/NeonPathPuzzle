@@ -1,0 +1,31 @@
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 204, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 0, 204, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 204, 0);
+  }
+}
+
+@keyframes neon-glow {
+  0% {
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ff00cc, 0 0 20px #ff00cc, 0 0 25px #ff00cc, 0 0 30px #ff00cc, 0 0 35px #ff00cc;
+  }
+  50% {
+    text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #ff00cc, 0 0 40px #ff00cc, 0 0 50px #ff00cc, 0 0 60px #ff00cc, 0 0 70px #ff00cc;
+  }
+  100% {
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #ff00cc, 0 0 20px #ff00cc, 0 0 25px #ff00cc, 0 0 30px #ff00cc, 0 0 35px #ff00cc;
+  }
+}
+
+.neon-text {
+  animation: neon-glow 1.5s ease-in-out infinite alternate;
+}
+
+.neon-button {
+  animation: pulse 2s infinite;
+}
