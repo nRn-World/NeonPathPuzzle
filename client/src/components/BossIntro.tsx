@@ -115,6 +115,24 @@ export function BossIntro({ levelId, combo = [], onClose }: { levelId: number | 
             <motion.div
               className="absolute inset-0 flex items-center justify-center"
               animate={reducedMotion ? undefined : {
+                rotate: [0, 360],
+              }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            >
+              <svg width="100%" height="100%" viewBox="0 0 100 100" className="pointer-events-none">
+                <defs>
+                  <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor={accent} />
+                    <stop offset="100%" stopColor={accent} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <circle cx="50" cy="50" r="45" fill="none" stroke="url(#neonGradient)" strokeWidth="2" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="url(#neonGradient)" strokeWidth="2" />
+                <circle cx="50" cy="50" r="35" fill="none" stroke="url(#neonGradient)" strokeWidth="2" />
+              </svg>
+            </motion.div>
+          </motion.div>fy-center"
+              animate={reducedMotion ? undefined : {
                 scale: [1, 1.1, 1],
                 opacity: [0.3, 0.7, 0.3],
               }}
