@@ -1,0 +1,34 @@
+@keyframes neon-pulse {
+  0% {
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #00a2ff, 0 0 30px #00a2ff, 0 0 40px #00a2ff, 0 0 55px #00a2ff, 0 0 75px #00a2ff;
+  }
+  50% {
+    text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #00a2ff, 0 0 40px #00a2ff, 0 0 50px #00a2ff, 0 0 60px #00a2ff, 0 0 80px #00a2ff;
+  }
+  100% {
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #00a2ff, 0 0 30px #00a2ff, 0 0 40px #00a2ff, 0 0 55px #00a2ff, 0 0 75px #00a2ff;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.neon-text {
+  animation: neon-pulse 2s infinite alternate;
+  color: #fff;
+}
+
+.gradient-bg {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
