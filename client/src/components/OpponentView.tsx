@@ -40,12 +40,22 @@ export function OpponentView({ gridSize, nodes, tail, count, total, name, bot, s
     const cell = size / gridSize;
     const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
 
+    // Neon nodes
     context.fillStyle = "rgba(255,255,255,0.38)";
     nodes.forEach(node => {
       const [x, y] = center(node);
       context.beginPath();
       context.arc(x, y, Math.max(1.2, cell * 0.14), 0, Math.PI * 2);
       context.fill();
+
+      // Neon glow effect
+      context.shadowColor = "rgba(255,255,255,0.8)";
+      context.shadowBlur = 8;
+      context.fillStyle = "rgba(255,255,255,0.2)";
+      context.beginPath();
+      context.arc(x, y, Math.max(2, cell * 0.2), 0, Math.PI * 2);
+      context.fill();
+      context.shadowBlur = 0;
     });
 
     if (tail.length === 0) return;
@@ -63,12 +73,16 @@ export function OpponentView({ gridSize, nodes, tail, count, total, name, bot, s
     });
     context.stroke();
 
+    // Neon head with pulsing effect
     const [headX, headY] = center(tail[tail.length - 1]);
-    context.shadowBlur = 8;
-    context.fillStyle = "#ffffff";
+    const pulse = Math.abs(Math.sin(Date.now() / 500)) * 0.2 + 0.8;
+    context.shadowBlur = 12;
+    context.shadowColor = colors.secondary;
+    context.fillStyle = colors.secondary;
     context.beginPath();
-    context.arc(headX, headY, Math.max(2.5, cell * 0.36), 0, Math.PI * 2);
+    context.arc(headX, headY, Math.max(2.5, cell * 0.36 * pulse), 0, Math.PI * 2);
     context.fill();
+    context.shadowBlur = 0;
   }, [colors.secondary, gridSize, nodes, size, tail]);
 
   return (
