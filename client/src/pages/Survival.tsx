@@ -12,7 +12,6 @@ import { useI18n, upper } from "@/lib/i18n";
 import { playCrashSound, playDeadEndSound, playWinSound } from "@/lib/sounds";
 import {
   SURVIVAL_START_HEARTS,
-  SURVIVAL_UNDOS,
   comboMultiplier,
   levelIdForRound,
   readSurvivalBest,
@@ -55,7 +54,7 @@ export default function Survival() {
   const [hearts, setHearts] = useState(SURVIVAL_START_HEARTS);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [undosLeft, setUndosLeft] = useState(SURVIVAL_UNDOS);
+  const [canUndo, setCanUndo] = useState(false);
   const [timeLeftMs, setTimeLeftMs] = useState(0);
   const [stuck, setStuck] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(null);
@@ -64,7 +63,6 @@ export default function Survival() {
 
   const canvasRef = useRef<GameCanvasHandle>(null);
   const heartsRef = useRef(SURVIVAL_START_HEARTS);
-  const undosRef = useRef(SURVIVAL_UNDOS);
   const streakRef = useRef(0);
   const roundRef = useRef(1);
   const deadlineRef = useRef(0);
@@ -96,8 +94,7 @@ export default function Survival() {
     streakRef.current = 0;
     setStreak(0);
     setStuck(false);
-    undosRef.current = SURVIVAL_UNDOS;
-    setUndosLeft(SURVIVAL_UNDOS);
+    setCanUndo(false);
 
     if (next <= 0) {
       playCrashSound();
@@ -112,13 +109,12 @@ export default function Survival() {
 
   const startRun = useCallback(() => {
     heartsRef.current = SURVIVAL_START_HEARTS;
-    undosRef.current = SURVIVAL_UNDOS;
     streakRef.current = 0;
     roundRef.current = 1;
     clearedRef.current = false;
     savedRef.current = false;
     setHearts(SURVIVAL_START_HEARTS);
-    setUndosLeft(SURVIVAL_UNDOS);
+    setCanUndo(false);
     setStreak(0);
     setScore(0);
     setRound(1);
@@ -179,21 +175,46 @@ export default function Survival() {
 
     window.setTimeout(() => {
       roundRef.current += 1;
-      undosRef.current = SURVIVAL_UNDOS;
-      setUndosLeft(SURVIVAL_UNDOS);
+      setCanUndo(false);
       setRound(roundRef.current);
       setBoardSeed(seed => seed + 1);
       setStuck(false);
     }, 1000);
   }, [flashBanner]);
 
-  /** One free rewind per board; after that a dead end costs a heart. */
-  const handleBacktrack = useCallback(() => {
-    if (undosRef.current <= 0) return false;
-    undosRef.current -= 1;
-    setUndosLeft(undosRef.current);
-    return true;
+  /** Backtracking is free in Survival — the clock is the penalty. */
+  const handleBacktrack = useCallback(() => true, []);
+
+  const handleUndo = useCallback(() => {
+    if (phase !== "playing" || clearedRef.current) return;
+    canvasRef.current?.undo();
+  }, [phase]);
+
+  const handleRestartBoard = useCallback(() => {
+    if (phase !== "playing" || clearedRef.current) return;
+    canvasRef.current?.restart();
+  }, [phase]);
+
+  const handlePathChange = useCallback((_visited: number, length: number) => {
+    setCanUndo(length > 1);
   }, []);
+
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "r") {
+        event.preventDefault();
+        handleRestartBoard();
+      } else if (key === "u" || key === "z") {
+        event.preventDefault();
+        handleUndo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleRestartBoard, handleUndo, phase]);
 
   useEffect(() => {
     if (phase !== "over" || savedRef.current) return;
@@ -246,16 +267,38 @@ export default function Survival() {
           </div>
 
           {phase === "playing" && (
-            <div
-              className={`flex h-7 flex-shrink-0 items-center gap-1 border px-1.5 font-orbitron text-[11px] font-bold tabular-nums ${
-                urgent
-                  ? "border-destructive/50 bg-destructive/10 text-destructive"
-                  : "border-primary/30 text-primary/80"
-              }`}
-            >
-              <Timer className="h-3 w-3" />
-              {secondsLeft}s
-            </div>
+            <>
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={!canUndo}
+                aria-label={t("undo")}
+                title={t("undoHint")}
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center border border-primary/30 text-primary/80 transition-colors hover:border-primary/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleRestartBoard}
+                disabled={!canUndo}
+                aria-label={t("restartLevel")}
+                title={t("restartAction")}
+                className="flex h-7 w-7 flex-shrink-0 items-center justify-center border border-primary/30 text-primary/80 transition-colors hover:border-primary/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+              <div
+                className={`flex h-7 flex-shrink-0 items-center gap-1 border px-1.5 font-orbitron text-[11px] font-bold tabular-nums ${
+                  urgent
+                    ? "border-destructive/50 bg-destructive/10 text-destructive"
+                    : "border-primary/30 text-primary/80"
+                }`}
+              >
+                <Timer className="h-3 w-3" />
+                {secondsLeft}s
+              </div>
+            </>
           )}
         </header>
 
@@ -293,10 +336,10 @@ export default function Survival() {
                   showHint={false}
                   onComplete={handleComplete}
                   onBacktrack={handleBacktrack}
+                  onPathChange={handlePathChange}
                   onStuckChange={setStuck}
                   chaseMsPerNode={chaseMode ? Math.max(350, 900 - (round - 1) * 40) : undefined}
                   onShortCircuit={chaseMode ? loseHeart : undefined}
-                  disableUndo={undosLeft <= 0}
                   paused={phase !== "playing"}
                   reducedMotion={reducedMotion}
                   showGhost={false}
@@ -330,7 +373,7 @@ export default function Survival() {
             )}
           </AnimatePresence>
 
-          {/* Dead end: burn the free rewind or a heart, never soft-lock. */}
+          {/* Dead end: back out, clear the line, or spend a heart for a fresh board. */}
           {phase === "playing" && stuck && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-background/85 px-6 text-center backdrop-blur-sm">
               <Skull className="h-10 w-10 text-destructive" />
@@ -339,21 +382,21 @@ export default function Survival() {
                   {upper(t("deadEnd"))}
                 </h2>
                 <p className="font-exo text-sm text-muted-foreground">
-                  {undosLeft > 0
-                    ? t("deadEndUndo", { count: undosLeft })
-                    : t("survivalTagline")}
+                  {t("survivalTagline")}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                {undosLeft > 0 && (
-                  <Button
-                    onClick={() => canvasRef.current?.undo()}
-                    className="bg-primary font-bold text-background hover:bg-primary/90"
-                  >
-                    <Undo2 className="mr-2 h-4 w-4" />
-                    {upper(t("undo"))}
-                  </Button>
-                )}
+                <Button
+                  onClick={handleUndo}
+                  className="bg-primary font-bold text-background hover:bg-primary/90"
+                >
+                  <Undo2 className="mr-2 h-4 w-4" />
+                  {upper(t("undo"))}
+                </Button>
+                <Button variant="outline" onClick={handleRestartBoard} className="border-primary/40 text-primary hover:bg-primary/10">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {upper(t("restartLevel"))}
+                </Button>
                 <Button variant="outline" onClick={loseHeart} className="border-rose-500/40 text-rose-300 hover:bg-rose-500/10">
                   <Heart className="mr-2 h-4 w-4" />
                   {"\u22121"}
