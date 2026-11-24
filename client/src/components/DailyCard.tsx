@@ -8,7 +8,6 @@ import {
   getDailyLevelId,
   getDateKey,
   getRecentDateKeys,
-  getShieldCount,
   getTimeUntilNextDaily,
   hasCompletedDaily,
   type DailyState,
