@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Lock, Play, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { chapters } from "@/lib/chapters";
@@ -39,7 +39,13 @@ const RIGHT = 276;
 /** The campaign as a winding route: one stop per chapter, then the Rift. */
 export function WorldMap({ continueLevel, completedLevels, records, riftCleared, onPlay }: WorldMapProps) {
   const { t } = useI18n();
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    renderTime: 0,
+    memoryUsage: 0,
+  });
+
   const nodes = useMemo<MapNode[]>(() => {
+    const startTime = performance.now();
     const completed = new Set(completedLevels);
     const campaign = chapters.map(chapter => {
       let cleared = 0;
@@ -64,6 +70,12 @@ export function WorldMap({ continueLevel, completedLevels, records, riftCleared,
     });
     const riftStars = Array.from({ length: RIFT_LEVEL_COUNT }, (_, index) => records[String(RIFT_FIRST_LEVEL + index)]?.stars ?? 0)
       .reduce((sum, value) => sum + value, 0);
+    const endTime = performance.now();
+    setPerformanceMetrics(prev => ({
+      ...prev,
+      renderTime: endTime - startTime,
+      memoryUsage: performance.memory?.usedJSHeapSize || 0,
+    }));
     return [
       ...campaign,
       {
@@ -80,6 +92,10 @@ export function WorldMap({ continueLevel, completedLevels, records, riftCleared,
       },
     ];
   }, [completedLevels, continueLevel, records, riftCleared, t]);
+
+  useEffect(() => {
+    console.log("WorldMap Performance Metrics:", performanceMetrics);
+  }, [performanceMetrics]);
 
   const current = nodes.find(node => node.id !== RIFT_ID && continueLevel >= node.from && continueLevel <= node.to) ?? nodes[0];
   const [selectedId, setSelectedId] = useState(current.id);
@@ -134,78 +150,55 @@ export function WorldMap({ continueLevel, completedLevels, records, riftCleared,
         <Button
           disabled={!selected.unlocked}
           onClick={() => onPlay(playTarget(selected))}
-          className="mt-4 w-full rounded-none font-bold text-background disabled:opacity-40"
-          style={{ background: selected.accent }}
+          className="mt-4 w-full bg-primary font-bold text-background hover:bg-primary/90"
         >
-          {selected.unlocked ? <Play className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
-          {selected.unlocked
-            ? upper(t("level")) + " " + playTarget(selected)
-            : selected.id === RIFT_ID ? t("riftLocked") : t("locked")}
+          <Play className="mr-2 h-4 w-4" />
+          {t("play")}
         </Button>
       </div>
-
-      <svg viewBox={`0 0 360 ${height}`} className="mx-auto w-full max-w-sm" role="group" aria-label={t("worldMap")}>
-        <path d={route} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" strokeDasharray="2 7" strokeLinecap="round" />
+      <svg className="mx-auto w-full max-w-[360px]" height={height} viewBox={`0 0 360 ${height}`}>
+        <path
+          d={route}
+          stroke="url(#routeGradient)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <defs>
+          <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff00cc" />
+            <stop offset="50%" stopColor="#3333ff" />
+            <stop offset="100%" stopColor="#00ccff" />
+          </linearGradient>
+        </defs>
         {nodes.map((node, index) => {
           const { x, y } = point(index);
-          const isCurrent = node.id === current.id;
-          const isSelected = node.id === selected.id;
-          const done = node.cleared === node.total;
-          const labelLeft = x === LEFT;
+          const active = node.id === selectedId;
           return (
-            <g
-              key={node.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`${node.name}${node.unlocked ? "" : ` (${t("locked")})`}`}
-              onClick={() => setSelectedId(node.id)}
-              onKeyDown={event => (event.key === "Enter" || event.key === " ") && setSelectedId(node.id)}
-              className="cursor-pointer outline-none"
-              opacity={node.unlocked ? 1 : 0.45}
-            >
-              {isSelected && <circle cx={x} cy={y} r={36} fill="none" stroke={node.accent} strokeOpacity={0.5} strokeDasharray="3 5" />}
+            <g key={node.id} onClick={() => setSelectedId(node.id)}>
               <circle
                 cx={x}
                 cy={y}
-                r={28}
-                fill={done ? node.accent : "#0a0f1e"}
-                stroke={node.accent}
-                strokeWidth={isCurrent ? 4 : 2}
-                style={isCurrent ? { filter: `drop-shadow(0 0 10px ${node.accent})` } : undefined}
+                r={active ? 16 : 12}
+                fill={node.unlocked ? node.accent : "#333"}
+                stroke={node.unlocked ? node.accent : "#555"}
+                strokeWidth={active ? 4 : 2}
+                className="cursor-pointer transition-all duration-200"
               />
-              <text
-                x={x}
-                y={y + 1}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontFamily="Orbitron, sans-serif"
-                fontWeight={800}
-                fontSize={node.id === RIFT_ID ? 20 : 22}
-                fill={done ? "#0a0f1e" : node.unlocked ? node.accent : "#8b93a7"}
-              >
-                {node.unlocked ? (node.id === RIFT_ID ? "∞" : node.id) : "🔒"}
-              </text>
-              <text
-                x={labelLeft ? x + 40 : x - 40}
-                y={y - 5}
-                textAnchor={labelLeft ? "start" : "end"}
-                fontFamily="Orbitron, sans-serif"
-                fontWeight={700}
-                fontSize={13}
-                fill="#e8ecf8"
-              >
-                {upper(node.name)}
-              </text>
-              <text
-                x={labelLeft ? x + 40 : x - 40}
-                y={y + 13}
-                textAnchor={labelLeft ? "start" : "end"}
-                fontFamily="'Exo 2', sans-serif"
-                fontSize={12}
-                fill="#8b93a7"
-              >
-                {node.cleared}/{node.total} · {node.stars}★
-              </text>
+              {node.unlocked ? (
+                <text
+                  x={x}
+                  y={y + (active ? 32 : 28)}
+                  textAnchor="middle"
+                  className="font-mono text-[10px] font-bold"
+                  style={{ fill: node.accent }}
+                >
+                  {node.id === RIFT_ID ? upper(t("bonusSector")) : upper(t("chapterLabel", { n: node.id }))}
+                </text>
+              ) : (
+                <Lock className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2" style={{ color: "#777" }} />
+              )}
             </g>
           );
         })}
