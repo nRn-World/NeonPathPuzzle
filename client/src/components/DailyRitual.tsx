@@ -118,39 +118,21 @@ export function DailyRitual({ state, onEnter }: { state: DailyState; onEnter: ()
                 {streak > 0 ? t("dailyStreakCount", { count: streak }) : t("dailyStreak")}
               </span>
               <span className="flex items-center gap-1 text-violet-300">
-                <Shield className="h-4 w-4" />{t("dailyShields", { count: shields })}
+                <Shield className="h-4 w-4" />
+                {shields}
               </span>
-              <span className="font-mono text-muted-foreground">{t("dailyNextIn", { time: formatCountdown(remaining) })}</span>
             </div>
 
-            <Button onClick={enter} size="lg" className="w-full max-w-xs font-bold text-background" style={{ background: accent }}>
-              {t("dailyRevealEnter")} <ArrowRight className="ml-2 h-4 w-4" />
+            <div className="absolute top-0 left-0 w-full h-full bg-neon-pulse" />
+            <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
+              <div className="neon-star" />
+              <div className="neon-star" />
+              <div className="neon-star" />
+            </div>
+
+            <Button onClick={enter} className="mt-4">
+              {t("enter")}
             </Button>
-
-            <div className="w-full border border-white/10 bg-white/[0.02] p-3">
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                {t("dailyCalendar", { count: 30 })}
-              </p>
-              <div className="grid grid-cols-10 gap-1" role="list" aria-label={t("dailyCalendar", { count: 30 })}>
-                {days.map(key => {
-                  const result = state.results[key];
-                  const isToday = key === dateKey;
-                  return (
-                    <div
-                      key={key}
-                      role="listitem"
-                      title={result ? `${key} · ${result.stars}★` : `${key} · ${t("notPlayed")}`}
-                      className={`flex aspect-square items-center justify-center border text-[9px] ${
-                        isToday ? "border-white/50" : "border-white/5"
-                      } ${result ? "bg-secondary/60 text-white" : "bg-white/[0.03] text-muted-foreground/50"}`}
-                    >
-                      {weekday(key)}
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-left font-exo text-[11px] text-muted-foreground">{t("dailyShieldHint")}</p>
-            </div>
           </motion.div>
         </motion.div>
       )}
