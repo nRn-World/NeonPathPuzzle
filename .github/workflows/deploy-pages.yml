@@ -115,3 +115,51 @@ jobs:
           name: visual-screenshots
           path: test-results/visual/
           if-no-files-found: ignore
+
+  compress-video:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: neon-theme-demo
+          path: ./video
+
+      - name: Compress video
+        run: ffmpeg -i ./video/neon-theme-demo.mp4 -vcodec libx264 -crf 28 -preset fast -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" ./video/neon-theme-demo-compressed.mp4
+
+      - name: Upload compressed video
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-theme-demo-compressed
+          path: ./video/neon-theme-demo-compressed.mp4
+
+  upload-video:
+    runs-on: ubuntu-latest
+    needs: compress-video
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download compressed video
+        uses: actions/download-artifact@v4
+        with:
+          name: neon-theme-demo-compressed
+          path: ./video
+
+      - name: Upload to YouTube
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ secrets.YOUTUBE_UPLOAD_URL }}
+          asset_path: ./video/neon-theme-demo-compressed.mp4
+          asset_name: neon-theme-demo.mp4
+          asset_content_type: video/mp4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
