@@ -9,7 +9,7 @@ import { Zap, Package } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 
 export function PowerUpInventory() {
-  const { inventory, activeEffects, usePowerUp, removeEffect } = usePowerUps();
+  const { inventory, activeEffects, usePowerUp, removeEffect } = usePowerUp();
   const { t } = useI18n();
 
   // Expired effects are pruned after render; checking them during render used
@@ -45,7 +45,7 @@ export function PowerUpInventory() {
             {visibleEffects.map((effect, idx) => {
               const powerUp = powerUps.find(pu => pu.effect.type === effect.type);
               if (!powerUp) return null;
-              
+
               return (
                 <div key={idx} className="bg-green-500/10 border border-green-500/30 rounded-lg p-2">
                   <div className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export function PowerUpInventory() {
           <div className="grid grid-cols-2 gap-2">
             {inventory.map((powerUp, idx) => {
               const isActive = activeTypes.has(powerUp.effect.type);
-              
+
               return (
                 <Card key={idx} className="bg-background/50 border-border">
                   <CardContent className="p-3">
@@ -77,8 +77,8 @@ export function PowerUpInventory() {
                       <span className="text-xl">{powerUp.icon}</span>
                       <div className="flex-1">
                         <div className="text-sm font-medium">{content.powerUp(powerUp).name}</div>
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="text-xs"
                           style={{ borderColor: getRarityColor(powerUp.rarity), color: getRarityColor(powerUp.rarity) }}
                         >
