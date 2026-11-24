@@ -1,0 +1,135 @@
+/* Neon Theme Colors */
+:root {
+  --neon-purple: #a855f7;
+  --neon-pink: #ec4899;
+  --neon-blue: #3b82f6;
+  --neon-green: #10b981;
+  --neon-yellow: #f59e0b;
+  --neon-red: #f87171;
+  --neon-cyan: #06b6d4;
+  --neon-indigo: #6366f1;
+}
+
+/* Neon Theme Classes */
+.bg-neon-purple {
+  background-color: var(--neon-purple);
+}
+
+.text-neon-purple {
+  color: var(--neon-purple);
+}
+
+.border-neon-purple {
+  border-color: var(--neon-purple);
+}
+
+.bg-neon-pink {
+  background-color: var(--neon-pink);
+}
+
+.text-neon-pink {
+  color: var(--neon-pink);
+}
+
+.border-neon-pink {
+  border-color: var(--neon-pink);
+}
+
+.bg-neon-blue {
+  background-color: var(--neon-blue);
+}
+
+.text-neon-blue {
+  color: var(--neon-blue);
+}
+
+.border-neon-blue {
+  border-color: var(--neon-blue);
+}
+
+.bg-neon-green {
+  background-color: var(--neon-green);
+}
+
+.text-neon-green {
+  color: var(--neon-green);
+}
+
+.border-neon-green {
+  border-color: var(--neon-green);
+}
+
+.bg-neon-yellow {
+  background-color: var(--neon-yellow);
+}
+
+.text-neon-yellow {
+  color: var(--neon-yellow);
+}
+
+.border-neon-yellow {
+  border-color: var(--neon-yellow);
+}
+
+.bg-neon-red {
+  background-color: var(--neon-red);
+}
+
+.text-neon-red {
+  color: var(--neon-red);
+}
+
+.border-neon-red {
+  border-color: var(--neon-red);
+}
+
+.bg-neon-cyan {
+  background-color: var(--neon-cyan);
+}
+
+.text-neon-cyan {
+  color: var(--neon-cyan);
+}
+
+.border-neon-cyan {
+  border-color: var(--neon-cyan);
+}
+
+.bg-neon-indigo {
+  background-color: var(--neon-indigo);
+}
+
+.text-neon-indigo {
+  color: var(--neon-indigo);
+}
+
+.border-neon-indigo {
+  border-color: var(--neon-indigo);
+}
+
+/* Neon Animations */
+@keyframes neon-glow {
+  0%, 100% {
+    text-shadow: 0 0 5px var(--neon-purple), 0 0 10px var(--neon-purple), 0 0 15px var(--neon-purple);
+  }
+  50% {
+    text-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink), 0 0 30px var(--neon-pink);
+  }
+}
+
+.neon-glow {
+  animation: neon-glow 2s ease-in-out infinite;
+}
+
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 15px var(--neon-blue);
+  }
+  50% {
+    box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan), 0 0 30px var(--neon-cyan);
+  }
+}
+
+.neon-pulse {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
