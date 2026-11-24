@@ -71,6 +71,20 @@ export function ChapterBoard({
     setLocation(`${practice ? "/zen" : "/play"}/${levelId}`);
   };
 
+  // Optimize neon theme performance
+  const isNeonTheme = useMemo(() => {
+    return document.documentElement.classList.contains('neon-theme');
+  }, []);
+
+  useEffect(() => {
+    if (isNeonTheme) {
+      // Reduce animation intensity for neon theme
+      document.documentElement.style.setProperty('--animation-intensity', '0.7');
+    } else {
+      document.documentElement.style.setProperty('--animation-intensity', '1');
+    }
+  }, [isNeonTheme]);
+
   return (
     <div className="space-y-6">
       <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 safe-scroll">
@@ -118,104 +132,69 @@ export function ChapterBoard({
               <span className="font-orbitron font-bold">{stars}</span>
               <span className="text-xs text-muted-foreground">/ {chapterLevels.length * 3}</span>
             </span>
-            <span className="font-exo text-muted-foreground">{completed}/{chapterLevels.length} {t("levelsSolved")}</span>
+            <span className="flex items-center gap-1">
+              <span className="font-orbitron font-bold">{progress}%</span>
+              <span className="text-xs text-muted-foreground">{t("completed")}</span>
+            </span>
           </div>
         </div>
 
-        <div className="mb-4 h-1.5 overflow-hidden rounded-none bg-white/10">
-          <div
-            className="h-full rounded-none bg-primary transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("filterLevels")}>
+          <div className="flex flex-wrap items-center gap-2">
             {filters.map(item => (
               <button
                 key={item.id}
                 onClick={() => setFilter(item.id)}
-                aria-pressed={filter === item.id}
-                className={`rounded-none border px-3 py-1 font-exo text-[11px] transition-colors ${
+                className={`rounded-none border px-3 py-1 text-xs transition-all ${
                   filter === item.id
-                    ? "border-primary/60 bg-primary/15 text-primary"
-                    : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground"
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-white/10 bg-white/[0.02] text-muted-foreground hover:border-white/25 hover:text-foreground"
                 }`}
               >
                 {t(item.key)}
               </button>
             ))}
           </div>
-
-          <button
-            onClick={() => setPractice(value => !value)}
-            aria-pressed={practice}
-            className={`rounded-none border px-3 py-1 font-exo text-[11px] transition-colors ${
-              practice
-                ? "border-secondary/60 bg-secondary/15 text-secondary"
-                : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground"
-            }`}
-            title={t("practiceHint")}
-          >
-            {t("practice")}
-          </button>
-
-          <form onSubmit={handleJump} className="ml-auto flex items-center gap-1.5">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={TOTAL_LEVELS}
-              value={jumpValue}
-              onChange={event => {
-                setJumpValue(event.target.value);
-                setJumpError(null);
-              }}
-              placeholder={t("goToLevelPlaceholder")}
-              aria-label={t("goToLevelPlaceholder")}
-              className="h-8 w-28 rounded-none border border-white/15 bg-background/60 px-2 font-mono text-xs text-foreground outline-none placeholder:font-exo placeholder:text-muted-foreground/60 focus:border-primary/60"
-            />
-            <button
-              type="submit"
-              aria-label={t("openLevel")}
-              className="flex h-8 w-8 items-center justify-center rounded-none border border-white/15 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-            >
-              <CornerDownLeft className="h-3.5 w-3.5" />
-            </button>
-          </form>
+          <div className="ml-auto flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={practice}
+                onChange={e => setPractice(e.target.checked)}
+                className="h-3.5 w-3.5 rounded-none border border-white/10 bg-white/[0.02] accent-primary"
+              />
+              {t("practice")}
+            </label>
+            <form onSubmit={handleJump} className="flex items-center gap-1">
+              <input
+                type="text"
+                value={jumpValue}
+                onChange={e => setJumpValue(e.target.value)}
+                placeholder={t("jumpToLevel")}
+                className="w-16 rounded-none border border-white/10 bg-white/[0.02] px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-none border border-white/10 bg-white/[0.02] p-1.5 text-muted-foreground transition-all hover:border-primary/60 hover:text-foreground"
+              >
+                <CornerDownLeft className="h-3.5 w-3.5" />
+              </button>
+            </form>
+          </div>
         </div>
 
-        {jumpError && (
-          <p role="alert" className="mb-3 font-exo text-xs text-amber-300">
-            {jumpError}
-          </p>
-        )}
+        {jumpError && <p className="mb-4 text-xs text-red-400">{jumpError}</p>}
 
-        {visibleLevels.length === 0 ? (
-          <div className="rounded-none border border-dashed border-white/10 p-6 text-center font-exo text-sm text-muted-foreground">
-            {filter === "unsolved"
-              ? t("everySolved")
-              : filter === "missing-stars"
-                ? t("everyThreeStars")
-                : t("noLevels")}
-          </div>
-        ) : (
-          <div className="grid grid-cols-5 gap-2.5 sm:grid-cols-6 sm:gap-3 md:grid-cols-8">
-            {visibleLevels.map((level, index) => (
-              <LevelCard
-                key={level.id}
-                id={level.id}
-                isLocked={level.isLocked}
-                isCompleted={level.isCompleted}
-                stars={level.stars}
-                bestTimeMs={level.bestTimeMs}
-                bestScore={level.bestScore}
-                hrefBase={practice ? "/zen" : "/play"}
-                delay={index}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {visibleLevels.map(level => (
+            <LevelCard
+              key={level.id}
+              level={level}
+              practice={practice}
+              onClick={() => setLocation(`${practice ? "/zen" : "/play"}/${level.id}`)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
