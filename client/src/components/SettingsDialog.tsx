@@ -27,6 +27,7 @@ import { getPlayer } from "@/lib/leaderboard";
 import { googleSignInEnabled } from "@/lib/googleSignIn";
 import { telemetryToJson, flushTelemetry } from "@/lib/telemetry";
 import { cloudSyncReady, syncProgress } from "@/lib/cloudSync";
+import { motion } from "framer-motion";
 
 export function SettingsDialog({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
@@ -139,216 +140,187 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
           <GearIcon className="h-5 w-5 md:h-[22px] md:w-[22px]" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-background/95 backdrop-blur-md border border-primary/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-primary font-orbitron">
             <GearIcon className="h-5 w-5 text-primary" />
             {t("settingsTitle")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             {t("settingsDesc")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <SettingRow
-            label={t("sound")}
-            description={t("soundDesc")}
-            checked={soundEnabled}
-            onChange={setSoundEnabled}
-          />
-          <div className={`space-y-2 rounded-lg border border-white/10 p-3 transition-opacity ${soundEnabled ? "" : "opacity-40"}`}>
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">{t("volume")}</Label>
-              <span className="font-mono text-xs text-muted-foreground">{Math.round(soundVolume * 100)}%</span>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-4 py-2"
+        >
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-primary">{t("gameplay")}</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sound" className="text-muted-foreground">{t("sound")}</Label>
+                <Switch
+                  id="sound"
+                  checked={soundEnabled}
+                  onCheckedChange={setSoundEnabled}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="volume" className="text-muted-foreground">{t("volume")}</Label>
+                <Slider
+                  id="volume"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[soundVolume]}
+                  onValueChange={([value]) => {
+                    setSoundVolume(value);
+                    previewVolume(value);
+                  }}
+                  className="data-[state=active]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="haptics" className="text-muted-foreground">{t("haptics")}</Label>
+                <Switch
+                  id="haptics"
+                  checked={hapticsEnabled}
+                  onCheckedChange={setHapticsEnabled}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="reduced-motion" className="text-muted-foreground">{t("reducedMotion")}</Label>
+                <Switch
+                  id="reduced-motion"
+                  checked={reducedMotion}
+                  onCheckedChange={setReducedMotion}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="show-ghost" className="text-muted-foreground">{t("showGhost")}</Label>
+                <Switch
+                  id="show-ghost"
+                  checked={showGhost}
+                  onCheckedChange={setShowGhost}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="color-blind" className="text-muted-foreground">{t("colorBlind")}</Label>
+                <Switch
+                  id="color-blind"
+                  checked={colorBlind}
+                  onCheckedChange={setColorBlind}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="large-text" className="text-muted-foreground">{t("largeText")}</Label>
+                <Switch
+                  id="large-text"
+                  checked={largeText}
+                  onCheckedChange={setLargeText}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
             </div>
-            <Slider
-              value={[Math.round(soundVolume * 100)]}
-              min={0}
-              max={100}
-              step={5}
-              disabled={!soundEnabled}
-              aria-label={t("volume")}
-              onValueChange={([value]) => setSoundVolume(value / 100)}
-              onValueCommit={() => previewVolume()}
-            />
           </div>
-          <SettingRow
-            label={t("haptics")}
-            description={t("hapticsDesc")}
-            checked={hapticsEnabled}
-            onChange={setHapticsEnabled}
-          />
-          <SettingRow
-            label={t("reduceMotion")}
-            description={t("reduceMotionDesc")}
-            checked={reducedMotion}
-            onChange={setReducedMotion}
-          />
-          <SettingRow
-            label={t("ghost")}
-            description={t("ghostDesc")}
-            checked={showGhost}
-            onChange={setShowGhost}
-          />
-          <SettingRow
-            label={t("colorBlindMode")}
-            description={t("colorBlindModeDesc")}
-            checked={colorBlind}
-            onChange={setColorBlind}
-          />
-          <SettingRow
-            label={t("largeText")}
-            description={t("largeTextDesc")}
-            checked={largeText}
-            onChange={setLargeText}
-          />
-          <SettingRow
-            label={t("hardcore")}
-            description={t("hardcoreDesc")}
-            checked={hardcore}
-            onChange={setHardcore}
-          />
-          <SettingRow
-            label={t("telemetry")}
-            description={t("telemetryDesc")}
-            checked={telemetryEnabled}
-            onChange={setTelemetryEnabled}
-          />
-          <SettingRow
-            label={t("adsEnabled")}
-            description={t("adsEnabledDesc")}
-            checked={adsEnabled}
-            onChange={setAdsEnabled}
-          />
 
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-secondary/25 bg-secondary/5 p-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">{t("hintTokensTitle")}</Label>
-              <p className="text-xs text-muted-foreground">{t("hintTokensDesc")}</p>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-primary">{t("privacy")}</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="telemetry" className="text-muted-foreground">{t("telemetry")}</Label>
+                <Switch
+                  id="telemetry"
+                  checked={telemetryEnabled}
+                  onCheckedChange={setTelemetryEnabled}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="hardcore" className="text-muted-foreground">{t("hardcore")}</Label>
+                <Switch
+                  id="hardcore"
+                  checked={hardcore}
+                  onCheckedChange={setHardcore}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ads" className="text-muted-foreground">{t("ads")}</Label>
+                <Switch
+                  id="ads"
+                  checked={adsEnabled}
+                  onCheckedChange={setAdsEnabled}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
             </div>
-            <span className="font-orbitron text-2xl font-bold text-secondary">{hintTokens}</span>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-white/10 p-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">{t("language")}</Label>
-              <p className="text-xs text-muted-foreground">{t("languageDesc")}</p>
-            </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-primary">{t("language")}</h3>
             <LanguageButtons />
           </div>
 
-          {googleSignInEnabled() && (
-            <div className="rounded-lg border border-white/10 p-3 [&>div]:border-t-0 [&>div]:pt-0">
-              <GoogleAccount player={player} onChange={setPlayer} />
-            </div>
-          )}
-
-          <div className="space-y-2 rounded-lg border border-white/10 p-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">{t("syncNow")}</Label>
-              <p className="text-xs text-muted-foreground">{t("syncNowDesc")}</p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!cloudSyncReady()}
-              onClick={handleSyncNow}
-              className="border-white/15"
-            >
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              {t("syncNow")}
-            </Button>
-          </div>
-
-          <div className="space-y-2 rounded-lg border border-white/10 p-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">{t("telemetryExport")}</Label>
-              <p className="text-xs text-muted-foreground">{t("telemetryDesc")}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleExportDiagnostics} className="border-white/15">
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {t("telemetryExport")}
-            </Button>
-          </div>
-
-          <div className="space-y-3 rounded-lg border border-white/10 p-3">
-            <div className="space-y-1">
-              <Label className="flex items-center gap-1.5 text-sm font-medium">
-                <DatabaseBackup className="h-3.5 w-3.5 text-primary" />
-                {t("backup")}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {t("backupDesc")}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={handleExport} className="border-white/15">
-                <Download className="mr-1.5 h-3.5 w-3.5" />
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-primary">{t("dataManagement")}</h3>
+            <div className="space-y-4">
+              <Button
+                onClick={handleExport}
+                className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20"
+              >
+                <Download className="mr-2 h-4 w-4" />
                 {t("exportSave")}
               </Button>
               <Button
-                variant="outline"
-                size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="border-white/15"
+                className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20"
               >
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                {t("restoreSave")}
+                <Upload className="mr-2 h-4 w-4" />
+                {t("importSave")}
               </Button>
               <input
-                ref={fileInputRef}
                 type="file"
-                accept="application/json,.json"
+                ref={fileInputRef}
                 onChange={handleImport}
+                accept=".json"
                 className="hidden"
-                aria-label={t("restoreSave")}
               />
+              {cloudSyncReady && (
+                <Button
+                  onClick={handleSyncNow}
+                  className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {t("syncNow")}
+                </Button>
+              )}
+              <Button
+                onClick={handleExportDiagnostics}
+                className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20"
+              >
+                <DatabaseBackup className="mr-2 h-4 w-4" />
+                {t("exportDiagnostics")}
+              </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground/70">
-              {t("restoreReplaces")}
-            </p>
           </div>
 
-          {/* Attribution lives next to the settings, where a player looks for it. */}
-          <div className="space-y-1.5 rounded-lg border border-white/10 p-3">
-            <Label className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
-              Credits
-            </Label>
-            <p className="font-exo text-xs leading-relaxed text-muted-foreground">
-              Board art and node models are drawn procedurally in the game itself.
-              Typefaces: <span className="text-foreground">Exo 2</span> by Natanael Gama and{" "}
-              <span className="text-foreground">Orbitron</span> by Matt McInerney, licensed under the{" "}
-              SIL Open Font License. Sound is synthesised live with Web Audio.
-            </p>
-            <p className="font-exo text-[10px] text-muted-foreground/70">
-              No third-party models, textures or audio files are bundled.
-            </p>
-          </div>
-        </div>
+          {googleSignInEnabled && (
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-primary">{t("account")}</h3>
+              <GoogleAccount player={player} onChange={setPlayer} />
+            </div>
+          )}
+        </motion.div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function SettingRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 p-3">
-      <div className="space-y-1">
-        <Label className="text-sm font-medium">{label}</Label>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
-    </div>
   );
 }
