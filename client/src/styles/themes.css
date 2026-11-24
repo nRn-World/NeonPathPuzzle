@@ -1,0 +1,85 @@
+/* Neon Theme 1: Electric Blue */
+.neon-theme-1 {
+  --neon-primary: #00f7ff;
+  --neon-secondary: #00a2ff;
+  --neon-accent: #0033ff;
+  --neon-glow: 0 0 10px #00f7ff, 0 0 20px #00a2ff;
+}
+
+.neon-theme-1 .neon-element {
+  color: var(--neon-primary);
+  text-shadow: var(--neon-glow);
+  animation: neon-pulse 2s infinite alternate;
+}
+
+/* Neon Theme 2: Cyber Pink */
+.neon-theme-2 {
+  --neon-primary: #ff00ff;
+  --neon-secondary: #a200ff;
+  --neon-accent: #3300ff;
+  --neon-glow: 0 0 10px #ff00ff, 0 0 20px #a200ff;
+}
+
+.neon-theme-2 .neon-element {
+  color: var(--neon-primary);
+  text-shadow: var(--neon-glow);
+  animation: neon-pulse 2.5s infinite alternate;
+}
+
+/* Neon Theme 3: Neon Green */
+.neon-theme-3 {
+  --neon-primary: #00ff00;
+  --neon-secondary: #00a200;
+  --neon-accent: #003300;
+  --neon-glow: 0 0 10px #00ff00, 0 0 20px #00a200;
+}
+
+.neon-theme-3 .neon-element {
+  color: var(--neon-primary);
+  text-shadow: var(--neon-glow);
+  animation: neon-pulse 3s infinite alternate;
+}
+
+/* Common Neon Animations */
+@keyframes neon-pulse {
+  from {
+    text-shadow: var(--neon-glow);
+  }
+  to {
+    text-shadow: 0 0 15px var(--neon-primary), 0 0 25px var(--neon-secondary);
+  }
+}
+
+/* Apply neon effects to buttons */
+.neon-button {
+  position: relative;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.neon-button::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg, var(--neon-primary), var(--neon-secondary), var(--neon-accent));
+  z-index: -1;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.neon-button:hover::before {
+  opacity: 1;
+}
+
+.neon-button:hover {
+  color: white;
+  box-shadow: var(--neon-glow);
+}
