@@ -52,7 +52,11 @@ export function ChapterIntro({ chapterId, onClose }: { chapterId: number | null;
             initial={{ y: 16, scale: 0.97 }}
             animate={{ y: 0, scale: 1 }}
             className="w-full max-w-md space-y-4 border bg-black/70 p-6"
-            style={{ borderColor: `${chapter.accent}66`, boxShadow: `0 0 50px ${chapter.accent}22` }}
+            style={{
+              borderColor: `${chapter.accent}66`,
+              boxShadow: `0 0 50px ${chapter.accent}22`,
+              background: chapter.id === 1 ? "linear-gradient(135deg, #ff00cc, #3333ff)" : chapter.accent
+            }}
           >
             <p className="font-mono text-[10px] tracking-[0.3em]" style={{ color: chapter.accent }}>
               {upper(t("chapterLabel", { n: chapter.id }))}
@@ -72,7 +76,10 @@ export function ChapterIntro({ chapterId, onClose }: { chapterId: number | null;
             <Button
               onClick={onClose}
               className="w-full rounded-none font-bold text-background"
-              style={{ background: chapter.accent }}
+              style={{
+                background: chapter.id === 1 ? "linear-gradient(135deg, #ff00cc, #3333ff)" : chapter.accent,
+                animation: chapter.id === 1 ? "pulse 2s infinite" : "none"
+              }}
             >
               {done ? t("beginChapter") : t("skip")}
             </Button>
