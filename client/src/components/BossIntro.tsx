@@ -94,6 +94,45 @@ export function BossIntro({ levelId, combo = [], onClose }: { levelId: number | 
               {t("bossIntroStart")}
             </Button>
           </motion.div>
+          {/* Neon animation */}
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1 }}
+          >
+            <motion.div
+              className="absolute inset-0"
+              animate={reducedMotion ? undefined : {
+                boxShadow: [
+                  `0 0 10px ${accent}`,
+                  `0 0 20px ${accent}`,
+                  `0 0 10px ${accent}`,
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+            />
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center"
+              animate={reducedMotion ? undefined : {
+                scale: [1, 1.1, 1],
+                opacity: [0.3, 0.7, 0.3],
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              <div className="w-4 h-4 rounded-full" style={{ background: accent }} />
+            </motion.div>
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center"
+              animate={reducedMotion ? undefined : {
+                scale: [1, 1.2, 1],
+                opacity: [0.2, 0.5, 0.2],
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
+            >
+              <div className="w-6 h-6 rounded-full" style={{ background: accent }} />
+            </motion.div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
