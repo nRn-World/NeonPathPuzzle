@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { CalendarDays, Check, Flame, Play, Shield, Star } from "lucide-react";
+import { CalendarDays, Check, Flame, Play, Star } from "lucide-react";
 import { getProgress } from "@/lib/progress";
 import {
   formatCountdown,
@@ -50,6 +50,11 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
         className={`group relative h-full cursor-pointer overflow-hidden rounded-none border border-white/10 border-l-[3px] border-l-secondary bg-white/[0.03] transition-all hover:border-secondary/60 hover:shadow-[0_0_25px_rgba(138,43,226,0.2)] ${
           compact ? "p-4" : "p-5"
         }`}
+        style={{
+          background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+          boxShadow: '0 0 15px rgba(138,43,226,0.5)',
+          animation: 'pulse 2s infinite alternate'
+        }}
       >
         <div className="relative flex items-center gap-4">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-none border border-secondary/40 bg-secondary/10">
@@ -82,6 +87,10 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
                   <Star
                     key={index}
                     className={`h-3 w-3 ${index < today.stars ? "fill-secondary text-secondary" : "text-white/20"}`}
+                    style={{
+                      filter: 'drop-shadow(0 0 5px rgba(138,43,226,0.7))',
+                      animation: 'twinkle 1.5s infinite alternate'
+                    }}
                   />
                 ))}
               </div>
@@ -112,25 +121,15 @@ export function DailyCard({ compact = false }: { compact?: boolean }) {
                     : `${key} · ${t("notPlayed")}`
                 }
                 className={`flex flex-1 flex-col items-center gap-1 rounded-none border px-1 py-1 ${
-                  isToday ? "border-secondary/50 bg-secondary/10" : "border-transparent"
-                }`}
+                  strength
+                } ${isToday ? "border-secondary/60" : "border-white/10"}`}
               >
-                <span className={`font-exo text-[9px] uppercase ${isToday ? "text-secondary" : "text-muted-foreground/70"}`}>
-                  {isToday ? t("today") : weekdayLabel(key)}
-                </span>
-                <span className={`h-1 w-full rounded-none ${strength}`} />
+                <span className="text-[10px] font-bold text-white">{weekdayLabel(key)}</span>
+                <span className="text-[10px] text-white/80">{key.split("-")[2]}</span>
               </div>
             );
           })}
         </div>
-
-        {getShieldCount(daily) > 0 && (
-          <p className="mt-2 flex items-center gap-1.5 border-t border-white/5 pt-2 font-exo text-[11px] text-violet-300">
-            <Shield className="h-3.5 w-3.5" />
-            {t("dailyShields", { count: getShieldCount(daily) })}
-            <span className="text-muted-foreground">· {t("dailyShieldHint")}</span>
-          </p>
-        )}
       </div>
     </Link>
   );
