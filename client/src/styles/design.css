@@ -1,0 +1,52 @@
+/* Theme Demo Component */
+.theme-demo {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.theme-screenshot {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Neon Theme Colors */
+.theme-demo.cyberpunk {
+  background: linear-gradient(135deg, #ff00cc 0%, #3333ff 100%);
+}
+
+.theme-demo.retro-wave {
+  background: linear-gradient(135deg, #ff00cc 0%, #3333ff 100%);
+}
+
+.theme-demo.cosmic {
+  background: linear-gradient(135deg, #ff00cc 0%, #3333ff 100%);
+}
+
+.theme-demo.matrix {
+  background: linear-gradient(135deg, #00ff00 0%, #003300 100%);
+}
+
+.theme-demo.neon-sunset {
+  background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+}
+
+.theme-demo.spring {
+  background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+}
+
+.theme-demo.summer {
+  background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
+}
+
+.theme-demo.halloween {
+  background: linear-gradient(135deg, #FF5722 0%, #795548 100%);
+}
+
+.theme-demo.winter {
+  background: linear-gradient(135deg, #2196F3 0%, #00BCD4 100%);
+}
