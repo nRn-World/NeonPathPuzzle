@@ -64,7 +64,7 @@ export function InstallPrompt() {
           exit={{ opacity: 0, y: 20 }}
           role="dialog"
           aria-label={t("installTitle")}
-          className="fixed bottom-4 right-4 z-40 w-[min(20rem,calc(100vw-2rem))] space-y-3 border border-primary/40 bg-black/90 p-4 shadow-[0_0_30px_rgba(0,243,255,0.15)] backdrop-blur"
+          className="fixed bottom-4 right-4 z-40 w-[min(20rem,calc(100vw-2rem))] space-y-3 border border-cyan-400/40 bg-black/90 p-4 shadow-[0_0_30px_rgba(0,243,255,0.15)] backdrop-blur"
         >
           <button
             onClick={dismiss}
@@ -74,13 +74,13 @@ export function InstallPrompt() {
             <X className="h-4 w-4" />
           </button>
           <div className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-primary" />
-            <h2 className="font-orbitron text-sm font-black text-primary">{t("installTitle")}</h2>
+            <Download className="h-5 w-5 text-cyan-400" />
+            <h2 className="font-orbitron text-sm font-black text-cyan-400">{t("installTitle")}</h2>
           </div>
           <p className="pr-5 font-exo text-xs leading-relaxed text-muted-foreground">{t("installDesc")}</p>
           <div className="flex gap-2">
-            <Button size="sm" onClick={install} className="flex-1">{t("installAction")}</Button>
-            <Button size="sm" variant="ghost" onClick={dismiss}>{t("installDismiss")}</Button>
+            <Button size="sm" onClick={install} className="flex-1 bg-cyan-500 text-white hover:bg-cyan-600">{t("installAction")}</Button>
+            <Button size="sm" variant="ghost" onClick={dismiss} className="text-cyan-400 hover:text-cyan-300">{t("installDismiss")}</Button>
           </div>
         </motion.aside>
       )}
