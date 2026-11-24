@@ -1,0 +1,25 @@
+/* Neon animation styles */
+.neon-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.neon-pulse {
+  position: absolute;
+  inset: 0;
+}
+
+.neon-star {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.neon-star-large {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
