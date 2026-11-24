@@ -1,0 +1,111 @@
+.neon-glow {
+  text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0fa, 0 0 40px #0fa;
+  animation: neon-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes neon-glow {
+  from {
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0fa, 0 0 40px #0fa;
+  }
+  to {
+    text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0fa, 0 0 60px #0fa;
+  }
+}
+
+.neon-button {
+  background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+  background-size: 400%;
+  border-radius: 8px;
+  padding: 12px 24px;
+  color: white;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  animation: neon-border 8s ease infinite;
+  box-shadow: 0 0 10px #0fa;
+}
+
+@keyframes neon-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.neon-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  margin-bottom: 2rem;
+  text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0fa, 0 0 40px #0fa;
+}
+
+.neon-card {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 0 20px rgba(15, 250, 170, 0.3);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(15, 250, 170, 0.2);
+}
+
+.neon-input {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(15, 250, 170, 0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  width: 100%;
+  box-shadow: 0 0 10px rgba(15, 250, 170, 0.2);
+  transition: all 0.3s ease;
+}
+
+.neon-input:focus {
+  outline: none;
+  border-color: rgba(15, 250, 170, 0.5);
+  box-shadow: 0 0 15px rgba(15, 250, 170, 0.4);
+}
+
+.neon-tabs {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  padding: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.neon-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.neon-tab.active {
+  background: rgba(15, 250, 170, 0.2);
+  color: #0fa;
+}
+
+.neon-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.neon-progress {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.neon-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #03a9f4, #f441a5);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
