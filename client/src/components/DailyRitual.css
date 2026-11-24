@@ -1,0 +1,38 @@
+.neon-pulse {
+  background: linear-gradient(45deg, #ff69b4, #ffe66d, #8bc34a);
+  background-size: 400% 400%;
+  animation: pulse 10s ease infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.neon-star {
+  width: 20px;
+  height: 20px;
+  background-color: #fff;
+  border-radius: 50%;
+  animation: twinkle 2s ease infinite;
+  margin: 10px;
+}
+
+@keyframes twinkle {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
