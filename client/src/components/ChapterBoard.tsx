@@ -71,8 +71,20 @@ export function ChapterBoard({
     setLocation(`${practice ? "/zen" : "/play"}/${levelId}`);
   };
 
+  // Optimize rendering for neon theme
+  const neonThemeOptimization = useMemo(() => {
+    if (chapter.theme === "neon") {
+      return {
+        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+        boxShadow: "0 0 20px rgba(255, 255, 255, 0.1)",
+      };
+    }
+    return {};
+  }, [chapter.theme]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={neonThemeOptimization}>
       <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 safe-scroll">
         {chapters.map(item => {
           const isActive = item.id === chapter.id;
@@ -87,6 +99,11 @@ export function ChapterBoard({
                   ? "border-primary/60 bg-primary/10 text-primary"
                   : "border-white/10 bg-white/[0.02] text-muted-foreground hover:border-white/25 hover:text-foreground"
               }`}
+              style={item.theme === "neon" ? {
+                background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                boxShadow: "0 0 10px rgba(255, 255, 255, 0.1)",
+              } : {}}
             >
               <div className="font-orbitron text-[11px] font-bold uppercase tracking-wide">
                 {content.chapter(item).name}
@@ -99,7 +116,7 @@ export function ChapterBoard({
         })}
       </div>
 
-      <div className="rounded-none border border-white/10 bg-card/50 p-5">
+      <div className="rounded-none border border-white/10 bg-card/50 p-5" style={neonThemeOptimization}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -118,104 +135,69 @@ export function ChapterBoard({
               <span className="font-orbitron font-bold">{stars}</span>
               <span className="text-xs text-muted-foreground">/ {chapterLevels.length * 3}</span>
             </span>
-            <span className="font-exo text-muted-foreground">{completed}/{chapterLevels.length} {t("levelsSolved")}</span>
+            <div className="flex items-center gap-1">
+              <span className="font-orbitron font-bold">{progress}%</span>
+              <span className="text-xs text-muted-foreground">{t("completed")}</span>
+            </div>
           </div>
-        </div>
-
-        <div className="mb-4 h-1.5 overflow-hidden rounded-none bg-white/10">
-          <div
-            className="h-full rounded-none bg-primary transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("filterLevels")}>
-            {filters.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setFilter(item.id)}
-                aria-pressed={filter === item.id}
-                className={`rounded-none border px-3 py-1 font-exo text-[11px] transition-colors ${
-                  filter === item.id
-                    ? "border-primary/60 bg-primary/15 text-primary"
-                    : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground"
-                }`}
-              >
-                {t(item.key)}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setPractice(value => !value)}
-            aria-pressed={practice}
-            className={`rounded-none border px-3 py-1 font-exo text-[11px] transition-colors ${
-              practice
-                ? "border-secondary/60 bg-secondary/15 text-secondary"
-                : "border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground"
-            }`}
-            title={t("practiceHint")}
-          >
-            {t("practice")}
-          </button>
-
-          <form onSubmit={handleJump} className="ml-auto flex items-center gap-1.5">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={TOTAL_LEVELS}
-              value={jumpValue}
-              onChange={event => {
-                setJumpValue(event.target.value);
-                setJumpError(null);
-              }}
-              placeholder={t("goToLevelPlaceholder")}
-              aria-label={t("goToLevelPlaceholder")}
-              className="h-8 w-28 rounded-none border border-white/15 bg-background/60 px-2 font-mono text-xs text-foreground outline-none placeholder:font-exo placeholder:text-muted-foreground/60 focus:border-primary/60"
-            />
+          {filters.map(item => (
             <button
-              type="submit"
-              aria-label={t("openLevel")}
-              className="flex h-8 w-8 items-center justify-center rounded-none border border-white/15 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              key={item.id}
+              onClick={() => setFilter(item.id)}
+              className={`rounded-none px-3 py-1 text-xs transition-all ${
+                filter === item.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-white/5 text-muted-foreground hover:bg-white/10"
+              }`}
             >
-              <CornerDownLeft className="h-3.5 w-3.5" />
+              {t(item.key)}
             </button>
-          </form>
+          ))}
         </div>
 
-        {jumpError && (
-          <p role="alert" className="mb-3 font-exo text-xs text-amber-300">
-            {jumpError}
-          </p>
-        )}
-
-        {visibleLevels.length === 0 ? (
-          <div className="rounded-none border border-dashed border-white/10 p-6 text-center font-exo text-sm text-muted-foreground">
-            {filter === "unsolved"
-              ? t("everySolved")
-              : filter === "missing-stars"
-                ? t("everyThreeStars")
-                : t("noLevels")}
-          </div>
-        ) : (
-          <div className="grid grid-cols-5 gap-2.5 sm:grid-cols-6 sm:gap-3 md:grid-cols-8">
-            {visibleLevels.map((level, index) => (
-              <LevelCard
-                key={level.id}
-                id={level.id}
-                isLocked={level.isLocked}
-                isCompleted={level.isCompleted}
-                stars={level.stars}
-                bestTimeMs={level.bestTimeMs}
-                bestScore={level.bestScore}
-                hrefBase={practice ? "/zen" : "/play"}
-                delay={index}
+        <div className="mb-4 flex items-center gap-2">
+          <form onSubmit={handleJump} className="flex items-center gap-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={jumpValue}
+                onChange={e => setJumpValue(e.target.value)}
+                placeholder={t("jumpPlaceholder")}
+                className="rounded-none border border-white/10 bg-white/[0.02] px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none"
               />
-            ))}
-          </div>
-        )}
+              <CornerDownLeft className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            <Button type="submit" size="sm" className="rounded-none bg-primary text-primary-foreground hover:bg-primary/90">
+              {t("jump")}
+            </Button>
+          </form>
+          {jumpError && <p className="text-xs text-red-400">{jumpError}</p>}
+        </div>
+
+        <div className="mb-4 flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={practice}
+              onChange={e => setPractice(e.target.checked)}
+              className="h-4 w-4 rounded-none border border-white/10 bg-white/[0.02] text-primary focus:ring-0"
+            />
+            {t("practiceMode")}
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {visibleLevels.map(level => (
+            <LevelCard
+              key={level.id}
+              level={level}
+              onClick={() => setLocation(`${practice ? "/zen" : "/play"}/${level.id}`)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
