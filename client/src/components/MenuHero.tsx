@@ -376,3 +376,9 @@ export function MenuHero({
     </section>
   );
 }
+
+// Neon effect for the background
+<div className="absolute inset-0 overflow-hidden">
+  <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-600 opacity-20 blur-3xl"></div>
+  <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-600 opacity-10 blur-xl"></div>
+</div>
