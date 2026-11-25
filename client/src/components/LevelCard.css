@@ -1,0 +1,119 @@
+.level-card {
+  position: relative;
+  aspect-ratio: 1/1;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 300ms ease;
+}
+
+.level-card.locked {
+  background-color: rgba(var(--card-rgb), 0.4);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: rgba(var(--muted-foreground-rgb), 0.25);
+}
+
+.level-card.unlocked {
+  background-color: var(--card);
+}
+
+.level-card.completed {
+  border-color: rgba(var(--primary-rgb), 0.25);
+  background-color: rgba(var(--primary-rgb), 0.05);
+}
+
+.level-card:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.level-card.completed:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+}
+
+.level-card-number {
+  font-family: var(--font-orbitron);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.level-card-number.completed {
+  color: var(--primary);
+}
+
+.level-card-stars {
+  display: flex;
+  height: 12px;
+  align-items: center;
+  gap: 2px;
+}
+
+.level-card-star {
+  height: 10px;
+  width: 10px;
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.level-card-star.filled {
+  fill: var(--primary);
+  color: var(--primary);
+}
+
+.level-card-check {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  color: rgba(var(--primary-rgb), 0.7);
+  height: 12px;
+  width: 12px;
+}
+
+.level-card-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(var(--primary-rgb), 0.1), transparent);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.level-card:hover .level-card-gradient {
+  opacity: 1;
+}
+
+.unlock-effect {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unlock-effect-icon {
+  height: 2rem;
+  width: 2rem;
+  color: var(--primary);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0.5;
+    transform: scale(0.5);
+  }
+}
