@@ -220,3 +220,18 @@ export function ChapterBoard({
     </div>
   );
 }
+
+<style>
+  .neon-glow {
+    animation: neon-glow 1.5s infinite alternate;
+  }
+
+  @keyframes neon-glow {
+    from {
+      box-shadow: 0 0 5px #00f0ff, 0 0 10px #00f0ff, 0 0 15px #00f0ff;
+    }
+    to {
+      box-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 30px #00f0ff;
+    }
+  }
+</style>
