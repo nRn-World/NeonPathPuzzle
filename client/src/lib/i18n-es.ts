@@ -241,7 +241,7 @@ export const es: Record<TranslationKey, string> = {
   survivalOver: "Ronda terminada",
   survivalOverDesc: "Llegaste a la ronda {round} con {score} puntos.",
   survivalPlayAgain: "Jugar otra vez",
-  survivalRules: "Tres vidas y un retroceso gratis por tablero. Completa el tablero antes de que acabe el tiempo: cada victoria sube el combo y acorta el reloj.",
+  survivalRules: "Tres vidas y retroceso libre contra el reloj. Completa cada tablero antes de que acabe el tiempo: cada victoria sube el combo y acorta el reloj.",
   cloudSyncOn: "El progreso está sincronizado con tu cuenta de Google",
   cloudSyncOff: "Inicia sesión con Google para conservar el progreso en todos los dispositivos",
   cloudSyncing: "Sincronizando…",

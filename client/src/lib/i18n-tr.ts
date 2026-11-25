@@ -241,7 +241,7 @@ export const tr: Record<TranslationKey, string> = {
   survivalOver: "Tur bitti",
   survivalOverDesc: "{round}. tura {score} puanla ulaştın.",
   survivalPlayAgain: "Tekrar oyna",
-  survivalRules: "Her tahtada üç can ve bir ücretsiz geri alma. Tahtayı süre dolmadan bitir: her zafer komboyu yükseltir ve saati kısaltır.",
+  survivalRules: "Üç can ve zamana karşı sınırsız geri alma. Süre dolmadan her tahtayı bitir: her zafer komboyu yükseltir ve saati kısaltır.",
   cloudSyncOn: "İlerleme Google hesabına eşitlendi",
   cloudSyncOff: "İlerlemeyi tüm cihazlarda tutmak için Google ile giriş yap",
   cloudSyncing: "Eşitleniyor…",

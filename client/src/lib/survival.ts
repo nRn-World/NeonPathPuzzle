@@ -7,8 +7,6 @@ import { GENERATOR_MAX_LEVEL_ID } from "@shared/level-generator";
  */
 
 export const SURVIVAL_START_HEARTS = 3;
-/** Free rewinds per board. Running out turns a dead end into a lost heart. */
-export const SURVIVAL_UNDOS = 1;
 /** Bands are ten levels wide, so band 33 tops out at the last generated board. */
 export const SURVIVAL_BANDS = Math.floor(GENERATOR_MAX_LEVEL_ID / 10);
 

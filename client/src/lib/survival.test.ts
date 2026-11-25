@@ -3,7 +3,6 @@ import test from "node:test";
 
 import {
   SURVIVAL_START_HEARTS,
-  SURVIVAL_UNDOS,
   bandForRound,
   comboMultiplier,
   levelIdForRound,
@@ -55,5 +54,4 @@ test("the combo climbs to a cap and payouts follow it", () => {
 
 test("a run starts with the documented resources", () => {
   assert.equal(SURVIVAL_START_HEARTS, 3);
-  assert.equal(SURVIVAL_UNDOS, 1);
 });
