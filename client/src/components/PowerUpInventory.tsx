@@ -108,3 +108,75 @@ export function PowerUpInventory() {
     </div>
   );
 }
+
+<style>
+  .neon-container {
+    position: relative;
+    padding: 20px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    animation: neon-pulse 2s infinite alternate;
+  }
+
+  .neon-text {
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+    animation: neon-flicker 1.5s infinite alternate;
+  }
+
+  .neon-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    transition: all 0.3s ease;
+  }
+
+  .neon-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+  }
+
+  .neon-icon {
+    color: #00ffff;
+    text-shadow: 0 0 5px #00ffff;
+  }
+
+  .neon-badge {
+    background: transparent;
+    border: 1px solid #00ffff;
+    color: #00ffff;
+    text-shadow: 0 0 5px #00ffff;
+  }
+
+  .neon-button {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #00ffff;
+    color: #00ffff;
+    text-shadow: 0 0 5px #00ffff;
+    transition: all 0.3s ease;
+  }
+
+  .neon-button:hover {
+    background: linear-gradient(135deg, #16213e, #1a1a2e);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  }
+
+  @keyframes neon-pulse {
+    from {
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+    to {
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+    }
+  }
+
+  @keyframes neon-flicker {
+    from {
+      text-shadow: 0 0 10px #00ffff;
+    }
+    to {
+      text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff;
+    }
+  }
+</style>
