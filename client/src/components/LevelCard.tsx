@@ -1,8 +1,9 @@
 import { Link } from "wouter";
-import { Check, Lock, Star } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, Lock, Star, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatResultTime } from "@/lib/scoring";
 import { useI18n } from "@/lib/i18n";
+import { useState, useEffect } from "react";
 
 interface LevelCardProps {
   id: number;
@@ -26,11 +27,42 @@ export function LevelCard({
   delay = 0,
 }: LevelCardProps) {
   const { t } = useI18n();
+  const [showUnlockEffect, setShowUnlockEffect] = useState(false);
+
+  useEffect(() => {
+    if (isLocked) {
+      setShowUnlockEffect(false);
+    }
+  }, [isLocked]);
+
+  const handleUnlock = () => {
+    if (isLocked) {
+      setShowUnlockEffect(true);
+      setTimeout(() => setShowUnlockEffect(false), 1500);
+    }
+  };
+
   if (isLocked) {
     return (
-      <div className="aspect-square rounded-[4px] border border-white/5 bg-card/40 shadow-inner flex flex-col items-center justify-center gap-1 text-muted-foreground/25">
-        <Lock className="h-5 w-5" />
-        <span className="font-orbitron text-[10px]">{id}</span>
+      <div
+        className="aspect-square rounded-[4px] border border-white/5 bg-card/40 shadow-inner flex flex-col items-center justify-center gap-1 text-muted-foreground/25 cursor-pointer relative overflow-hidden"
+        onClick={handleUnlock}
+      >
+        <AnimatePresence>
+          {showUnlockEffect && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1.5 }}
+              exit={{ opacity: 0, scale: 2 }}
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <Zap className="h-8 w-8 text-primary animate-pulse" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <Lock className="h-5 w-5 z-10" />
+        <span className="font-orbitron text-[10px] z-10">{id}</span>
       </div>
     );
   }
