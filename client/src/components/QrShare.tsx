@@ -26,3 +26,19 @@ export function QrShare({ url, label }: { url: string; label: string }) {
     </div>
   );
 }
+
+// Neon theme styles
+const neonStyles = {
+  container: {
+    borderColor: 'rgba(138, 43, 226, 0.3)',
+    backgroundColor: 'rgba(138, 43, 226, 0.1)',
+    boxShadow: '0 0 10px rgba(138, 43, 226, 0.5)',
+  },
+  image: {
+    backgroundColor: '#8A2BE2',
+    boxShadow: '0 0 5px rgba(138, 43, 226, 0.5)',
+  },
+  text: {
+    color: '#00FFFF',
+  },
+};
