@@ -56,7 +56,7 @@ export function ProfilePanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 neon-card-container">
         <Card label={t("levelsSolvedStat")} value={`${stats.clears}/${TOTAL_LEVELS}`} />
         <Card label={t("starsEarnedStat")} value={`${stats.totalStars}/${TOTAL_LEVELS * 3}`} />
         <Card label={t("threeStarClears")} value={String(stats.threeStarClears)} />
