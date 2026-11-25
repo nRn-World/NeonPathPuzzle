@@ -40,7 +40,7 @@ export function OpponentView({ gridSize, nodes, tail, count, total, name, bot, s
     const cell = size / gridSize;
     const center = (point: Point) => [point.x * cell + cell / 2, point.y * cell + cell / 2] as const;
 
-    // Neon nodes
+    // Optimized neon nodes with reduced shadow blur
     context.fillStyle = "rgba(255,255,255,0.38)";
     nodes.forEach(node => {
       const [x, y] = center(node);
@@ -48,10 +48,10 @@ export function OpponentView({ gridSize, nodes, tail, count, total, name, bot, s
       context.arc(x, y, Math.max(1.2, cell * 0.14), 0, Math.PI * 2);
       context.fill();
 
-      // Neon glow effect
-      context.shadowColor = "rgba(255,255,255,0.8)";
-      context.shadowBlur = 8;
-      context.fillStyle = "rgba(255,255,255,0.2)";
+      // Reduced glow effect for better performance
+      context.shadowColor = "rgba(255,255,255,0.6)";
+      context.shadowBlur = 4;
+      context.fillStyle = "rgba(255,255,255,0.15)";
       context.beginPath();
       context.arc(x, y, Math.max(2, cell * 0.2), 0, Math.PI * 2);
       context.fill();
@@ -63,7 +63,7 @@ export function OpponentView({ gridSize, nodes, tail, count, total, name, bot, s
     context.lineJoin = "round";
     context.strokeStyle = colors.secondary;
     context.shadowColor = colors.secondary;
-    context.shadowBlur = 6;
+    context.shadowBlur = 4; // Reduced shadow blur
     context.lineWidth = Math.max(2, cell * 0.3);
     context.beginPath();
     tail.forEach((point, index) => {
@@ -73,10 +73,10 @@ export function OpponentView({ gridSize, nodes, tail, count, total, name, bot, s
     });
     context.stroke();
 
-    // Neon head with pulsing effect
+    // Optimized neon head with reduced shadow blur
     const [headX, headY] = center(tail[tail.length - 1]);
     const pulse = Math.abs(Math.sin(Date.now() / 500)) * 0.2 + 0.8;
-    context.shadowBlur = 12;
+    context.shadowBlur = 8; // Reduced shadow blur
     context.shadowColor = colors.secondary;
     context.fillStyle = colors.secondary;
     context.beginPath();
