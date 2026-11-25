@@ -1,6 +1,7 @@
 import { Check, Gift } from "lucide-react";
 import { useI18n, upper, type TranslationKey } from "@/lib/i18n";
 import { getActiveSeason, readSeasonState } from "@/lib/seasons";
+import "./SeasonCard.css";
 
 const NAME_KEYS: Record<string, TranslationKey> = {
   spring: "seasonSpring",
@@ -34,7 +35,7 @@ export function SeasonCard() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-orbitron text-[13px] font-bold leading-tight sm:text-sm" style={{ color: season.accent }}>
+            <h3 className="font-orbitron text-[13px] font-bold leading-tight sm:text-sm neon-glow" style={{ color: season.accent }}>
               {upper(t(NAME_KEYS[season.id]))}
             </h3>
             <span className="font-mono text-[10px] text-muted-foreground">{t("seasonDaysLeft", { count: active.daysLeft })}</span>
