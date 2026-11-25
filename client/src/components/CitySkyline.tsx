@@ -128,6 +128,7 @@ function buildDistrict(chapter: Chapter, index: number): District {
 
 /** Pure geometry, built once at module load. */
 const CITY: District[] = chapters.map((chapter, index) => buildDistrict(chapter, index));
+const CITY_JSON = JSON.stringify(CITY);
 
 const roofY = (building: Building) => building.top?.y ?? building.y;
 
