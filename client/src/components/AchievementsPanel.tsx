@@ -148,3 +148,5 @@ export function AchievementsPanel() {
     </div>
   );
 }
+
+import { motion } from "framer-motion";
